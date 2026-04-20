@@ -1,0 +1,22 @@
+services:
+  abak-db:
+    image: postgres:16-alpine
+    container_name: abak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-abak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abak}
+      POSTGRES_DB: ${POSTGRES_DB:-abak_erp}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - abak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-abak} -d ${POSTGRES_DB:-abak_erp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  abak-db-data:
+    name: abak-db-data

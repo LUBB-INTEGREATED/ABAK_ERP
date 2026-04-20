@@ -8,7 +8,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List users (placeholder until Prisma is wired up)' })
+  @ApiOperation({ summary: 'List all users' })
   findAll() {
     return this.usersService.findAll();
   }

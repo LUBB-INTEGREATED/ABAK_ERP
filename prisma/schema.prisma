@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User Management & Authentication
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  avatar    String?
+
+  role   UserRole   @default(SALES_REPRESENTATIVE)
+  status UserStatus @default(ACTIVE)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SALES_MANAGER
+  SALES_REPRESENTATIVE
+  TECHNICAL_MANAGER
+  FINANCE_MANAGER
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ============================================
+// Service Catalog
+// ============================================
+
+model ServiceCategory {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  icon        String?
+  order       Int     @default(0)
+  isActive    Boolean @default(true)
+
+  services Service[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("service_categories")
+}
+
+model Service {
+  id          String  @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  code        String  @unique
+
+  basePrice Float?
+  unit      String?
+
+  isActive Boolean @default(true)
+
+  category ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([code])
+  @@map("services")
+}
+
+// ============================================
+// System Configuration
+// ============================================
+
+model SystemSetting {
+  id    String      @id @default(cuid())
+  key   String      @unique
+  value String
+  type  SettingType @default(STRING)
+
+  description String?
+  category    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("system_settings")
+}
+
+enum SettingType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+// ============================================
+// Audit Log
+// ============================================
+
+model AuditLog {
+  id       String @id @default(cuid())
+  userId   String?
+  action   String
+  entity   String
+  entityId String
+
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

@@ -14,7 +14,17 @@
     "affected:test": "nx affected -t test",
     "graph": "nx graph",
     "format": "nx format:write",
-    "format:check": "nx format:check"
+    "format:check": "nx format:check",
+    "db:up": "docker compose up -d abak-db",
+    "db:down": "docker compose down",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio",
+    "prisma:reset": "prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "ts-node --require tsconfig-paths/register --project tsconfig.seed.json prisma/seed.ts"
   },
   "dependencies": {
     "next": "~16.1.6",
@@ -28,6 +38,7 @@
     "@nx/js": "22.6.5",
     "@nx/next": "22.6.5",
     "@nx/react": "22.6.5",
+    "@prisma/client": "^5.22.0",
     "@swc-node/register": "1.11.1",
     "@swc/cli": "~0.8.0",
     "@swc/core": "1.15.8",
@@ -47,6 +58,9 @@
     "jsonc-eslint-parser": "^2.4.0",
     "nx": "22.6.5",
     "prettier": "^3.8.1",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.0.0"
