@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --abak-blue: 196 58% 32%;
+    --abak-gold: 43 43% 46%;
+
+    --background: 30 20% 97%;
+    --foreground: 0 0% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
+
+    --primary: 196 58% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 43 43% 46%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 13% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 43 43% 46%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 196 58% 32%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 211 100% 61%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 43 50% 70%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 43 50% 70%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 211 100% 61%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  [dir='rtl'] {
+    direction: rtl;
+  }
+
+  [dir='ltr'] {
+    direction: ltr;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-abak-blue hover:bg-abak-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-abak-gold hover:bg-abak-gold-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+  }
+
+  .btn-outline {
+    @apply border-2 border-abak-blue text-abak-blue hover:bg-abak-blue hover:text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+  }
+
+  .card-abak {
+    @apply bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .badge-active {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-abak-blue/10 text-abak-blue;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-abak-gold/10 text-abak-gold;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700;
+  }
+
+  .badge-error {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700;
+  }
+
+  .nav-abak {
+    @apply bg-abak-blue text-white shadow-lg;
+  }
+
+  .nav-item {
+    @apply px-4 py-2 rounded-lg hover:bg-white/10 transition-colors;
+  }
+
+  .nav-item-active {
+    @apply bg-white/20 font-semibold;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
