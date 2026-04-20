@@ -12,9 +12,9 @@ datasource db {
 // ============================================
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
+  id        String  @id @default(cuid())
+  email     String  @unique
+  password  String
   firstName String?
   lastName  String?
   phone     String?
@@ -23,15 +23,33 @@ model User {
   role   UserRole   @default(SALES_REPRESENTATIVE)
   status UserStatus @default(ACTIVE)
 
+  emailVerified        Boolean   @default(false)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  refreshTokens RefreshToken[]
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
-  @@index([clerkId])
   @@index([email])
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
 }
 
 enum UserRole {
