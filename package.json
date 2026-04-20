@@ -1,0 +1,44 @@
+{
+  "name": "abak-erp",
+  "version": "1.0.0",
+  "description": "ABAK ERP - Complete ERP system for engineering consultancy firms",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "build": "nx run-many -t build",
+    "lint": "nx run-many -t lint",
+    "test": "nx run-many -t test",
+    "typecheck": "nx run-many -t typecheck",
+    "affected:build": "nx affected -t build",
+    "affected:lint": "nx affected -t lint",
+    "affected:test": "nx affected -t test",
+    "graph": "nx graph",
+    "format": "nx format:write",
+    "format:check": "nx format:check"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@nx/eslint": "22.6.5",
+    "@nx/eslint-plugin": "22.6.5",
+    "@nx/js": "22.6.5",
+    "@swc-node/register": "1.11.1",
+    "@swc/core": "1.15.8",
+    "@swc/helpers": "0.5.18",
+    "@types/node": "20.19.9",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "jsonc-eslint-parser": "^2.4.0",
+    "nx": "22.6.5",
+    "prettier": "^3.8.1",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

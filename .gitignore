@@ -34,8 +34,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Turbo
-.turbo
+# Nx
+.nx/cache
+.nx/workspace-data
 
 # Vercel
 .vercel

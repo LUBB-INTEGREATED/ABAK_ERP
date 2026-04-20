@@ -8,6 +8,17 @@ Complete ERP system for engineering consultancy firms.
 **Timeline**: 70 days (10 weeks)
 **Status**: 🚧 In Development
 
+## 🎨 Brand Design
+
+**ABAK Engineering Consultancy** - أبـــاك للاستشـــارات الهندســية
+
+### Brand Colors
+- **Primary**: ABAK Blue `#236382` - Trust, professionalism, engineering expertise
+- **Secondary**: ABAK Gold `#A78B42` - Quality, premium service, excellence
+- **Accent**: Dark Text `#1B1B1B`, Off White `#F9F7F5`
+
+See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for complete design guidelines.
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -26,10 +37,10 @@ Complete ERP system for engineering consultancy firms.
 - **API Docs**: Swagger/OpenAPI
 
 ### Infrastructure
-- **Monorepo**: Turborepo
+- **Monorepo**: Nx (TypeScript-solution workspace)
 - **Package Manager**: pnpm
 - **CI/CD**: GitHub Actions
-- **Code Quality**: ESLint, Prettier, Husky
+- **Code Quality**: ESLint (flat config), Prettier, Husky
 
 ## 📋 Modules
 
@@ -76,61 +87,112 @@ cd ABAK_ERP
 # Install dependencies
 pnpm install
 
-# Set up environment variables
+# Build every project (useful for first-run sanity check)
+pnpm build
+
+# Set up environment variables (once .env.example exists in issue #004)
 cp .env.example .env.local
-# Edit .env.local with your configuration
 
-# Run database migrations
-pnpm prisma:migrate
-
-# Seed the database
-pnpm prisma:seed
-
-# Start development servers
-pnpm dev
+# Once the apps are scaffolded:
+pnpm nx serve web    # Next.js frontend (issue #002)
+pnpm nx serve api    # Nest.js backend  (issue #003)
 ```
 
 ### Development
 
 ```bash
-# Run all apps in development mode
-pnpm dev
+# Build every project in dependency order
+pnpm build
 
-# Run frontend only
-pnpm dev --filter @abak-erp/web
-
-# Run backend only
-pnpm dev --filter @abak-erp/api
-
-# Run tests
-pnpm test
-
-# Lint code
+# Lint every project (including module-boundary enforcement)
 pnpm lint
 
-# Format code
-pnpm format
+# Run every project's tests
+pnpm test
 
-# Build for production
-pnpm build
+# Typecheck without emitting
+pnpm typecheck
+
+# Only run targets for projects affected by your changes vs. main
+pnpm affected:build
+pnpm affected:lint
+pnpm affected:test
+
+# Visualize the project dependency graph in your browser
+pnpm graph
+
+# Work on a single project
+pnpm nx build shared-types
+pnpm nx lint  shared-ui
+pnpm nx serve web       # once the Next.js app is scaffolded (issue #002)
+pnpm nx serve api       # once the Nest.js app is scaffolded (issue #003)
 ```
 
 ## 📁 Project Structure
 
 ```
 abak-erp/
-├── apps/
-│   ├── web/          # Next.js frontend
-│   └── api/          # Nest.js backend
 ├── packages/
-│   ├── ui/           # Shared UI components
-│   ├── types/        # Shared TypeScript types
-│   ├── utils/        # Shared utilities
-│   └── config/       # Shared configurations
-├── prisma/           # Database schema & migrations
-├── GitHub Issues/    # Project planning & issues
-└── turbo.json        # Turborepo configuration
+│   ├── shared/
+│   │   ├── types/          # Cross-module TypeScript types
+│   │   ├── utils/          # Cross-module utilities
+│   │   └── ui/             # Cross-module UI primitives
+│   ├── lead-capture/       # Module 1 libs (added in Sprint 1)
+│   ├── crm/                # Module 2 libs (added in Sprint 2)
+│   ├── sales-pipeline/     # Module 3 libs (added in Sprint 3)
+│   ├── quotation/          # Module 4 libs (added in Sprint 4)
+│   ├── marketing/          # Module 5 libs
+│   ├── accounting/         # Future module
+│   ├── hr/                 # Future module
+│   ├── web/                # Next.js frontend (scaffolded in issue #002)
+│   └── api/                # Nest.js backend  (scaffolded in issue #003)
+├── prisma/                 # Database schema & migrations (issue #004)
+├── nx.json                 # Nx workspace config (targets, plugins, cache)
+├── tsconfig.base.json      # Shared compiler options + path aliases
+├── pnpm-workspace.yaml
+└── package.json            # Workspace root
 ```
+
+### Module boundaries (the reason we picked Nx)
+
+Every project is tagged with **scope** and **type**. ESLint (`@nx/enforce-module-boundaries`) blocks forbidden imports at lint time:
+
+| Tag                       | Who can depend on it                                         |
+| ------------------------- | ------------------------------------------------------------ |
+| `scope:shared`            | everyone                                                     |
+| `scope:<module>`          | only code in the same module + `scope:shared`                |
+| `scope:web` / `scope:api` | everyone (apps compose modules)                              |
+| `type:feature`            | → `feature`, `ui`, `data-access`, `util`, `types`            |
+| `type:ui`                 | → `ui`, `util`, `types` (no data-access: keep UI presentational) |
+| `type:data-access`        | → `data-access`, `util`, `types`                             |
+| `type:util`               | → `util`, `types`                                            |
+| `type:types`              | → `types` only (leaf of the graph)                           |
+
+Run `pnpm lint` and the rule will catch, e.g., `accounting-feature` trying to import from `hr-internal`.
+
+### Adding a new library or app
+
+Don't create directories by hand — use the Nx generators so tags, `tsconfig` references, and lint configs are consistent:
+
+```bash
+# A shared library
+pnpm nx g @nx/js:lib packages/shared/<name> \
+  --name=shared-<name> --bundler=tsc --linter=eslint \
+  --tags=scope:shared,type:<util|ui|types|data-access>
+
+# A module-scoped library (e.g. CRM feature)
+pnpm nx g @nx/js:lib packages/crm/<name> \
+  --name=crm-<name> --bundler=tsc --linter=eslint \
+  --tags=scope:crm,type:<feature|ui|data-access|util|types>
+
+# A Next.js app (issue #002 will do this)
+pnpm nx g @nx/next:app packages/web --tags=scope:web
+
+# A Nest.js app (issue #003 will do this)
+pnpm nx g @nx/nest:app packages/api --tags=scope:api
+```
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full checklist.
 
 ## 🔐 Environment Variables
 
@@ -153,10 +215,12 @@ FRONTEND_URL="http://localhost:3000"
 
 ## 📚 Documentation
 
-- [Project Plan](../Abak/PROJECT_PLAN.md)
-- [GitHub Issues](../Abak/GitHub%20Issues/)
+- [Project Plan](../PROJECT_PLAN.md)
+- [GitHub Issues](../GitHub%20Issues/)
+- [Design System](./DESIGN_SYSTEM.md) - Brand colors, typography, components
+- [Design Setup Guide](./SETUP_DESIGN.md) - How to implement ABAK branding
 - [API Documentation](http://localhost:3001/api/docs) (when running)
-- [Module Specifications](../Abak/Modules%20Process%20Docs/)
+- [Module Specifications](../Modules%20Process%20Docs/)
 
 ## 🤝 Contributing
 
@@ -178,7 +242,7 @@ FRONTEND_URL="http://localhost:3000"
 
 ## 📊 Project Status
 
-- [x] Sprint 0: Infrastructure Setup (Week 1-2)
+- [ ] Sprint 0: Infrastructure Setup (Week 1-2) - 🎯 **Current Sprint**
 - [ ] Sprint 1: Module 1 - Lead Capture (Week 3-4)
 - [ ] Sprint 2: Module 2 - CRM (Week 5-6)
 - [ ] Sprint 3: Module 3 - Sales Pipeline (Week 7-8)

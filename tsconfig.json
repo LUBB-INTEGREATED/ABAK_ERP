@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/shared/types"
+    },
+    {
+      "path": "./packages/shared/utils"
+    },
+    {
+      "path": "./packages/shared/ui"
+    }
+  ]
+}
