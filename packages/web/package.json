@@ -30,6 +30,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.73.1",
+    "recharts": "^3.8.1",
     "shared-types": "workspace:*",
     "shared-ui": "workspace:*",
     "shared-utils": "workspace:*",
