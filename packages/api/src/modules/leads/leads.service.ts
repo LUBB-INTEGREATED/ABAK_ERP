@@ -141,6 +141,19 @@ export class LeadsService {
     if (filter.priority) where.priority = filter.priority;
     if (filter.slaStatus) where.slaStatus = filter.slaStatus;
     if (filter.assignedToId) where.assignedToId = filter.assignedToId;
+    if (filter.serviceId) where.serviceId = filter.serviceId;
+    if (filter.location) {
+      where.projectLocation = {
+        contains: filter.location,
+        mode: 'insensitive',
+      };
+    }
+    if (filter.budgetMin !== undefined || filter.budgetMax !== undefined) {
+      where.budget = {
+        ...(filter.budgetMin !== undefined ? { gte: filter.budgetMin } : {}),
+        ...(filter.budgetMax !== undefined ? { lte: filter.budgetMax } : {}),
+      };
+    }
 
     if (filter.createdFrom || filter.createdTo) {
       where.createdAt = {
