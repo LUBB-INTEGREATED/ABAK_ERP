@@ -1,15 +1,137 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import type {
+  CreateServiceCategoryDto,
+  CreateServiceDto,
+  UpdateServiceCategoryDto,
+  UpdateServiceDto,
+} from './dto';
 
 @Injectable()
 export class ServicesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  // Services -----------------------------------------------------
+
+  findAll(includeInactive = false) {
     return this.prisma.service.findMany({
-      where: { isActive: true },
+      where: includeInactive ? {} : { isActive: true },
       orderBy: [{ category: { order: 'asc' } }, { name: 'asc' }],
       include: { category: { select: { id: true, name: true } } },
     });
+  }
+
+  async findOne(id: string) {
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      include: { category: true },
+    });
+    if (!service) throw new NotFoundException(`Service ${id} not found`);
+    return service;
+  }
+
+  async create(dto: CreateServiceDto) {
+    await this.ensureCategoryExists(dto.categoryId);
+    try {
+      return await this.prisma.service.create({
+        data: {
+          categoryId: dto.categoryId,
+          name: dto.name,
+          code: dto.code,
+          description: dto.description,
+          basePrice: dto.basePrice,
+          unit: dto.unit,
+          isActive: dto.isActive ?? true,
+        },
+        include: { category: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Service code must be unique');
+      }
+      throw error;
+    }
+  }
+
+  async update(id: string, dto: UpdateServiceDto) {
+    await this.findOne(id);
+    if (dto.categoryId) await this.ensureCategoryExists(dto.categoryId);
+    try {
+      return await this.prisma.service.update({
+        where: { id },
+        data: dto,
+        include: { category: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Service code must be unique');
+      }
+      throw error;
+    }
+  }
+
+  async deactivate(id: string) {
+    await this.findOne(id);
+    return this.prisma.service.update({
+      where: { id },
+      data: { isActive: false },
+      include: { category: true },
+    });
+  }
+
+  // Categories ---------------------------------------------------
+
+  findCategories(includeInactive = false) {
+    return this.prisma.serviceCategory.findMany({
+      where: includeInactive ? {} : { isActive: true },
+      orderBy: { order: 'asc' },
+      include: {
+        services: { where: { isActive: true }, select: { id: true } },
+      },
+    });
+  }
+
+  createCategory(dto: CreateServiceCategoryDto) {
+    return this.prisma.serviceCategory.create({
+      data: {
+        name: dto.name,
+        description: dto.description,
+        icon: dto.icon,
+        order: dto.order ?? 0,
+        isActive: dto.isActive ?? true,
+      },
+    });
+  }
+
+  async updateCategory(id: string, dto: UpdateServiceCategoryDto) {
+    const category = await this.prisma.serviceCategory.findUnique({
+      where: { id },
+    });
+    if (!category) throw new NotFoundException(`Category ${id} not found`);
+    return this.prisma.serviceCategory.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  private async ensureCategoryExists(id: string) {
+    const category = await this.prisma.serviceCategory.findUnique({
+      where: { id },
+      select: { id: true, isActive: true },
+    });
+    if (!category) {
+      throw new NotFoundException(`Category ${id} not found`);
+    }
   }
 }

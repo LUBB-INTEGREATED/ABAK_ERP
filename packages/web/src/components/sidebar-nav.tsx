@@ -12,6 +12,7 @@ import {
   Megaphone,
   Blocks,
   Menu,
+  Settings,
   X,
   LogOut,
 } from 'lucide-react';
@@ -41,6 +42,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/quotes', label: 'Quotes', icon: FileText },
   { href: '/marketing', label: 'Marketing', icon: Megaphone },
 ];
+
+const ADMIN_ITEMS: NavItem[] = [
+  { href: '/admin/services', label: 'Services', icon: Settings },
+];
+
+const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN']);
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -96,6 +103,34 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           );
         })}
+
+        {user && ADMIN_ROLES.has(user.role) && (
+          <div className="pt-4">
+            <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-white/50">
+              Admin
+            </div>
+            {ADMIN_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    active
+                      ? 'bg-white/15 font-semibold'
+                      : 'text-white/85 hover:bg-white/10',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       <div className="border-t border-white/10 p-4">
