@@ -18,12 +18,25 @@ import {
   UpdateLeadStatusDto,
 } from './dto';
 import { LeadsService } from './leads.service';
+import { SlaService } from './sla.service';
 
 @ApiTags('leads')
 @ApiBearerAuth('JWT-auth')
 @Controller('leads')
 export class LeadsController {
-  constructor(private readonly leads: LeadsService) {}
+  constructor(
+    private readonly leads: LeadsService,
+    private readonly sla: SlaService,
+  ) {}
+
+  @Post('recompute-sla')
+  @ApiOperation({
+    summary:
+      'Recompute SLA status for every open lead (cron runs automatically every 30 minutes)',
+  })
+  recomputeSla() {
+    return this.sla.recomputeAll();
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a new lead' })
