@@ -49,11 +49,22 @@
     "settings": "Settings",
     "holidays": "Public holidays",
     "adminSettings": "System settings",
+    "audit": "Audit log",
     "rfqs": "RFQs",
     "projects": "Projects",
     "finance": "Finance",
     "govTransactions": "Gov Transactions",
     "pro": "PRO dashboard"
+  },
+  "audit": {
+    "title": "Audit log",
+    "subtitle": "Every sensitive operation in the system is logged here.",
+    "eventsHeading": "Events",
+    "when": "When",
+    "action": "Action",
+    "entity": "Entity",
+    "entityId": "Entity id",
+    "actor": "Actor"
   },
   "gov": {
     "title": "Government transactions",

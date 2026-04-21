@@ -12,6 +12,7 @@ import {
   Wallet,
   Landmark,
   BadgeCheck,
+  ShieldCheck,
   Megaphone,
   Blocks,
   Menu,
@@ -65,6 +66,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: '/admin/services', labelKey: 'nav.services', icon: Settings },
   { href: '/admin/settings', labelKey: 'nav.adminSettings', icon: Sliders },
   { href: '/admin/holidays', labelKey: 'nav.holidays', icon: CalendarCheck },
+  { href: '/admin/audit', labelKey: 'nav.audit', icon: ShieldCheck },
 ];
 
 const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN']);

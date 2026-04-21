@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import type {
   CreateInvoiceDto,
   ListInvoicesDto,
@@ -23,7 +24,10 @@ import type {
 
 @Injectable()
 export class FinanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // ─── Commercial confirmations ─────────────────────────────────
 
@@ -103,6 +107,18 @@ export class FinanceService {
         where: { id: confirmation.quote.clientId },
         data: { lifetimeValue: { increment: confirmation.contractValue } },
       });
+    });
+
+    await this.audit.log({
+      userId: actorId,
+      action: 'COMMERCIAL_CONFIRMATION_VALIDATED',
+      entity: 'CommercialConfirmation',
+      entityId: id,
+      newValues: {
+        validationStatus: dto.status,
+        quoteId: confirmation.quoteId,
+        contractValue: confirmation.contractValue,
+      },
     });
 
     return this.prisma.commercialConfirmation.findUnique({
@@ -276,7 +292,7 @@ export class FinanceService {
       throw new BadRequestException('Payment already validated');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.payment.update({
         where: { id },
         data: {
@@ -377,6 +393,14 @@ export class FinanceService {
 
       return updated;
     });
+    await this.audit.log({
+      userId: actorId,
+      action: `PAYMENT_${dto.status}`,
+      entity: 'Payment',
+      entityId: id,
+      newValues: { status: dto.status, note: dto.note ?? null },
+    });
+    return result;
   }
 
   // ─── Stats ────────────────────────────────────────────────────
