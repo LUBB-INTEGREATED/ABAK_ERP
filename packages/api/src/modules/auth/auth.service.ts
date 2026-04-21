@@ -1,13 +1,13 @@
 import {
   ConflictException,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import type { SignOptions } from 'jsonwebtoken';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './dto';
 
@@ -19,8 +19,6 @@ interface JwtPayload {
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
@@ -28,7 +26,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new ConflictException('Email already registered');
     }
@@ -59,7 +59,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const ok = await bcrypt.compare(dto.password, user.password);
@@ -88,9 +90,8 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string) {
-    let payload: JwtPayload;
     try {
-      payload = this.jwt.verify<JwtPayload>(refreshToken, {
+      this.jwt.verify<JwtPayload>(refreshToken, {
         secret: this.config.get<string>('auth.jwtSecret'),
       });
     } catch {
@@ -110,11 +111,17 @@ export class AuthService {
 
     await this.prisma.refreshToken.delete({ where: { id: stored.id } });
 
-    return this.issueTokens(stored.user.id, stored.user.email, stored.user.role);
+    return this.issueTokens(
+      stored.user.id,
+      stored.user.email,
+      stored.user.role,
+    );
   }
 
   async logout(refreshToken: string) {
-    await this.prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+    await this.prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
     return { message: 'Logged out successfully' };
   }
 
@@ -144,16 +151,21 @@ export class AuthService {
 
     const accessToken = await this.jwt.signAsync(payload, {
       secret,
-      expiresIn: this.config.get<string>('auth.jwtExpiresIn'),
+      expiresIn: this.config.get<string>(
+        'auth.jwtExpiresIn',
+      ) as SignOptions['expiresIn'],
     });
     const refreshToken = await this.jwt.signAsync(payload, {
       secret,
-      expiresIn: this.config.get<string>('auth.refreshExpiresIn'),
+      expiresIn: this.config.get<string>(
+        'auth.refreshExpiresIn',
+      ) as SignOptions['expiresIn'],
     });
 
     const expiresAt = new Date();
     expiresAt.setDate(
-      expiresAt.getDate() + (this.config.get<number>('auth.refreshExpiresInDays') ?? 7),
+      expiresAt.getDate() +
+        (this.config.get<number>('auth.refreshExpiresInDays') ?? 7),
     );
 
     await this.prisma.refreshToken.create({

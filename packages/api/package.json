@@ -107,6 +107,7 @@
     "@nx/webpack": "22.6.5",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/passport-jwt": "^4.0.1",
     "webpack-cli": "^5.1.4"
   }
