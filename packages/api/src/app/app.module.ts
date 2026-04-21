@@ -10,6 +10,7 @@ import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { ClientsModule } from '../modules/clients/clients.module';
 import { FinanceModule } from '../modules/finance/finance.module';
+import { GovTransactionsModule } from '../modules/gov-transactions/gov-transactions.module';
 import { HolidaysModule } from '../modules/holidays/holidays.module';
 import { I18nModule } from '../modules/i18n/i18n.module';
 import { LeadsModule } from '../modules/leads/leads.module';
@@ -46,6 +47,7 @@ import { AppService } from './app.service';
     HolidaysModule,
     SettingsModule,
     FinanceModule,
+    GovTransactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

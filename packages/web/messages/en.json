@@ -51,7 +51,96 @@
     "adminSettings": "System settings",
     "rfqs": "RFQs",
     "projects": "Projects",
-    "finance": "Finance"
+    "finance": "Finance",
+    "govTransactions": "Gov Transactions",
+    "pro": "PRO dashboard"
+  },
+  "gov": {
+    "title": "Government transactions",
+    "subtitle": "Manage filings with authorities, municipalities, and platforms (Etimad, Fursa).",
+    "number": "Tx number",
+    "authority": "Authority",
+    "authorityCategory": "Authority category",
+    "type": "Transaction type",
+    "project": "Project",
+    "pro": "PRO",
+    "engineer": "Engineer",
+    "fees": "Fees",
+    "submittedAt": "Submitted",
+    "expectedResponseAt": "Expected response",
+    "resolvedAt": "Resolved",
+    "referenceNumber": "Reference #",
+    "addNew": "New transaction",
+    "status": {
+      "DRAFT": "Draft",
+      "SUBMITTED": "Submitted",
+      "UNDER_REVIEW": "Under review",
+      "REVISION_REQUIRED": "Revision required",
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected",
+      "CANCELLED": "Cancelled"
+    },
+    "category": {
+      "MUNICIPALITY": "Municipality",
+      "MINISTRY": "Ministry",
+      "UTILITY": "Utility",
+      "PLATFORM_ETIMAD": "Etimad",
+      "PLATFORM_FURSA": "Fursa",
+      "OTHER": "Other"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "visits": "Visits",
+      "comments": "Comments",
+      "documents": "Documents"
+    },
+    "kpi": {
+      "open": "Open",
+      "awaitingResponse": "Awaiting response",
+      "weeklyOverdue": "Weekly status overdue"
+    },
+    "empty": "No transactions yet.",
+    "visit": {
+      "heading": "PRO visits",
+      "newVisit": "Log visit",
+      "purpose": "Purpose",
+      "outcome": "Outcome",
+      "nextAction": "Next action",
+      "visitedAt": "Visited at",
+      "sameDay": "Visits must be logged on the same calendar day they occurred (BR-16).",
+      "empty": "No visits logged yet."
+    },
+    "comment": {
+      "heading": "Authority comments",
+      "newComment": "Log comment",
+      "commentText": "Comment text",
+      "issuedAt": "Issued at",
+      "respond": "Respond",
+      "responseText": "Response",
+      "respondedAt": "Responded at",
+      "empty": "No comments.",
+      "pendingBadge": "Awaiting response",
+      "respondedBadge": "Responded"
+    },
+    "document": {
+      "heading": "Documents",
+      "newDocument": "Attach document",
+      "docTitle": "Title",
+      "fileUrl": "File URL",
+      "empty": "No documents."
+    },
+    "weeklyStatus": {
+      "markUpdated": "Mark weekly status updated",
+      "lastUpdated": "Last weekly update"
+    }
+  },
+  "proDashboard": {
+    "title": "PRO dashboard",
+    "subtitle": "Transactions needing your attention today.",
+    "todaysVisits": "Today's visits",
+    "openTransactions": "Open transactions",
+    "logVisit": "Log visit",
+    "noVisitsToday": "No visits logged today yet."
   },
   "finance": {
     "title": "Finance",

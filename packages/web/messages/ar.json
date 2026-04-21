@@ -51,7 +51,96 @@
     "adminSettings": "إعدادات النظام",
     "rfqs": "طلبات عروض الأسعار",
     "projects": "المشاريع",
-    "finance": "المالية"
+    "finance": "المالية",
+    "govTransactions": "المعاملات الحكومية",
+    "pro": "لوحة المندوب الحكومي"
+  },
+  "gov": {
+    "title": "المعاملات الحكومية",
+    "subtitle": "إدارة المعاملات مع الجهات الحكومية والبلديات والمنصات (اعتماد، فرصة).",
+    "number": "رقم المعاملة",
+    "authority": "الجهة",
+    "authorityCategory": "نوع الجهة",
+    "type": "نوع المعاملة",
+    "project": "المشروع",
+    "pro": "المندوب المسؤول",
+    "engineer": "المهندس المسؤول",
+    "fees": "الرسوم",
+    "submittedAt": "تاريخ التقديم",
+    "expectedResponseAt": "تاريخ الرد المتوقع",
+    "resolvedAt": "تاريخ الإنجاز",
+    "referenceNumber": "الرقم المرجعي",
+    "addNew": "معاملة جديدة",
+    "status": {
+      "DRAFT": "مسودة",
+      "SUBMITTED": "مُقدَّمة",
+      "UNDER_REVIEW": "قيد المراجعة",
+      "REVISION_REQUIRED": "تحتاج تعديلاً",
+      "APPROVED": "معتمدة",
+      "REJECTED": "مرفوضة",
+      "CANCELLED": "ملغاة"
+    },
+    "category": {
+      "MUNICIPALITY": "بلدية",
+      "MINISTRY": "وزارة",
+      "UTILITY": "جهة خدمات",
+      "PLATFORM_ETIMAD": "منصة اعتماد",
+      "PLATFORM_FURSA": "منصة فرصة",
+      "OTHER": "أخرى"
+    },
+    "tabs": {
+      "overview": "النظرة العامة",
+      "visits": "الزيارات",
+      "comments": "التعليقات",
+      "documents": "المستندات"
+    },
+    "kpi": {
+      "open": "معاملات مفتوحة",
+      "awaitingResponse": "ملاحظات بانتظار رد",
+      "weeklyOverdue": "متأخرة في التحديث الأسبوعي"
+    },
+    "empty": "لا توجد معاملات حتى الآن.",
+    "visit": {
+      "heading": "زيارات المندوب",
+      "newVisit": "تسجيل زيارة",
+      "purpose": "الغرض",
+      "outcome": "النتيجة",
+      "nextAction": "الإجراء التالي",
+      "visitedAt": "تاريخ الزيارة",
+      "sameDay": "يجب تسجيل الزيارة في نفس اليوم الذي تمت فيه (BR-16).",
+      "empty": "لا توجد زيارات مسجلة."
+    },
+    "comment": {
+      "heading": "تعليقات الجهة",
+      "newComment": "تسجيل تعليق",
+      "commentText": "نص التعليق",
+      "issuedAt": "تاريخ ورود التعليق",
+      "respond": "الرد",
+      "responseText": "نص الرد",
+      "respondedAt": "تاريخ الرد",
+      "empty": "لا توجد تعليقات.",
+      "pendingBadge": "بانتظار الرد",
+      "respondedBadge": "تم الرد"
+    },
+    "document": {
+      "heading": "المستندات",
+      "newDocument": "إضافة مستند",
+      "docTitle": "عنوان المستند",
+      "fileUrl": "رابط الملف",
+      "empty": "لا توجد مستندات."
+    },
+    "weeklyStatus": {
+      "markUpdated": "تسجيل التحديث الأسبوعي",
+      "lastUpdated": "آخر تحديث أسبوعي"
+    }
+  },
+  "proDashboard": {
+    "title": "لوحة المندوب الحكومي",
+    "subtitle": "المعاملات المفتوحة التي تحتاج متابعتك اليوم.",
+    "todaysVisits": "زيارات اليوم",
+    "openTransactions": "معاملات مفتوحة",
+    "logVisit": "تسجيل زيارة",
+    "noVisitsToday": "لا توجد زيارات مسجلة اليوم."
   },
   "finance": {
     "title": "المالية",

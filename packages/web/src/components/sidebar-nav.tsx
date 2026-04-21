@@ -10,6 +10,8 @@ import {
   FileSearch,
   FolderKanban,
   Wallet,
+  Landmark,
+  BadgeCheck,
   Megaphone,
   Blocks,
   Menu,
@@ -50,6 +52,12 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
   { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
   { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
+  {
+    href: '/gov-transactions',
+    labelKey: 'nav.govTransactions',
+    icon: Landmark,
+  },
+  { href: '/pro', labelKey: 'nav.pro', icon: BadgeCheck },
   { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
 ];
 

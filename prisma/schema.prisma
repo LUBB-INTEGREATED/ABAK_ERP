@@ -60,6 +60,11 @@ model User {
   validatedPayments                Payment[]                @relation("PaymentValidator")
   validatedCommercialConfirmations CommercialConfirmation[] @relation("CommercialConfirmationValidator")
 
+  assignedGovTransactionsAsPro      GovTransaction[] @relation("GovTxPro")
+  assignedGovTransactionsAsEngineer GovTransaction[] @relation("GovTxEngineer")
+  loggedGovVisits                   GovVisit[]       @relation("GovVisitPro")
+  respondedGovComments              GovComment[]     @relation("GovCommentResponder")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -90,6 +95,7 @@ enum UserRole {
   SALES_REPRESENTATIVE
   TECHNICAL_MANAGER
   FINANCE_MANAGER
+  PRO
   VIEWER
 }
 
@@ -1061,6 +1067,7 @@ model Project {
   tasks            Task[]
   closureChecklist ClosureChecklist?
   invoices         Invoice[]
+  govTransactions  GovTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1391,4 +1398,126 @@ enum CommissionStatus {
   APPROVED
   PAID
   CANCELLED
+}
+
+// ============================================
+// Module 6 — Government Transactions (M6-001)
+// ============================================
+
+model GovTransaction {
+  id                String @id @default(cuid())
+  transactionNumber String @unique
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  authorityName     String
+  authorityCategory GovAuthorityCategory
+  transactionType   String
+  referenceNumber   String?
+
+  assignedProId      String?
+  assignedPro        User?   @relation("GovTxPro", fields: [assignedProId], references: [id])
+  assignedEngineerId String?
+  assignedEngineer   User?   @relation("GovTxEngineer", fields: [assignedEngineerId], references: [id])
+
+  submittedAt        DateTime?
+  expectedResponseAt DateTime?
+  resolvedAt         DateTime?
+
+  status     GovTxStatus @default(SUBMITTED)
+  fees       Float?
+  feesPaid   Boolean     @default(false)
+  feesPaidAt DateTime?
+
+  weeklyStatusLastAt DateTime?
+
+  visits    GovVisit[]
+  comments  GovComment[]
+  documents GovDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([projectId])
+  @@index([transactionNumber])
+  @@index([assignedProId])
+  @@index([status])
+  @@map("gov_transactions")
+}
+
+enum GovAuthorityCategory {
+  MUNICIPALITY
+  MINISTRY
+  UTILITY
+  PLATFORM_ETIMAD
+  PLATFORM_FURSA
+  OTHER
+}
+
+enum GovTxStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  REVISION_REQUIRED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model GovVisit {
+  id            String         @id @default(cuid())
+  transactionId String
+  transaction   GovTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  visitedById String
+  visitedBy   User     @relation("GovVisitPro", fields: [visitedById], references: [id])
+  visitedAt   DateTime
+  purpose     String
+  outcome     String?
+  nextAction  String?
+  latitude    Float?
+  longitude   Float?
+  attachments Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([visitedById])
+  @@index([visitedAt])
+  @@map("gov_visits")
+}
+
+model GovComment {
+  id            String         @id @default(cuid())
+  transactionId String
+  transaction   GovTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  commentText   String
+  issuedAt      DateTime
+  responseText  String?
+  respondedAt   DateTime?
+  respondedById String?
+  respondedBy   User?     @relation("GovCommentResponder", fields: [respondedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@map("gov_comments")
+}
+
+model GovDocument {
+  id            String         @id @default(cuid())
+  transactionId String
+  transaction   GovTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  title      String
+  fileUrl    String
+  mimeType   String?
+  uploadedAt DateTime @default(now())
+  uploadedBy String?
+
+  @@index([transactionId])
+  @@map("gov_documents")
 }

@@ -8,7 +8,8 @@ export type EntityPrefix =
   | 'RFQ'
   | 'PRJ'
   | 'INV'
-  | 'PAY';
+  | 'PAY'
+  | 'GOV';
 
 export function nextEntityNumber(
   prefix: EntityPrefix,

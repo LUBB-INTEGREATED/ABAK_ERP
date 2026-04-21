@@ -23,6 +23,10 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.govDocument.deleteMany();
+  await prisma.govComment.deleteMany();
+  await prisma.govVisit.deleteMany();
+  await prisma.govTransaction.deleteMany();
   await prisma.commission.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.invoice.deleteMany();
@@ -1088,6 +1092,47 @@ async function main() {
   console.log(
     '✅ Created 1 validated confirmation + 1 pending confirmation + 1 invoice + 1 pending payment',
   );
+
+  console.log('Creating sample government transaction...');
+  const sampleGovTx = await prisma.govTransaction.create({
+    data: {
+      transactionNumber: `GOV-${year}-0001`,
+      projectId: sampleProject.id,
+      authorityName: 'أمانة منطقة الرياض',
+      authorityCategory: 'MUNICIPALITY',
+      transactionType: 'Building Permit',
+      referenceNumber: 'BP-2026-8812',
+      assignedProId: salesRep?.id, // reusing seed user; real PRO role would be separate
+      submittedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      expectedResponseAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      fees: 12000,
+      feesPaid: true,
+      feesPaidAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      status: 'UNDER_REVIEW',
+      weeklyStatusLastAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    },
+  });
+  await prisma.govVisit.create({
+    data: {
+      transactionId: sampleGovTx.id,
+      visitedById: salesRep!.id,
+      visitedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      purpose: 'Submit signed architectural drawings',
+      outcome: 'Drawings accepted; awaiting structural review.',
+      nextAction: 'Follow up in 7 days.',
+      latitude: 24.7136,
+      longitude: 46.6753,
+    },
+  });
+  await prisma.govComment.create({
+    data: {
+      transactionId: sampleGovTx.id,
+      commentText:
+        'Structural calculations need revised seismic load assumptions.',
+      issuedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+    },
+  });
+  console.log('✅ Created 1 gov transaction + 1 visit + 1 pending comment');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);
