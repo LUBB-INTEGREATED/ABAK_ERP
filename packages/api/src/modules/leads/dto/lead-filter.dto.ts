@@ -42,6 +42,36 @@ export class LeadFilterDto {
   @IsString()
   assignedToId?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  serviceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Case-insensitive contains match against projectLocation',
+  })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional({
+    description: 'Minimum budget in SAR (inclusive)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  budgetMin?: number;
+
+  @ApiPropertyOptional({
+    description: 'Maximum budget in SAR (inclusive)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  budgetMax?: number;
+
   @ApiPropertyOptional({
     description: 'Search contactName, companyName, phone, email, leadNumber',
   })

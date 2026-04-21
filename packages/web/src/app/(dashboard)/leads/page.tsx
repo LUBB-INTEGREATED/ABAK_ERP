@@ -24,7 +24,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { useLeadsList, useLeadStats } from '@/lib/hooks/use-leads';
+import { useLeadsList, useLeadStats, useServices } from '@/lib/hooks/use-leads';
+import { useAuthStore } from '@/lib/auth';
 import { SLA_BADGE, STATUS_BADGE } from '@/lib/lead-ui';
 import {
   CHANNEL_LABELS,
@@ -61,13 +62,31 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+type QuickFilter = 'my-leads' | 'overdue' | 'new-today' | null;
+
+function startOfTodayIso() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
 export default function LeadsListPage() {
+  const currentUser = useAuthStore((state) => state.user);
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<LeadChannel | undefined>();
   const [status, setStatus] = useState<LeadStatus | undefined>();
   const [priority, setPriority] = useState<LeadPriority | undefined>();
   const [slaStatus, setSlaStatus] = useState<SLAStatus | undefined>();
+  const [assignedToId, setAssignedToId] = useState<string | undefined>();
+  const [serviceId, setServiceId] = useState<string | undefined>();
+  const [location, setLocation] = useState('');
+  const [budgetMin, setBudgetMin] = useState('');
+  const [budgetMax, setBudgetMax] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
   const [page, setPage] = useState(1);
+  const [quick, setQuick] = useState<QuickFilter>(null);
+
+  const services = useServices();
 
   const filter = useMemo<LeadFilter>(
     () => ({
@@ -76,13 +95,54 @@ export default function LeadsListPage() {
       status,
       priority,
       slaStatus,
+      assignedToId,
+      serviceId,
+      location: location.trim() || undefined,
+      budgetMin: budgetMin ? Number(budgetMin) : undefined,
+      budgetMax: budgetMax ? Number(budgetMax) : undefined,
+      createdFrom: createdFrom || undefined,
       page,
       limit: PAGE_SIZE,
       sort: 'createdAt',
       order: 'desc',
     }),
-    [search, channel, status, priority, slaStatus, page],
+    [
+      search,
+      channel,
+      status,
+      priority,
+      slaStatus,
+      assignedToId,
+      serviceId,
+      location,
+      budgetMin,
+      budgetMax,
+      createdFrom,
+      page,
+    ],
   );
+
+  function applyQuickFilter(next: QuickFilter) {
+    setQuick((prev) => (prev === next ? null : next));
+    setPage(1);
+    if (next === 'my-leads') {
+      setAssignedToId(currentUser?.id);
+      setSlaStatus(undefined);
+      setCreatedFrom('');
+    } else if (next === 'overdue') {
+      setAssignedToId(undefined);
+      setSlaStatus('OVERDUE');
+      setCreatedFrom('');
+    } else if (next === 'new-today') {
+      setAssignedToId(undefined);
+      setSlaStatus(undefined);
+      setCreatedFrom(startOfTodayIso());
+    } else {
+      setAssignedToId(undefined);
+      setSlaStatus(undefined);
+      setCreatedFrom('');
+    }
+  }
 
   const stats = useLeadStats();
   const { data, isLoading, isError, error, refetch, isFetching } =
@@ -100,6 +160,13 @@ export default function LeadsListPage() {
     setStatus(undefined);
     setPriority(undefined);
     setSlaStatus(undefined);
+    setAssignedToId(undefined);
+    setServiceId(undefined);
+    setLocation('');
+    setBudgetMin('');
+    setBudgetMax('');
+    setCreatedFrom('');
+    setQuick(null);
     setPage(1);
   }
 
@@ -137,6 +204,24 @@ export default function LeadsListPage() {
         <StatCard
           label="Filtered"
           value={isLoading ? '…' : total.toLocaleString()}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <QuickChip
+          label="My leads"
+          active={quick === 'my-leads'}
+          onClick={() => applyQuickFilter('my-leads')}
+        />
+        <QuickChip
+          label="Overdue SLA"
+          active={quick === 'overdue'}
+          onClick={() => applyQuickFilter('overdue')}
+        />
+        <QuickChip
+          label="New today"
+          active={quick === 'new-today'}
+          onClick={() => applyQuickFilter('new-today')}
         />
       </div>
 
@@ -208,6 +293,62 @@ export default function LeadsListPage() {
               label: SLA_LABELS[s],
             }))}
           />
+
+          <FilterSelect
+            label="Service"
+            value={serviceId}
+            onChange={(value) => {
+              setServiceId(value);
+              setPage(1);
+            }}
+            options={(services.data ?? []).map((svc) => ({
+              value: svc.id,
+              label: `${svc.name} (${svc.code})`,
+            }))}
+          />
+
+          <div className="w-40">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Location
+            </label>
+            <Input
+              value={location}
+              onChange={(event) => {
+                setLocation(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Riyadh…"
+            />
+          </div>
+
+          <div className="w-28">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Min budget
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={budgetMin}
+              onChange={(event) => {
+                setBudgetMin(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
+          <div className="w-28">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Max budget
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={budgetMax}
+              onChange={(event) => {
+                setBudgetMax(event.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
 
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             <Sliders className="mr-2 h-4 w-4" />
@@ -330,6 +471,31 @@ function FilterSelect<T extends string>({
         </SelectContent>
       </Select>
     </div>
+  );
+}
+
+function QuickChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+        active
+          ? 'border-abak-blue bg-abak-blue text-white'
+          : 'border-input bg-background text-muted-foreground hover:bg-muted',
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
