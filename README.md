@@ -225,11 +225,13 @@ FRONTEND_URL="http://localhost:3000"
 
 ## 📚 Documentation
 
-- [Project Plan](../PROJECT_PLAN.md)
-- [GitHub Issues](../GitHub%20Issues/)
+- [Architecture](./ARCHITECTURE.md) - System layout, auth flow, module boundaries
+- [API reference](./API.md) - Swagger, auth headers, response envelope
+- [Contributing](./CONTRIBUTING.md) - Nx cheat sheet, branching, tagging
 - [Design System](./DESIGN_SYSTEM.md) - Brand colors, typography, components
 - [Design Setup Guide](./SETUP_DESIGN.md) - How to implement ABAK branding
-- [API Documentation](http://localhost:3001/api/docs) (when running)
+- [Live API docs](http://localhost:3001/api/docs) (when `pnpm nx serve api` is running)
+- [GitHub Issues](../GitHub%20Issues/)
 - [Module Specifications](../Modules%20Process%20Docs/)
 
 ## 🤝 Contributing
