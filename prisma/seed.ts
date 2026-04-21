@@ -213,9 +213,16 @@ async function main() {
         category: 'notification',
         description: 'Enable WhatsApp notifications',
       },
+      {
+        key: 'lead_auto_assign_strategy',
+        value: 'round_robin',
+        type: SettingType.STRING,
+        category: 'assignment',
+        description: 'Lead auto-assign: off | round_robin | load_based',
+      },
     ],
   });
-  console.log('✅ Created 6 system settings');
+  console.log('✅ Created 7 system settings');
 
   console.log('Creating sample leads...');
   const salesRep = await prisma.user.findFirst({
