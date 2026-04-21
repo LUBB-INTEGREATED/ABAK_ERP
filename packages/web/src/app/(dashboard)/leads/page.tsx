@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { useLeadsList, useLeadStats } from '@/lib/hooks/use-leads';
+import { SLA_BADGE, STATUS_BADGE } from '@/lib/lead-ui';
 import {
   CHANNEL_LABELS,
   LEAD_CHANNELS,
@@ -44,23 +45,6 @@ import {
 
 const PAGE_SIZE = 50;
 const ALL = '__all__';
-
-const STATUS_BADGE: Record<LeadStatus, string> = {
-  NEW: 'bg-sky-100 text-sky-700',
-  ASSIGNED: 'bg-abak-blue/10 text-abak-blue',
-  CONTACTED: 'bg-indigo-100 text-indigo-700',
-  QUALIFIED: 'bg-abak-gold/15 text-abak-gold',
-  UNQUALIFIED: 'bg-zinc-100 text-zinc-600',
-  CONVERTED: 'bg-emerald-100 text-emerald-700',
-  LOST: 'bg-rose-100 text-rose-700',
-  DUPLICATE: 'bg-amber-100 text-amber-700',
-};
-
-const SLA_BADGE: Record<SLAStatus, string> = {
-  ON_TIME: 'bg-emerald-100 text-emerald-700',
-  DUE_SOON: 'bg-amber-100 text-amber-700',
-  OVERDUE: 'bg-rose-100 text-rose-700',
-};
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (

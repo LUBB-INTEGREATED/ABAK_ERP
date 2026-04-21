@@ -1,8 +1,14 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
-import type { Lead, LeadFilter, Paginated } from '@/lib/types/lead';
+import type {
+  Lead,
+  LeadAssignee,
+  LeadFilter,
+  LeadStatus,
+  Paginated,
+} from '@/lib/types/lead';
 
 type ApiEnvelope<T> = { data: T; timestamp: string };
 
@@ -16,6 +22,17 @@ export function useLeadsList(filter: LeadFilter) {
       );
       return data.data;
     },
+  });
+}
+
+export function useLead(id: string | undefined) {
+  return useQuery({
+    queryKey: ['leads', id],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<Lead>>(`/leads/${id}`);
+      return data.data;
+    },
+    enabled: Boolean(id),
   });
 }
 
@@ -35,5 +52,86 @@ export function useLeadStats() {
         await apiClient.get<ApiEnvelope<LeadStats>>('/leads/stats');
       return data.data;
     },
+  });
+}
+
+type UsersResponse = {
+  message: string;
+  count: number;
+  users: (LeadAssignee & { role: string; status: string })[];
+};
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const { data } =
+        await apiClient.get<ApiEnvelope<UsersResponse>>('/users');
+      return data.data.users;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function invalidateLead(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string,
+) {
+  queryClient.invalidateQueries({ queryKey: ['leads'] });
+  queryClient.invalidateQueries({ queryKey: ['leads', id] });
+}
+
+export function useAssignLead(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (assignedToId: string) => {
+      const { data } = await apiClient.patch<ApiEnvelope<Lead>>(
+        `/leads/${id}/assign`,
+        { assignedToId },
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateLead(queryClient, id),
+  });
+}
+
+export function useUpdateLeadStatus(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { status: LeadStatus; reason?: string }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<Lead>>(
+        `/leads/${id}/status`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateLead(queryClient, id),
+  });
+}
+
+export function useUpdateLead(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Partial<Lead>) => {
+      const { data } = await apiClient.patch<ApiEnvelope<Lead>>(
+        `/leads/${id}`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateLead(queryClient, id),
+  });
+}
+
+export function useDeleteLead(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete<ApiEnvelope<Lead>>(
+        `/leads/${id}`,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateLead(queryClient, id),
   });
 }
