@@ -13,6 +13,7 @@ import {
   QuoteStatus,
   UserRole,
 } from '@prisma/client';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -569,6 +570,80 @@ export class QuotesService {
       }
       return next;
     });
+  }
+
+  // M4-015 — approver can request revisions. Flips the quote to IN_REVISION
+  // and stamps a comment on the current pending approval so the preparer has
+  // context for the next round.
+  async requestRevision(
+    quoteId: string,
+    approvalId: string,
+    dto: { comments: string },
+    actorId?: string,
+  ) {
+    const approval = await this.prisma.quoteApproval.findUnique({
+      where: { id: approvalId },
+      include: { quote: true },
+    });
+    if (!approval || approval.quoteId !== quoteId) {
+      throw new NotFoundException('Approval not found');
+    }
+    if (actorId && approval.approverId !== actorId) {
+      throw new BadRequestException(
+        'Only the assigned approver can request revisions',
+      );
+    }
+    if (approval.status !== ApprovalStatus.PENDING) {
+      throw new BadRequestException('This approval was already decided');
+    }
+    if (dto.comments.trim().length < 10) {
+      throw new BadRequestException(
+        'A comment of at least 10 characters is required.',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.quoteApproval.update({
+        where: { id: approvalId },
+        data: {
+          status: ApprovalStatus.REJECTED,
+          comments: dto.comments,
+          decidedAt: new Date(),
+        },
+      });
+      return tx.quote.update({
+        where: { id: quoteId },
+        data: { status: QuoteStatus.IN_REVISION },
+        include: QUOTE_INCLUDE,
+      });
+    });
+  }
+
+  // M4-012 — daily cron marks SENT / IN_DISCUSSION / IN_NEGOTIATION quotes
+  // as EXPIRED when validUntil has passed.
+  @Cron(CronExpression.EVERY_DAY_AT_1AM)
+  async expireOverdueQuotes(): Promise<number> {
+    const now = new Date();
+    const candidates = await this.prisma.quote.findMany({
+      where: {
+        deletedAt: null,
+        validUntil: { lt: now },
+        status: {
+          in: [
+            QuoteStatus.SENT,
+            QuoteStatus.IN_DISCUSSION,
+            QuoteStatus.IN_NEGOTIATION,
+          ],
+        },
+      },
+      select: { id: true },
+    });
+    if (candidates.length === 0) return 0;
+    await this.prisma.quote.updateMany({
+      where: { id: { in: candidates.map((q) => q.id) } },
+      data: { status: QuoteStatus.EXPIRED },
+    });
+    return candidates.length;
   }
 
   async stats() {

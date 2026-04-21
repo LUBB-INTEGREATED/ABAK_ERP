@@ -128,6 +128,20 @@ export class QuotesController {
     return this.quotes.decideApproval(id, approvalId, dto, actorId);
   }
 
+  @Post('quotes/:id/approvals/:approvalId/request-revision')
+  @ApiOperation({
+    summary:
+      'Approver requests revisions — quote flips to IN_REVISION with the comment recorded on the approval (M4-015).',
+  })
+  requestRevision(
+    @Param('id') id: string,
+    @Param('approvalId') approvalId: string,
+    @Body() dto: { comments: string },
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.quotes.requestRevision(id, approvalId, dto, actorId);
+  }
+
   // Purchase Orders -----------------------------------------------
 
   @Get('purchase-orders')
