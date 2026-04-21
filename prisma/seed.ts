@@ -1,4 +1,13 @@
-import { PrismaClient, UserRole, UserStatus, SettingType } from '@prisma/client';
+import {
+  PrismaClient,
+  UserRole,
+  UserStatus,
+  SettingType,
+  LeadChannel,
+  LeadStatus,
+  LeadPriority,
+  SLAStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -8,6 +17,7 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.lead.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.systemSetting.deleteMany();
@@ -97,13 +107,63 @@ async function main() {
   console.log('Creating services...');
   const services = await prisma.service.createMany({
     data: [
-      { categoryId: structural.id, name: 'Structural Design & Calculations', description: 'Complete structural design and calculations for buildings', code: 'STRUCT-001', basePrice: 50000, unit: 'per project' },
-      { categoryId: structural.id, name: 'Foundation Design', description: 'Foundation design and soil analysis', code: 'STRUCT-002', basePrice: 25000, unit: 'per project' },
-      { categoryId: structural.id, name: 'Structural Inspection', description: 'On-site structural inspection and reporting', code: 'STRUCT-003', basePrice: 5000, unit: 'per visit' },
-      { categoryId: architectural.id, name: 'Architectural Design', description: 'Complete architectural design and planning', code: 'ARCH-001', basePrice: 60000, unit: 'per project' },
-      { categoryId: architectural.id, name: '3D Visualization', description: '3D rendering and visualization services', code: 'ARCH-002', basePrice: 15000, unit: 'per project' },
-      { categoryId: mep.id, name: 'MEP Design', description: 'Mechanical, Electrical, and Plumbing design', code: 'MEP-001', basePrice: 45000, unit: 'per project' },
-      { categoryId: mep.id, name: 'Energy Efficiency Analysis', description: 'Energy efficiency and sustainability analysis', code: 'MEP-002', basePrice: 20000, unit: 'per project' },
+      {
+        categoryId: structural.id,
+        name: 'Structural Design & Calculations',
+        description:
+          'Complete structural design and calculations for buildings',
+        code: 'STRUCT-001',
+        basePrice: 50000,
+        unit: 'per project',
+      },
+      {
+        categoryId: structural.id,
+        name: 'Foundation Design',
+        description: 'Foundation design and soil analysis',
+        code: 'STRUCT-002',
+        basePrice: 25000,
+        unit: 'per project',
+      },
+      {
+        categoryId: structural.id,
+        name: 'Structural Inspection',
+        description: 'On-site structural inspection and reporting',
+        code: 'STRUCT-003',
+        basePrice: 5000,
+        unit: 'per visit',
+      },
+      {
+        categoryId: architectural.id,
+        name: 'Architectural Design',
+        description: 'Complete architectural design and planning',
+        code: 'ARCH-001',
+        basePrice: 60000,
+        unit: 'per project',
+      },
+      {
+        categoryId: architectural.id,
+        name: '3D Visualization',
+        description: '3D rendering and visualization services',
+        code: 'ARCH-002',
+        basePrice: 15000,
+        unit: 'per project',
+      },
+      {
+        categoryId: mep.id,
+        name: 'MEP Design',
+        description: 'Mechanical, Electrical, and Plumbing design',
+        code: 'MEP-001',
+        basePrice: 45000,
+        unit: 'per project',
+      },
+      {
+        categoryId: mep.id,
+        name: 'Energy Efficiency Analysis',
+        description: 'Energy efficiency and sustainability analysis',
+        code: 'MEP-002',
+        basePrice: 20000,
+        unit: 'per project',
+      },
     ],
   });
   console.log(`✅ Created ${services.count} services`);
@@ -111,15 +171,156 @@ async function main() {
   console.log('Creating system settings...');
   await prisma.systemSetting.createMany({
     data: [
-      { key: 'sla_lead_response_hours', value: '24', type: SettingType.NUMBER, category: 'sla', description: 'Hours before lead requires response' },
-      { key: 'sla_quote_delivery_days', value: '7', type: SettingType.NUMBER, category: 'sla', description: 'Days to deliver quote after RFQ' },
-      { key: 'approval_threshold_tier1', value: '50000', type: SettingType.NUMBER, category: 'approval', description: 'Quote value requiring manager approval (SAR)' },
-      { key: 'approval_threshold_tier2', value: '200000', type: SettingType.NUMBER, category: 'approval', description: 'Quote value requiring senior management approval (SAR)' },
-      { key: 'notification_email_enabled', value: 'true', type: SettingType.BOOLEAN, category: 'notification', description: 'Enable email notifications' },
-      { key: 'notification_whatsapp_enabled', value: 'false', type: SettingType.BOOLEAN, category: 'notification', description: 'Enable WhatsApp notifications' },
+      {
+        key: 'sla_lead_response_hours',
+        value: '24',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        description: 'Hours before lead requires response',
+      },
+      {
+        key: 'sla_quote_delivery_days',
+        value: '7',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        description: 'Days to deliver quote after RFQ',
+      },
+      {
+        key: 'approval_threshold_tier1',
+        value: '50000',
+        type: SettingType.NUMBER,
+        category: 'approval',
+        description: 'Quote value requiring manager approval (SAR)',
+      },
+      {
+        key: 'approval_threshold_tier2',
+        value: '200000',
+        type: SettingType.NUMBER,
+        category: 'approval',
+        description: 'Quote value requiring senior management approval (SAR)',
+      },
+      {
+        key: 'notification_email_enabled',
+        value: 'true',
+        type: SettingType.BOOLEAN,
+        category: 'notification',
+        description: 'Enable email notifications',
+      },
+      {
+        key: 'notification_whatsapp_enabled',
+        value: 'false',
+        type: SettingType.BOOLEAN,
+        category: 'notification',
+        description: 'Enable WhatsApp notifications',
+      },
     ],
   });
   console.log('✅ Created 6 system settings');
+
+  console.log('Creating sample leads...');
+  const salesRep = await prisma.user.findFirst({
+    where: { role: UserRole.SALES_REPRESENTATIVE },
+  });
+  const structuralService = await prisma.service.findUnique({
+    where: { code: 'STRUCT-001' },
+  });
+  const year = new Date().getFullYear();
+  const hour = 60 * 60 * 1000;
+
+  await prisma.lead.createMany({
+    data: [
+      {
+        leadNumber: `LEAD-${year}-0001`,
+        channel: LeadChannel.GOVERNMENT_TENDER,
+        source: 'Etimad Platform',
+        etimadNumber: 'ET-2024-12345',
+        tenderDeadline: new Date(Date.now() + 30 * 24 * hour),
+        contactName: 'مدير المشاريع - وزارة الإسكان',
+        companyName: 'وزارة الإسكان',
+        email: 'projects@housing.gov.sa',
+        phone: '+966112345678',
+        serviceId: structuralService?.id,
+        serviceDetails: 'Structural design for 50-unit residential complex',
+        projectLocation: 'Riyadh',
+        budget: 500000,
+        timeline: '6 months',
+        status: LeadStatus.ASSIGNED,
+        priority: LeadPriority.HIGH,
+        assignedToId: salesRep?.id,
+        assignedAt: new Date(),
+        slaResponseDue: new Date(Date.now() + 24 * hour),
+        slaStatus: SLAStatus.ON_TIME,
+      },
+      {
+        leadNumber: `LEAD-${year}-0002`,
+        channel: LeadChannel.REFERRAL,
+        source: 'Client Referral',
+        referredBy: 'Ahmed Al-Dosari',
+        referrerPhone: '+966501234567',
+        referrerCompany: 'Al-Dosari Contracting',
+        contactName: 'Mohammed Al-Ghamdi',
+        companyName: 'Al-Ghamdi Real Estate',
+        email: 'mghamdi@alghamdi-re.com',
+        phone: '+966507654321',
+        serviceDetails: 'MEP design for commercial building',
+        projectLocation: 'Jeddah',
+        budget: 300000,
+        status: LeadStatus.NEW,
+        priority: LeadPriority.MEDIUM,
+        slaResponseDue: new Date(Date.now() + 20 * hour),
+        slaStatus: SLAStatus.ON_TIME,
+      },
+      {
+        leadNumber: `LEAD-${year}-0003`,
+        channel: LeadChannel.WEBSITE,
+        source: 'Contact Form',
+        contactName: 'Fatimah Al-Otaibi',
+        companyName: 'Al-Otaibi Development',
+        email: 'f.otaibi@aod.sa',
+        phone: '+966556789012',
+        serviceDetails: 'Architectural design for villa',
+        projectLocation: 'Dammam',
+        status: LeadStatus.NEW,
+        priority: LeadPriority.LOW,
+        slaResponseDue: new Date(Date.now() + 24 * hour),
+        slaStatus: SLAStatus.ON_TIME,
+      },
+      {
+        leadNumber: `LEAD-${year}-0004`,
+        channel: LeadChannel.SOCIAL_MEDIA,
+        source: 'LinkedIn',
+        socialPlatform: 'LinkedIn',
+        socialProfile: 'https://linkedin.com/in/khalid-alsalem',
+        contactName: 'Khalid Al-Salem',
+        email: 'k.salem@example.com',
+        phone: '+966543210987',
+        serviceDetails: 'Structural inspection for existing building',
+        status: LeadStatus.CONTACTED,
+        priority: LeadPriority.MEDIUM,
+        assignedToId: salesRep?.id,
+        assignedAt: new Date(Date.now() - 2 * hour),
+        firstResponseAt: new Date(Date.now() - 1 * hour),
+        slaStatus: SLAStatus.ON_TIME,
+      },
+      {
+        leadNumber: `LEAD-${year}-0005`,
+        channel: LeadChannel.WALK_IN,
+        source: 'Office Visit',
+        contactName: 'Sarah Al-Harbi',
+        phone: '+966598765432',
+        serviceDetails: 'General consultation',
+        status: LeadStatus.QUALIFIED,
+        priority: LeadPriority.MEDIUM,
+        assignedToId: salesRep?.id,
+        assignedAt: new Date(Date.now() - 3 * hour),
+        firstResponseAt: new Date(Date.now() - 3 * hour),
+        qualificationScore: 75,
+        qualificationNotes: 'Serious buyer, has land and budget',
+        slaStatus: SLAStatus.ON_TIME,
+      },
+    ],
+  });
+  console.log('✅ Created 5 sample leads');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

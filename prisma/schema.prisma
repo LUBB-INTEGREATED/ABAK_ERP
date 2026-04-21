@@ -28,6 +28,7 @@ model User {
   resetPasswordExpires DateTime?
 
   refreshTokens RefreshToken[]
+  assignedLeads Lead[]         @relation("LeadAssignee")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -101,6 +102,7 @@ model Service {
   isActive Boolean @default(true)
 
   category ServiceCategory @relation(fields: [categoryId], references: [id])
+  leads    Lead[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -138,11 +140,118 @@ enum SettingType {
 }
 
 // ============================================
+// Module 1: Lead Capture & Reception
+// ============================================
+
+model Lead {
+  id              String      @id @default(cuid())
+  leadNumber      String      @unique
+  channel         LeadChannel
+  source          String?
+  referenceNumber String?
+
+  contactName    String
+  companyName    String?
+  email          String?
+  phone          String
+  alternatePhone String?
+
+  serviceId       String?
+  service         Service? @relation(fields: [serviceId], references: [id])
+  serviceDetails  String?
+  projectLocation String?
+  projectSize     String?
+  budget          Float?
+  timeline        String?
+
+  etimadNumber   String?
+  fursaNumber    String?
+  tenderDeadline DateTime?
+  tenderDetails  Json?
+
+  referredBy      String?
+  referrerPhone   String?
+  referrerCompany String?
+
+  socialPlatform String?
+  socialProfile  String?
+
+  mapsLink   String?
+  mapsReview Boolean?
+
+  status       LeadStatus   @default(NEW)
+  priority     LeadPriority @default(MEDIUM)
+  assignedToId String?
+  assignedTo   User?        @relation("LeadAssignee", fields: [assignedToId], references: [id])
+  assignedAt   DateTime?
+
+  slaResponseDue  DateTime?
+  slaStatus       SLAStatus @default(ON_TIME)
+  firstResponseAt DateTime?
+
+  isReturningClient Boolean @default(false)
+  clientId          String?
+
+  qualificationScore Int?    @default(0)
+  qualificationNotes String?
+
+  initialNotes String?
+  lostReason   String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  closedAt  DateTime?
+
+  @@index([leadNumber])
+  @@index([channel])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([slaStatus])
+  @@index([createdAt])
+  @@index([serviceId])
+  @@map("leads")
+}
+
+enum LeadChannel {
+  GOVERNMENT_TENDER
+  REFERRAL
+  WALK_IN
+  SOCIAL_MEDIA
+  WEBSITE
+  GOOGLE_MAPS
+}
+
+enum LeadStatus {
+  NEW
+  ASSIGNED
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  LOST
+  DUPLICATE
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SLAStatus {
+  ON_TIME
+  DUE_SOON
+  OVERDUE
+}
+
+// ============================================
 // Audit Log
 // ============================================
 
 model AuditLog {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   userId   String?
   action   String
   entity   String
