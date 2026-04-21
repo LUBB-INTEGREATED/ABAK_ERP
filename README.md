@@ -1,5 +1,7 @@
 # ABAK ERP System
 
+[![CI](https://github.com/LUBB-INTEGREATED/ABAK_ERP/actions/workflows/ci.yml/badge.svg)](https://github.com/LUBB-INTEGREATED/ABAK_ERP/actions/workflows/ci.yml)
+
 Complete ERP system for engineering consultancy firms.
 
 ## 🎯 Project Overview
@@ -13,6 +15,7 @@ Complete ERP system for engineering consultancy firms.
 **ABAK Engineering Consultancy** - أبـــاك للاستشـــارات الهندســية
 
 ### Brand Colors
+
 - **Primary**: ABAK Blue `#236382` - Trust, professionalism, engineering expertise
 - **Secondary**: ABAK Gold `#A78B42` - Quality, premium service, excellence
 - **Accent**: Dark Text `#1B1B1B`, Off White `#F9F7F5`
@@ -22,6 +25,7 @@ See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for complete design guidelines.
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui
@@ -29,6 +33,7 @@ See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for complete design guidelines.
 - **PWA**: next-pwa
 
 ### Backend
+
 - **Framework**: Nest.js
 - **Language**: TypeScript
 - **Database**: PostgreSQL
@@ -37,6 +42,7 @@ See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for complete design guidelines.
 - **API Docs**: Swagger/OpenAPI
 
 ### Infrastructure
+
 - **Monorepo**: Nx (TypeScript-solution workspace)
 - **Package Manager**: pnpm
 - **CI/CD**: GitHub Actions
@@ -45,24 +51,28 @@ See [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) for complete design guidelines.
 ## 📋 Modules
 
 ### Module 1: Lead Capture & Reception
+
 - Multi-channel lead capture (6 channels)
 - Automatic client detection
 - SLA tracking and alerts
 - Service catalog integration
 
 ### Module 2: CRM - Client Relationship Management
+
 - Client 360° view
 - 10 interaction types
 - Follow-up management
 - Document management
 
 ### Module 3: Sales Pipeline & Team Management
+
 - 8-stage pipeline (Kanban view)
 - RFQ management
 - Field visit tracking
 - Team performance dashboard
 
 ### Module 4: Quotation & Pricing Engine
+
 - Flexible quote builder
 - Multi-level approval workflow
 - Quote versioning
@@ -157,16 +167,16 @@ abak-erp/
 
 Every project is tagged with **scope** and **type**. ESLint (`@nx/enforce-module-boundaries`) blocks forbidden imports at lint time:
 
-| Tag                       | Who can depend on it                                         |
-| ------------------------- | ------------------------------------------------------------ |
-| `scope:shared`            | everyone                                                     |
-| `scope:<module>`          | only code in the same module + `scope:shared`                |
-| `scope:web` / `scope:api` | everyone (apps compose modules)                              |
-| `type:feature`            | → `feature`, `ui`, `data-access`, `util`, `types`            |
+| Tag                       | Who can depend on it                                             |
+| ------------------------- | ---------------------------------------------------------------- |
+| `scope:shared`            | everyone                                                         |
+| `scope:<module>`          | only code in the same module + `scope:shared`                    |
+| `scope:web` / `scope:api` | everyone (apps compose modules)                                  |
+| `type:feature`            | → `feature`, `ui`, `data-access`, `util`, `types`                |
 | `type:ui`                 | → `ui`, `util`, `types` (no data-access: keep UI presentational) |
-| `type:data-access`        | → `data-access`, `util`, `types`                             |
-| `type:util`               | → `util`, `types`                                            |
-| `type:types`              | → `types` only (leaf of the graph)                           |
+| `type:data-access`        | → `data-access`, `util`, `types`                                 |
+| `type:util`               | → `util`, `types`                                                |
+| `type:types`              | → `types` only (leaf of the graph)                               |
 
 Run `pnpm lint` and the rule will catch, e.g., `accounting-feature` trying to import from `hr-internal`.
 
