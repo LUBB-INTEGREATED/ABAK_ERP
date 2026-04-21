@@ -1,0 +1,123 @@
+export const LEAD_CHANNELS = [
+  'GOVERNMENT_TENDER',
+  'REFERRAL',
+  'WALK_IN',
+  'SOCIAL_MEDIA',
+  'WEBSITE',
+  'GOOGLE_MAPS',
+] as const;
+export type LeadChannel = (typeof LEAD_CHANNELS)[number];
+
+export const LEAD_STATUSES = [
+  'NEW',
+  'ASSIGNED',
+  'CONTACTED',
+  'QUALIFIED',
+  'UNQUALIFIED',
+  'CONVERTED',
+  'LOST',
+  'DUPLICATE',
+] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+export type LeadPriority = (typeof LEAD_PRIORITIES)[number];
+
+export const SLA_STATUSES = ['ON_TIME', 'DUE_SOON', 'OVERDUE'] as const;
+export type SLAStatus = (typeof SLA_STATUSES)[number];
+
+export type LeadAssignee = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+};
+
+export type LeadService = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+export type Lead = {
+  id: string;
+  leadNumber: string;
+  channel: LeadChannel;
+  source: string | null;
+  contactName: string;
+  companyName: string | null;
+  email: string | null;
+  phone: string;
+  projectLocation: string | null;
+  budget: number | null;
+  status: LeadStatus;
+  priority: LeadPriority;
+  slaStatus: SLAStatus;
+  slaResponseDue: string | null;
+  firstResponseAt: string | null;
+  assignedToId: string | null;
+  assignedTo: LeadAssignee | null;
+  service: LeadService | null;
+  isReturningClient: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type Paginated<T> = {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+};
+
+export type LeadFilter = {
+  channel?: LeadChannel;
+  status?: LeadStatus;
+  priority?: LeadPriority;
+  slaStatus?: SLAStatus;
+  assignedToId?: string;
+  search?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: 'asc' | 'desc';
+};
+
+export const CHANNEL_LABELS: Record<LeadChannel, string> = {
+  GOVERNMENT_TENDER: 'Government tender',
+  REFERRAL: 'Referral',
+  WALK_IN: 'Walk-in',
+  SOCIAL_MEDIA: 'Social media',
+  WEBSITE: 'Website',
+  GOOGLE_MAPS: 'Google Maps',
+};
+
+export const STATUS_LABELS: Record<LeadStatus, string> = {
+  NEW: 'New',
+  ASSIGNED: 'Assigned',
+  CONTACTED: 'Contacted',
+  QUALIFIED: 'Qualified',
+  UNQUALIFIED: 'Unqualified',
+  CONVERTED: 'Converted',
+  LOST: 'Lost',
+  DUPLICATE: 'Duplicate',
+};
+
+export const PRIORITY_LABELS: Record<LeadPriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+};
+
+export const SLA_LABELS: Record<SLAStatus, string> = {
+  ON_TIME: 'On time',
+  DUE_SOON: 'Due soon',
+  OVERDUE: 'Overdue',
+};
