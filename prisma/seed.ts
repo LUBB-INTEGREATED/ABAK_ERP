@@ -7,6 +7,12 @@ import {
   LeadStatus,
   LeadPriority,
   SLAStatus,
+  ClientClassification,
+  ClientStatus,
+  InteractionType,
+  InteractionDirection,
+  FollowUpType,
+  FollowUpStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
@@ -17,7 +23,11 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.clientNote.deleteMany();
+  await prisma.followUp.deleteMany();
+  await prisma.interaction.deleteMany();
   await prisma.lead.deleteMany();
+  await prisma.client.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.systemSetting.deleteMany();
@@ -328,6 +338,140 @@ async function main() {
     ],
   });
   console.log('✅ Created 5 sample leads');
+
+  console.log('Creating sample clients...');
+  const manager = await prisma.user.findFirst({
+    where: { role: UserRole.SALES_MANAGER },
+  });
+
+  const vipClient = await prisma.client.create({
+    data: {
+      clientNumber: `CLIENT-${year}-0001`,
+      contactName: 'Abdulrahman Al-Fahad',
+      companyName: 'Al-Fahad Development',
+      email: 'a.fahad@alfahad-dev.sa',
+      phone: '+966501112233',
+      addressLine1: 'King Fahd Road',
+      city: 'Riyadh',
+      region: 'Riyadh',
+      country: 'Saudi Arabia',
+      classification: ClientClassification.VIP,
+      classificationManual: true,
+      status: ClientStatus.ACTIVE,
+      creditLimit: 2000000,
+      paymentTerms: 'Net 30',
+      accountManagerId: manager?.id,
+      lifetimeValue: 1200000,
+      satisfactionScore: 92,
+      lastInteractionAt: new Date(Date.now() - 2 * 24 * hour),
+    },
+  });
+
+  const returningClient = await prisma.client.create({
+    data: {
+      clientNumber: `CLIENT-${year}-0002`,
+      contactName: 'Sarah Al-Harbi',
+      companyName: 'Harbi Residential',
+      email: 'sarah@harbi-res.sa',
+      phone: '+966598765432',
+      city: 'Jeddah',
+      region: 'Makkah',
+      classification: ClientClassification.RETURNING,
+      status: ClientStatus.ACTIVE,
+      accountManagerId: salesRep?.id,
+      lifetimeValue: 450000,
+      lastInteractionAt: new Date(Date.now() - 10 * 24 * hour),
+    },
+  });
+
+  await prisma.client.create({
+    data: {
+      clientNumber: `CLIENT-${year}-0003`,
+      contactName: 'Omar Al-Qahtani',
+      companyName: 'Qahtani Industrial',
+      email: 'omar@qahtani-ind.sa',
+      phone: '+966556667788',
+      city: 'Dammam',
+      region: 'Eastern Province',
+      classification: ClientClassification.DORMANT,
+      status: ClientStatus.ACTIVE,
+      accountManagerId: salesRep?.id,
+      lifetimeValue: 180000,
+      lastInteractionAt: new Date(Date.now() - 240 * 24 * hour),
+    },
+  });
+  console.log('✅ Created 3 sample clients');
+
+  console.log('Creating sample interactions + follow-ups + notes...');
+  await prisma.interaction.createMany({
+    data: [
+      {
+        clientId: vipClient.id,
+        type: InteractionType.MEETING,
+        direction: InteractionDirection.OUTBOUND,
+        subject: 'Quarterly portfolio review',
+        summary: 'Walked through active projects, planned 2 new bids',
+        location: 'Client HQ, Riyadh',
+        outcome: 'Green-lit RFQ for residential tower',
+        nextAction: 'Send proposal by EOW',
+        authorId: manager?.id,
+        occurredAt: new Date(Date.now() - 2 * 24 * hour),
+        durationMinutes: 90,
+      },
+      {
+        clientId: vipClient.id,
+        type: InteractionType.PHONE_CALL,
+        direction: InteractionDirection.INBOUND,
+        subject: 'Question about PO-2026-0045',
+        summary: 'Clarified payment schedule; client asked for 45-day terms',
+        authorId: manager?.id,
+        occurredAt: new Date(Date.now() - 5 * 24 * hour),
+        durationMinutes: 15,
+      },
+      {
+        clientId: returningClient.id,
+        type: InteractionType.EMAIL,
+        direction: InteractionDirection.OUTBOUND,
+        subject: 'Following up on villa drawings',
+        summary: 'Sent revised drawings; awaiting approval',
+        authorId: salesRep?.id,
+        occurredAt: new Date(Date.now() - 10 * 24 * hour),
+      },
+    ],
+  });
+
+  await prisma.followUp.createMany({
+    data: [
+      {
+        clientId: vipClient.id,
+        title: 'Send portfolio proposal',
+        description: 'Deliver the residential-tower RFQ response',
+        type: FollowUpType.QUOTE,
+        dueAt: new Date(Date.now() + 2 * 24 * hour),
+        status: FollowUpStatus.PENDING,
+        assignedToId: manager?.id,
+      },
+      {
+        clientId: returningClient.id,
+        title: 'Check in on villa approval',
+        description: 'Confirm revised drawings were reviewed',
+        type: FollowUpType.GENERAL,
+        dueAt: new Date(Date.now() - 1 * 24 * hour),
+        status: FollowUpStatus.OVERDUE,
+        assignedToId: salesRep?.id,
+      },
+    ],
+  });
+
+  await prisma.clientNote.create({
+    data: {
+      clientId: vipClient.id,
+      body: 'CEO prefers Wednesday morning calls. Avoid Thursdays.',
+      tag: 'IMPORTANT',
+      authorId: manager?.id,
+    },
+  });
+  console.log('✅ Created 3 interactions, 2 follow-ups, 1 note');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

@@ -27,8 +27,12 @@ model User {
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
 
-  refreshTokens RefreshToken[]
-  assignedLeads Lead[]         @relation("LeadAssignee")
+  refreshTokens      RefreshToken[]
+  assignedLeads      Lead[]         @relation("LeadAssignee")
+  managedClients     Client[]       @relation("AccountManager")
+  loggedInteractions Interaction[]  @relation("InteractionAuthor")
+  assignedFollowUps  FollowUp[]     @relation("FollowUpAssignee")
+  authoredNotes      ClientNote[]   @relation("NoteAuthor")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -191,6 +195,7 @@ model Lead {
 
   isReturningClient Boolean @default(false)
   clientId          String?
+  client            Client? @relation(fields: [clientId], references: [id])
 
   qualificationScore Int?    @default(0)
   qualificationNotes String?
@@ -212,6 +217,7 @@ model Lead {
   @@index([createdAt])
   @@index([serviceId])
   @@index([deletedAt])
+  @@index([clientId])
   @@map("leads")
 }
 
@@ -246,6 +252,197 @@ enum SLAStatus {
   ON_TIME
   DUE_SOON
   OVERDUE
+}
+
+// ============================================
+// Module 2: CRM (Client Relationship Management)
+// ============================================
+
+model Client {
+  id           String @id @default(cuid())
+  clientNumber String @unique
+
+  contactName    String
+  companyName    String?
+  email          String?
+  phone          String
+  alternatePhone String?
+  website        String?
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  region       String?
+  country      String? @default("Saudi Arabia")
+  postalCode   String?
+
+  commercialRegistration String?
+  taxId                  String?
+
+  classification       ClientClassification @default(NEW)
+  classificationManual Boolean              @default(false)
+  status               ClientStatus         @default(ACTIVE)
+
+  creditLimit  Float?
+  paymentTerms String?
+
+  accountManagerId String?
+  accountManager   User?   @relation("AccountManager", fields: [accountManagerId], references: [id])
+
+  lifetimeValue     Float @default(0)
+  satisfactionScore Int?
+
+  notes        ClientNote[]
+  interactions Interaction[]
+  followUps    FollowUp[]
+  leads        Lead[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdBy         String?
+  lastInteractionAt DateTime?
+  deletedAt         DateTime?
+
+  @@index([clientNumber])
+  @@index([classification])
+  @@index([status])
+  @@index([accountManagerId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([phone])
+  @@index([email])
+  @@map("clients")
+}
+
+enum ClientClassification {
+  NEW
+  RETURNING
+  VIP
+  DORMANT
+  ARCHIVED
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+model Interaction {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  type            InteractionType
+  direction       InteractionDirection?
+  subject         String
+  summary         String?
+  occurredAt      DateTime              @default(now())
+  durationMinutes Int?
+
+  location   String?
+  outcome    String?
+  nextAction String?
+
+  authorId String?
+  author   User?   @relation("InteractionAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([type])
+  @@index([occurredAt])
+  @@index([authorId])
+  @@map("interactions")
+}
+
+enum InteractionType {
+  PHONE_CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  COMPLAINT
+  SITE_VISIT
+  NEGOTIATION
+  TECHNICAL_CONSULTATION
+  PROPOSAL_SUBMISSION
+  INTERNAL_NOTE
+}
+
+enum InteractionDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model FollowUp {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  type        FollowUpType   @default(GENERAL)
+  dueAt       DateTime
+  status      FollowUpStatus @default(PENDING)
+
+  assignedToId String?
+  assignedTo   User?   @relation("FollowUpAssignee", fields: [assignedToId], references: [id])
+
+  completedAt DateTime?
+  outcome     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([clientId])
+  @@index([assignedToId])
+  @@index([dueAt])
+  @@index([status])
+  @@map("follow_ups")
+}
+
+enum FollowUpType {
+  GENERAL
+  QUOTE
+  PAYMENT
+  PROJECT_MILESTONE
+  SATISFACTION_SURVEY
+  RENEWAL
+}
+
+enum FollowUpStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+model ClientNote {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  body     String
+  tag      NoteTag @default(GENERAL)
+  authorId String?
+  author   User?   @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([createdAt])
+  @@map("client_notes")
+}
+
+enum NoteTag {
+  GENERAL
+  IMPORTANT
+  ISSUE
+  OPPORTUNITY
 }
 
 // ============================================
