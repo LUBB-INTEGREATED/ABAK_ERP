@@ -9,6 +9,8 @@ import type {
   ProjectStatus,
 } from '@/lib/types/project';
 
+type ApiEnvelope<T> = { data: T; timestamp: string };
+
 const LIST_QK = ['projects', 'list'] as const;
 
 export interface ProjectListFilter {
@@ -24,10 +26,11 @@ export function useProjectsList(filter: ProjectListFilter = {}) {
   return useQuery<ProjectListResponse>({
     queryKey: [...LIST_QK, filter],
     queryFn: async () => {
-      const res = await apiClient.get<ProjectListResponse>('/projects', {
-        params: filter,
-      });
-      return res.data;
+      const res = await apiClient.get<ApiEnvelope<ProjectListResponse>>(
+        '/projects',
+        { params: filter },
+      );
+      return res.data.data;
     },
   });
 }
@@ -37,8 +40,10 @@ export function useProject(id: string | null) {
     queryKey: ['projects', 'detail', id],
     enabled: !!id,
     queryFn: async () => {
-      const res = await apiClient.get<ProjectDetail>(`/projects/${id}`);
-      return res.data;
+      const res = await apiClient.get<ApiEnvelope<ProjectDetail>>(
+        `/projects/${id}`,
+      );
+      return res.data.data;
     },
   });
 }
@@ -62,8 +67,11 @@ export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation<ProjectDetail, unknown, CreateProjectInput>({
     mutationFn: async (payload) => {
-      const res = await apiClient.post<ProjectDetail>('/projects', payload);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<ProjectDetail>>(
+        '/projects',
+        payload,
+      );
+      return res.data.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_QK }),
   });
@@ -81,11 +89,11 @@ export function useCompletePhase(projectId: string) {
     }
   >({
     mutationFn: async ({ phaseId, ...body }) => {
-      const res = await apiClient.patch<Phase>(
+      const res = await apiClient.patch<ApiEnvelope<Phase>>(
         `/projects/${projectId}/phases/${phaseId}/complete`,
         body,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, projectId),
   });
@@ -99,11 +107,11 @@ export function useAdjustPhaseProgress(projectId: string) {
     { phaseId: string; progressPct: number; reason: string }
   >({
     mutationFn: async ({ phaseId, ...body }) => {
-      const res = await apiClient.patch<Phase>(
+      const res = await apiClient.patch<ApiEnvelope<Phase>>(
         `/projects/${projectId}/phases/${phaseId}/adjust-progress`,
         body,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, projectId),
   });
@@ -113,10 +121,10 @@ export function useInitiateClosure(projectId: string) {
   const qc = useQueryClient();
   return useMutation<ClosureChecklist, unknown, void>({
     mutationFn: async () => {
-      const res = await apiClient.post<ClosureChecklist>(
+      const res = await apiClient.post<ApiEnvelope<ClosureChecklist>>(
         `/projects/${projectId}/initiate-closure`,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, projectId),
   });
@@ -130,11 +138,11 @@ export function useSetClosureGate(projectId: string) {
     { gate: ClosureGate; value: boolean }
   >({
     mutationFn: async (body) => {
-      const res = await apiClient.patch<ClosureChecklist>(
+      const res = await apiClient.patch<ApiEnvelope<ClosureChecklist>>(
         `/projects/${projectId}/closure-checklist`,
         body,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, projectId),
   });
@@ -144,8 +152,11 @@ export function useTransitionTaskStatus(projectId: string) {
   const qc = useQueryClient();
   return useMutation<unknown, unknown, { taskId: string; status: string }>({
     mutationFn: async ({ taskId, status }) => {
-      const res = await apiClient.patch(`/tasks/${taskId}/status`, { status });
-      return res.data;
+      const res = await apiClient.patch<ApiEnvelope<unknown>>(
+        `/tasks/${taskId}/status`,
+        { status },
+      );
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, projectId),
   });

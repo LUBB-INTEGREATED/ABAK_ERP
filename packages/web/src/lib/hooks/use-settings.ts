@@ -2,14 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 import type { SettingHistoryEntry, SystemSetting } from '@/lib/types/settings';
 
+type ApiEnvelope<T> = { data: T; timestamp: string };
+
 const QK = ['admin', 'settings'] as const;
 
 export function useSettings() {
   return useQuery<SystemSetting[]>({
     queryKey: QK,
     queryFn: async () => {
-      const res = await apiClient.get<SystemSetting[]>('/admin/settings');
-      return res.data;
+      const res =
+        await apiClient.get<ApiEnvelope<SystemSetting[]>>('/admin/settings');
+      return res.data.data;
     },
   });
 }
@@ -18,11 +21,11 @@ export function useUpdateSetting() {
   const qc = useQueryClient();
   return useMutation<SystemSetting, unknown, { key: string; value: string }>({
     mutationFn: async ({ key, value }) => {
-      const res = await apiClient.patch<SystemSetting>(
+      const res = await apiClient.patch<ApiEnvelope<SystemSetting>>(
         `/admin/settings/${key}`,
         { value },
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK });
@@ -34,10 +37,10 @@ export function useResetSetting() {
   const qc = useQueryClient();
   return useMutation<SystemSetting, unknown, { key: string }>({
     mutationFn: async ({ key }) => {
-      const res = await apiClient.post<SystemSetting>(
+      const res = await apiClient.post<ApiEnvelope<SystemSetting>>(
         `/admin/settings/${key}/reset`,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK });
@@ -50,10 +53,10 @@ export function useSettingHistory(key: string | null) {
     queryKey: ['admin', 'settings', 'history', key],
     enabled: !!key,
     queryFn: async () => {
-      const res = await apiClient.get<SettingHistoryEntry[]>(
+      const res = await apiClient.get<ApiEnvelope<SettingHistoryEntry[]>>(
         `/admin/settings/${key}/history`,
       );
-      return res.data;
+      return res.data.data;
     },
   });
 }

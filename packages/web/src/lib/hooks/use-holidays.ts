@@ -18,14 +18,17 @@ export interface HolidayInput {
   notes?: string;
 }
 
+type ApiEnvelope<T> = { data: T; timestamp: string };
+
 const QK = ['holidays'] as const;
 
 export function useHolidays() {
   return useQuery<PublicHoliday[]>({
     queryKey: QK,
     queryFn: async () => {
-      const res = await apiClient.get<PublicHoliday[]>('/holidays');
-      return res.data;
+      const res =
+        await apiClient.get<ApiEnvelope<PublicHoliday[]>>('/holidays');
+      return res.data.data;
     },
   });
 }
@@ -34,8 +37,11 @@ export function useCreateHoliday() {
   const qc = useQueryClient();
   return useMutation<PublicHoliday, unknown, HolidayInput>({
     mutationFn: async (payload) => {
-      const res = await apiClient.post<PublicHoliday>('/holidays', payload);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<PublicHoliday>>(
+        '/holidays',
+        payload,
+      );
+      return res.data.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: QK }),
   });

@@ -10,6 +10,8 @@ import type {
   RfqStatus,
 } from '@/lib/types/rfq';
 
+type ApiEnvelope<T> = { data: T; timestamp: string };
+
 const LIST_QK = ['rfqs', 'list'] as const;
 
 export interface RfqListFilter {
@@ -27,10 +29,10 @@ export function useRfqsList(filter: RfqListFilter = {}) {
   return useQuery<RfqListResponse>({
     queryKey: [...LIST_QK, filter],
     queryFn: async () => {
-      const res = await apiClient.get<RfqListResponse>('/rfqs', {
+      const res = await apiClient.get<ApiEnvelope<RfqListResponse>>('/rfqs', {
         params: filter,
       });
-      return res.data;
+      return res.data.data;
     },
   });
 }
@@ -40,8 +42,8 @@ export function useRfq(id: string | null) {
     queryKey: ['rfqs', 'detail', id],
     enabled: !!id,
     queryFn: async () => {
-      const res = await apiClient.get<RfqDetail>(`/rfqs/${id}`);
-      return res.data;
+      const res = await apiClient.get<ApiEnvelope<RfqDetail>>(`/rfqs/${id}`);
+      return res.data.data;
     },
   });
 }
@@ -60,8 +62,11 @@ export function useCreateRfq() {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, CreateRfqInput>({
     mutationFn: async (payload) => {
-      const res = await apiClient.post<RfqDetail>('/rfqs', payload);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        '/rfqs',
+        payload,
+      );
+      return res.data.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: LIST_QK });
@@ -79,11 +84,11 @@ export function useAssignCoordinator(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, { coordinatorId: string }>({
     mutationFn: async (body) => {
-      const res = await apiClient.patch<RfqDetail>(
+      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
         `/rfqs/${id}/assign-coordinator`,
         body,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -97,11 +102,11 @@ export function useAssignContributor(id: string) {
     { role: 'TECHNICAL' | 'FINANCIAL'; userId: string }
   >({
     mutationFn: async (body) => {
-      const res = await apiClient.patch<RfqDetail>(
+      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
         `/rfqs/${id}/assign-contributor`,
         body,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -111,10 +116,10 @@ export function useStartPreparation(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, void>({
     mutationFn: async () => {
-      const res = await apiClient.patch<RfqDetail>(
+      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
         `/rfqs/${id}/start-preparation`,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -124,10 +129,10 @@ export function useSubmitForApproval(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, void>({
     mutationFn: async () => {
-      const res = await apiClient.post<RfqDetail>(
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
         `/rfqs/${id}/submit-for-approval`,
       );
-      return res.data;
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -137,8 +142,11 @@ export function useDispatchRfq(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, { channel: RfqDispatchChannel }>({
     mutationFn: async (body) => {
-      const res = await apiClient.post<RfqDetail>(`/rfqs/${id}/dispatch`, body);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        `/rfqs/${id}/dispatch`,
+        body,
+      );
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -158,8 +166,11 @@ export function useRecordOutcome(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, OutcomeInput>({
     mutationFn: async (body) => {
-      const res = await apiClient.post<RfqDetail>(`/rfqs/${id}/outcome`, body);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        `/rfqs/${id}/outcome`,
+        body,
+      );
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
@@ -169,8 +180,10 @@ export function useCancelRfq(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, void>({
     mutationFn: async () => {
-      const res = await apiClient.post<RfqDetail>(`/rfqs/${id}/cancel`);
-      return res.data;
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        `/rfqs/${id}/cancel`,
+      );
+      return res.data.data;
     },
     onSuccess: () => invalidateOne(qc, id),
   });
