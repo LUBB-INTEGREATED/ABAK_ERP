@@ -9,6 +9,7 @@ import {
   FileText,
   FileSearch,
   FolderKanban,
+  Wallet,
   Megaphone,
   Blocks,
   Menu,
@@ -48,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
   { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
   { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+  { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
   { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
 ];
 

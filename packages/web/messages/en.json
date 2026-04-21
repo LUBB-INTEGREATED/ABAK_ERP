@@ -50,7 +50,86 @@
     "holidays": "Public holidays",
     "adminSettings": "System settings",
     "rfqs": "RFQs",
-    "projects": "Projects"
+    "projects": "Projects",
+    "finance": "Finance"
+  },
+  "finance": {
+    "title": "Finance",
+    "subtitle": "Validate payments, issue invoices, approve commercial confirmations.",
+    "kpi": {
+      "pendingConfirmations": "Pending confirmations",
+      "pendingPayments": "Pending payments",
+      "overdueInvoices": "Overdue invoices",
+      "totalCollected": "Total collected"
+    },
+    "tabs": {
+      "dashboard": "Overview",
+      "commercial": "Commercial confirmations",
+      "payments": "Payments",
+      "invoices": "Invoices"
+    },
+    "commercial": {
+      "pendingHeading": "Pending confirmations",
+      "decidedHeading": "Decided",
+      "quote": "Quote",
+      "client": "Client",
+      "value": "Value",
+      "submittedAt": "Received",
+      "type": "Type",
+      "validate": "Validate",
+      "reject": "Reject",
+      "validationNote": "Note (optional)",
+      "validationNoteHint": "Min 5 chars when rejecting.",
+      "confirmValidate": "Validate — this will mint the PO immediately.",
+      "confirmReject": "Reject and return the quote to the sales rep",
+      "emptyPending": "No commercial confirmations awaiting validation."
+    },
+    "payment": {
+      "heading": "Payments",
+      "recordNew": "Record payment",
+      "po": "Purchase order",
+      "invoice": "Invoice",
+      "amount": "Amount",
+      "method": "Method",
+      "receivedAt": "Received at",
+      "referenceNumber": "Reference",
+      "docUrl": "Document URL",
+      "status": {
+        "PENDING": "Pending",
+        "VALIDATED": "Validated",
+        "REJECTED": "Rejected"
+      },
+      "methodLabel": {
+        "BANK_TRANSFER": "Bank transfer",
+        "CHEQUE": "Cheque",
+        "CASH": "Cash",
+        "ONLINE": "Online",
+        "OTHER": "Other"
+      },
+      "validate": "Validate",
+      "reject": "Reject",
+      "pendingHeading": "Pending payments",
+      "emptyPending": "No payments awaiting validation."
+    },
+    "invoice": {
+      "heading": "Invoices",
+      "createNew": "Create invoice",
+      "number": "Invoice #",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "total": "Total",
+      "dueDate": "Due date",
+      "issueDate": "Issued",
+      "status": {
+        "DRAFT": "Draft",
+        "ISSUED": "Issued",
+        "PARTIALLY_PAID": "Partially paid",
+        "PAID": "Paid",
+        "OVERDUE": "Overdue",
+        "CANCELLED": "Cancelled",
+        "REFUNDED": "Refunded"
+      }
+    }
   },
   "project": {
     "title": "Projects",

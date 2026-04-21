@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   AcceptRejectQuoteDto,
+  AcceptWonDto,
   CreateQuoteDto,
   DecideApprovalDto,
   POStatusDto,
@@ -89,10 +90,14 @@ export class QuotesController {
   @Patch('quotes/:id/accept')
   @ApiOperation({
     summary:
-      'Mark quote as ACCEPTED — creates a PO and bumps client lifetime value',
+      'Mark quote WON — records a CommercialConfirmation in PENDING state. PO is minted only after Finance validates (BR-12).',
   })
-  accept(@Param('id') id: string) {
-    return this.quotes.accept(id);
+  accept(
+    @Param('id') id: string,
+    @Body() dto: AcceptWonDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.quotes.accept(id, dto, actorId);
   }
 
   @Patch('quotes/:id/reject')

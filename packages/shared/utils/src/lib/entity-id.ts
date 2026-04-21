@@ -1,6 +1,14 @@
 import { formatEntityId } from './shared-utils.js';
 
-export type EntityPrefix = 'LEAD' | 'CLIENT' | 'QUO' | 'PO' | 'RFQ' | 'PRJ';
+export type EntityPrefix =
+  | 'LEAD'
+  | 'CLIENT'
+  | 'QUO'
+  | 'PO'
+  | 'RFQ'
+  | 'PRJ'
+  | 'INV'
+  | 'PAY';
 
 export function nextEntityNumber(
   prefix: EntityPrefix,

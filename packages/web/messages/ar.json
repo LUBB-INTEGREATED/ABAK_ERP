@@ -50,7 +50,86 @@
     "holidays": "العطلات الرسمية",
     "adminSettings": "إعدادات النظام",
     "rfqs": "طلبات عروض الأسعار",
-    "projects": "المشاريع"
+    "projects": "المشاريع",
+    "finance": "المالية"
+  },
+  "finance": {
+    "title": "المالية",
+    "subtitle": "التحقق من الدفعات، إصدار الفواتير، واعتماد التأكيدات التجارية.",
+    "kpi": {
+      "pendingConfirmations": "تأكيدات تنتظر الاعتماد",
+      "pendingPayments": "دفعات تنتظر التحقق",
+      "overdueInvoices": "فواتير متأخرة",
+      "totalCollected": "إجمالي المحصّل"
+    },
+    "tabs": {
+      "dashboard": "النظرة العامة",
+      "commercial": "التأكيدات التجارية",
+      "payments": "الدفعات",
+      "invoices": "الفواتير"
+    },
+    "commercial": {
+      "pendingHeading": "تأكيدات تنتظر الاعتماد",
+      "decidedHeading": "تم البت بها",
+      "quote": "عرض السعر",
+      "client": "العميل",
+      "value": "القيمة",
+      "submittedAt": "تاريخ الاستلام",
+      "type": "نوع التأكيد",
+      "validate": "اعتماد",
+      "reject": "رفض",
+      "validationNote": "ملاحظة (اختياري)",
+      "validationNoteHint": "خمسة حروف على الأقل إذا تم الرفض.",
+      "confirmValidate": "اعتماد التأكيد — سيتم إصدار أمر الشراء فور الاعتماد.",
+      "confirmReject": "رفض التأكيد وإرجاع العرض للمندوب",
+      "emptyPending": "لا توجد تأكيدات تنتظر الاعتماد."
+    },
+    "payment": {
+      "heading": "الدفعات",
+      "recordNew": "تسجيل دفعة جديدة",
+      "po": "أمر الشراء",
+      "invoice": "الفاتورة",
+      "amount": "المبلغ",
+      "method": "طريقة الدفع",
+      "receivedAt": "تاريخ الاستلام",
+      "referenceNumber": "رقم المرجع",
+      "docUrl": "رابط المستند",
+      "status": {
+        "PENDING": "قيد التحقق",
+        "VALIDATED": "تم التحقق",
+        "REJECTED": "مرفوضة"
+      },
+      "methodLabel": {
+        "BANK_TRANSFER": "تحويل بنكي",
+        "CHEQUE": "شيك",
+        "CASH": "نقدًا",
+        "ONLINE": "مدفوعات إلكترونية",
+        "OTHER": "أخرى"
+      },
+      "validate": "تحقق",
+      "reject": "رفض",
+      "pendingHeading": "دفعات بانتظار التحقق",
+      "emptyPending": "لا توجد دفعات بانتظار التحقق."
+    },
+    "invoice": {
+      "heading": "الفواتير",
+      "createNew": "إنشاء فاتورة",
+      "number": "رقم الفاتورة",
+      "subtotal": "الأساسي",
+      "tax": "الضريبة",
+      "total": "الإجمالي",
+      "dueDate": "تاريخ الاستحقاق",
+      "issueDate": "تاريخ الإصدار",
+      "status": {
+        "DRAFT": "مسودة",
+        "ISSUED": "صادرة",
+        "PARTIALLY_PAID": "مسددة جزئياً",
+        "PAID": "مسددة",
+        "OVERDUE": "متأخرة",
+        "CANCELLED": "ملغاة",
+        "REFUNDED": "مُستردَّة"
+      }
+    }
   },
   "project": {
     "title": "المشاريع",

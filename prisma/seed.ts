@@ -23,6 +23,10 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.commission.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.commercialConfirmation.deleteMany();
   await prisma.closureChecklist.deleteMany();
   await prisma.taskDependency.deleteMany();
   await prisma.task.deleteMany();
@@ -1009,6 +1013,81 @@ async function main() {
     cursor = plannedEnd;
   }
   console.log('✅ Created 1 quote + 1 PO + 1 project (with 7 phases)');
+
+  console.log('Creating sample finance records...');
+  // Validated commercial confirmation (for the already-linked PO).
+  await prisma.commercialConfirmation.create({
+    data: {
+      quoteId: sampleQuote.id,
+      type: 'PO',
+      contractValue: sampleQuote.totalAmount,
+      validationStatus: 'VALIDATED',
+      validatedAt: new Date(),
+      validatedById: manager?.id,
+      notes: 'Client sent signed PO via email.',
+    },
+  });
+
+  // A second WON quote + PO for the same VIP client whose commercial
+  // confirmation is PENDING, so the Finance dashboard has a queue.
+  const secondQuote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${year}-0002`,
+      clientId: vipClient.id,
+      title: 'Interior Design — Executive Floor',
+      subtotal: 180000,
+      discountType: 'FIXED',
+      discountValue: 0,
+      discountAmount: 0,
+      taxRate: 15,
+      taxAmount: 27000,
+      totalAmount: 207000,
+      status: 'WON',
+      wonAt: new Date(),
+      sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      preparedById: manager?.id ?? salesRep?.id,
+    },
+  });
+  await prisma.commercialConfirmation.create({
+    data: {
+      quoteId: secondQuote.id,
+      type: 'CONTRACT',
+      contractValue: secondQuote.totalAmount,
+      validationStatus: 'PENDING',
+      notes: 'Awaiting Finance sign-off on the signed contract.',
+    },
+  });
+
+  // Invoice + pending payment on the original PO
+  const firstInvoice = await prisma.invoice.create({
+    data: {
+      invoiceNumber: `INV-${year}-0001`,
+      poId: samplePo.id,
+      clientId: vipClient.id,
+      projectId: sampleProject.id,
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      subtotal: 225000,
+      taxAmount: 33750,
+      totalAmount: 258750,
+      status: 'ISSUED',
+    },
+  });
+  await prisma.payment.create({
+    data: {
+      paymentNumber: `PAY-${year}-0001`,
+      poId: samplePo.id,
+      invoiceId: firstInvoice.id,
+      clientId: vipClient.id,
+      amount: 258750,
+      method: 'BANK_TRANSFER',
+      receivedAt: new Date(),
+      referenceNumber: 'SAR-TRX-99281',
+      validationStatus: 'PENDING',
+    },
+  });
+  console.log(
+    '✅ Created 1 validated confirmation + 1 pending confirmation + 1 invoice + 1 pending payment',
+  );
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

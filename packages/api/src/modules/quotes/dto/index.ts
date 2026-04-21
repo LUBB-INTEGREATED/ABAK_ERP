@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   ApprovalStatus,
+  ConfirmationType,
   DiscountType,
   LossReason,
   POStatus,
@@ -246,6 +247,29 @@ export class AcceptRejectQuoteDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class AcceptWonDto {
+  @ApiPropertyOptional({
+    enum: ConfirmationType,
+    description:
+      'Which kind of commercial confirmation the client provided. Defaults to PO.',
+  })
+  @IsOptional()
+  @IsEnum(ConfirmationType)
+  confirmationType?: ConfirmationType;
+
+  @ApiPropertyOptional({
+    description: 'Link to the client-supplied confirmation document.',
+  })
+  @IsOptional()
+  @IsString()
+  docUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 export class POStatusDto {

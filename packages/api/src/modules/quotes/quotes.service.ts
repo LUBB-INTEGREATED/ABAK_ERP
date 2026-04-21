@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   ApprovalStatus,
+  ConfirmationType,
   DiscountType,
   POStatus,
   Prisma,
@@ -393,7 +394,18 @@ export class QuotesService {
     });
   }
 
-  async accept(id: string) {
+  // BR-12 — quote WIN no longer auto-creates a PO. Instead a
+  // CommercialConfirmation is recorded in PENDING state; the PO is minted
+  // only after Finance validates it (see FinanceService.validateCommercial).
+  async accept(
+    id: string,
+    dto: {
+      confirmationType?: ConfirmationType;
+      docUrl?: string;
+      notes?: string;
+    } = {},
+    actorId?: string,
+  ) {
     const quote = await this.findOne(id);
     if (
       quote.status !== QuoteStatus.SENT &&
@@ -405,27 +417,21 @@ export class QuotesService {
       );
     }
 
-    const poNumber = await this.nextPoNumber();
-
     await this.prisma.$transaction(async (tx) => {
       await tx.quote.update({
         where: { id },
         data: { status: QuoteStatus.WON, wonAt: new Date() },
       });
-
-      await tx.purchaseOrder.create({
+      await tx.commercialConfirmation.create({
         data: {
-          poNumber,
           quoteId: id,
-          clientId: quote.clientId,
+          type: dto.confirmationType ?? 'PO',
           contractValue: quote.totalAmount,
-          status: POStatus.ACTIVE,
+          docUrl: dto.docUrl,
+          notes: dto.notes,
+          confirmedAt: new Date(),
+          createdBy: actorId,
         },
-      });
-
-      await tx.client.update({
-        where: { id: quote.clientId },
-        data: { lifetimeValue: { increment: quote.totalAmount } },
       });
     });
 
