@@ -298,11 +298,34 @@ export class RfqsService {
         break;
     }
 
-    return this.prisma.rfq.update({
+    const updated = await this.prisma.rfq.update({
       where: { id: rfq.id },
       data: base,
       include: RFQ_DETAIL_INCLUDE,
     });
+
+    // M7-005: auto-accrue commission when RFQ is WON and has broker info.
+    if (dto.outcome === RfqOutcomeValue.WON && rfq.brokerName) {
+      const rateSetting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'commission_rate_broker_default' },
+      });
+      const rate = rateSetting ? Number(rateSetting.value) : 3;
+      await this.prisma.commission.create({
+        data: {
+          rfqId: rfq.id,
+          beneficiaryType: 'BROKER',
+          beneficiaryName: rfq.brokerName,
+          beneficiaryPhone: rfq.brokerPhone,
+          baseAmount: 0, // grows as validated payments come in
+          rate,
+          amount: 0,
+          status: 'ACCRUING',
+          notes: `Auto-accrued on RFQ ${rfq.rfqNumber} WON.`,
+        },
+      });
+    }
+
+    return updated;
   }
 
   async linkQuote(id: string, quoteId: string) {

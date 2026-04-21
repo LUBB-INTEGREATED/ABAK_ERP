@@ -463,6 +463,81 @@ export class FinanceService {
     };
   }
 
+  // ─── Commissions (M7-005 — Finance-only) ─────────────────────
+
+  listCommissions(status?: 'ACCRUING' | 'APPROVED' | 'PAID' | 'CANCELLED') {
+    return this.prisma.commission.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        rfq: {
+          select: {
+            id: true,
+            rfqNumber: true,
+            client: {
+              select: { id: true, contactName: true, companyName: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async approveCommission(id: string, actorId: string) {
+    const c = await this.prisma.commission.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException();
+    if (c.status !== 'ACCRUING') {
+      throw new BadRequestException(
+        'Commission can only be approved from ACCRUING.',
+      );
+    }
+    const result = await this.prisma.commission.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
+    await this.audit.log({
+      userId: actorId,
+      action: 'COMMISSION_APPROVED',
+      entity: 'Commission',
+      entityId: id,
+      newValues: { status: 'APPROVED', amount: result.amount },
+    });
+    return result;
+  }
+
+  async markCommissionPaid(
+    id: string,
+    dto: { paidAt: string; paymentReference?: string; note?: string },
+    actorId: string,
+  ) {
+    const c = await this.prisma.commission.findUnique({ where: { id } });
+    if (!c) throw new NotFoundException();
+    if (c.status !== 'APPROVED') {
+      throw new BadRequestException(
+        'Commission must be APPROVED before it can be marked PAID.',
+      );
+    }
+    const result = await this.prisma.commission.update({
+      where: { id },
+      data: {
+        status: 'PAID',
+        paidAt: new Date(dto.paidAt),
+        notes: dto.note ?? c.notes,
+      },
+    });
+    await this.audit.log({
+      userId: actorId,
+      action: 'COMMISSION_PAID',
+      entity: 'Commission',
+      entityId: id,
+      newValues: {
+        paidAt: dto.paidAt,
+        reference: dto.paymentReference ?? null,
+      },
+    });
+    return result;
+  }
+
   // ─── Number generators ────────────────────────────────────────
 
   private async generateInvoiceNumber() {

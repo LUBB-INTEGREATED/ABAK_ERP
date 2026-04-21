@@ -93,6 +93,36 @@ export class FinanceController {
     return this.service.recordPayment(dto, actorId);
   }
 
+  // ─── Commissions (Finance-only, M7-005) ───────────────────────
+
+  @Get('commissions')
+  @ApiOperation({ summary: 'List commissions (Finance view)' })
+  listCommissions(
+    @Query('status')
+    status?: 'ACCRUING' | 'APPROVED' | 'PAID' | 'CANCELLED',
+  ) {
+    return this.service.listCommissions(status);
+  }
+
+  @Patch('commissions/:id/approve')
+  @ApiOperation({ summary: 'Approve an ACCRUING commission for payout' })
+  approveCommission(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.service.approveCommission(id, actorId);
+  }
+
+  @Patch('commissions/:id/mark-paid')
+  @ApiOperation({ summary: 'Mark an APPROVED commission as PAID' })
+  markCommissionPaid(
+    @Param('id') id: string,
+    @Body() dto: { paidAt: string; paymentReference?: string; note?: string },
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.service.markCommissionPaid(id, dto, actorId);
+  }
+
   @Patch('payments/:id/validate')
   @ApiOperation({
     summary:
