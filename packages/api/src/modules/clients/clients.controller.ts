@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ClassificationService } from './classification.service';
 import { ClientsService } from './clients.service';
 import {
   ClientFilterDto,
@@ -27,7 +28,19 @@ import {
 @ApiBearerAuth('JWT-auth')
 @Controller('clients')
 export class ClientsController {
-  constructor(private readonly clients: ClientsService) {}
+  constructor(
+    private readonly clients: ClientsService,
+    private readonly classification: ClassificationService,
+  ) {}
+
+  @Post('reclassify')
+  @ApiOperation({
+    summary:
+      'Trigger the classification sweep (cron runs every night at 02:00)',
+  })
+  reclassify() {
+    return this.classification.reclassifyAll();
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a client (optionally convert a lead)' })

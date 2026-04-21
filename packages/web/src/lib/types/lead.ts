@@ -77,6 +77,7 @@ export type Lead = {
   assignedTo: LeadAssignee | null;
   assignedAt: string | null;
   isReturningClient: boolean;
+  clientId: string | null;
   qualificationScore: number | null;
   qualificationNotes: string | null;
   initialNotes: string | null;
