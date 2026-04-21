@@ -21,7 +21,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
-    "prisma:reset": "prisma migrate reset"
+    "prisma:reset": "prisma migrate reset",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "ts-node --require tsconfig-paths/register --project tsconfig.seed.json prisma/seed.ts"
@@ -32,6 +33,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@next/eslint-plugin-next": "^16.1.6",
     "@nx/eslint": "22.6.5",
     "@nx/eslint-plugin": "22.6.5",
@@ -57,7 +60,9 @@
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "husky": "^9.1.7",
     "jsonc-eslint-parser": "^2.4.0",
+    "lint-staged": "^16.4.0",
     "nx": "22.6.5",
     "prettier": "^3.8.1",
     "prisma": "^5.22.0",
