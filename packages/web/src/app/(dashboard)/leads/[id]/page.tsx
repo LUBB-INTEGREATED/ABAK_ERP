@@ -9,6 +9,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Pencil,
+  Repeat2,
   Trash2,
   UserPlus,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ import type { Lead } from '@/lib/types/lead';
 import { StatusDialog } from './status-dialog';
 import { AssignDialog } from './assign-dialog';
 import { EditDialog } from './edit-dialog';
+import { ConvertLeadDialog } from './convert-dialog';
 
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
@@ -49,6 +51,7 @@ export default function LeadDetailPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const deleteMutation = useDeleteLead(id);
 
   if (isLoading) {
@@ -136,6 +139,20 @@ export default function LeadDetailPage() {
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" /> Edit
         </Button>
+        {lead.status !== 'CONVERTED' && lead.status !== 'LOST' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setConvertOpen(true)}
+          >
+            <Repeat2 className="mr-2 h-4 w-4" /> Convert to client
+          </Button>
+        )}
+        {lead.clientId && (
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/clients/${lead.clientId}`}>Open client →</Link>
+          </Button>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -240,6 +257,11 @@ export default function LeadDetailPage() {
         currentAssigneeId={lead.assignedToId}
       />
       <EditDialog open={editOpen} onOpenChange={setEditOpen} lead={lead} />
+      <ConvertLeadDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        lead={lead}
+      />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

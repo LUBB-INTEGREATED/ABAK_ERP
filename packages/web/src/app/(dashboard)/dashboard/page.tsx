@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLeadsList, useLeadStats } from '@/lib/hooks/use-leads';
+import { useClientStats } from '@/lib/hooks/use-clients';
 import {
   CHANNEL_LABELS,
   SLA_LABELS,
@@ -24,6 +25,18 @@ import {
   type LeadStatus,
   type SLAStatus,
 } from '@/lib/types/lead';
+import {
+  CLASSIFICATION_LABELS,
+  type ClientClassification,
+} from '@/lib/types/client';
+
+const CLASSIFICATION_COLORS: Record<ClientClassification, string> = {
+  NEW: '#0ea5e9',
+  RETURNING: '#236382',
+  VIP: '#A78B42',
+  DORMANT: '#a1a1aa',
+  ARCHIVED: '#ef4444',
+};
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
   NEW: '#0ea5e9',
@@ -44,7 +57,18 @@ const SLA_COLORS: Record<SLAStatus, string> = {
 
 export default function DashboardPage() {
   const stats = useLeadStats();
+  const clientStats = useClientStats();
   const recent = useLeadsList({ limit: 5, sort: 'createdAt', order: 'desc' });
+
+  const classificationData = (clientStats.data?.byClassification ?? []).map(
+    (row) => ({
+      name:
+        CLASSIFICATION_LABELS[row.classification as ClientClassification] ??
+        row.classification,
+      value: row.count,
+      classification: row.classification as ClientClassification,
+    }),
+  );
 
   const statusData = (stats.data?.byStatus ?? []).map((row) => ({
     name: STATUS_LABELS[row.status as LeadStatus] ?? row.status,
@@ -85,6 +109,35 @@ export default function DashboardPage() {
         <KpiCard label="New today" value={today} highlight />
         <KpiCard label="Overdue SLA" value={overdue} danger />
         <KpiCard label="Conversion rate" value={conversionRate} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Total clients" value={clientStats.data?.total ?? '—'} />
+        <KpiCard
+          label="VIP clients"
+          value={
+            clientStats.data?.byClassification.find(
+              (r) => r.classification === 'VIP',
+            )?.count ?? 0
+          }
+          highlight
+        />
+        <KpiCard
+          label="Dormant clients"
+          value={
+            clientStats.data?.byClassification.find(
+              (r) => r.classification === 'DORMANT',
+            )?.count ?? 0
+          }
+        />
+        <KpiCard
+          label="Avg. lifetime value"
+          value={
+            clientStats.data
+              ? `${Math.round(clientStats.data.averageLifetimeValue).toLocaleString()} SAR`
+              : '—'
+          }
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -150,6 +203,40 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Clients by classification
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[260px]">
+            {classificationData.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={classificationData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={90}
+                  >
+                    {classificationData.map((entry) => (
+                      <Cell
+                        key={entry.classification}
+                        fill={CLASSIFICATION_COLORS[entry.classification]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">SLA compliance</CardTitle>
