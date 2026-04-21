@@ -49,7 +49,104 @@
     "settings": "الإعدادات",
     "holidays": "العطلات الرسمية",
     "adminSettings": "إعدادات النظام",
-    "rfqs": "طلبات عروض الأسعار"
+    "rfqs": "طلبات عروض الأسعار",
+    "projects": "المشاريع"
+  },
+  "project": {
+    "title": "المشاريع",
+    "subtitle": "إدارة المشاريع من مرحلة التخطيط حتى الإغلاق.",
+    "number": "رقم المشروع",
+    "projectTitle": "عنوان المشروع",
+    "client": "العميل",
+    "pm": "مدير المشروع",
+    "po": "أمر الشراء",
+    "contractValue": "قيمة العقد",
+    "startDate": "تاريخ البدء",
+    "expectedEnd": "التاريخ المتوقع للانتهاء",
+    "actualEnd": "التاريخ الفعلي للانتهاء",
+    "progress": "نسبة الإنجاز",
+    "plannedProgress": "الإنجاز المخطط",
+    "actualProgress": "الإنجاز الفعلي",
+    "status": {
+      "PLANNING": "تخطيط",
+      "ACTIVE": "نشط",
+      "ON_HOLD": "معلّق",
+      "AT_RISK": "تحت الخطر",
+      "CLOSING": "قيد الإغلاق",
+      "CLOSED": "مغلق",
+      "CANCELLED": "ملغى"
+    },
+    "empty": "لا توجد مشاريع حتى الآن.",
+    "createNew": "مشروع جديد",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "phases": "المراحل",
+      "closure": "الإغلاق"
+    }
+  },
+  "phase": {
+    "status": {
+      "NOT_STARTED": "لم تبدأ",
+      "IN_PROGRESS": "قيد التنفيذ",
+      "BLOCKED": "معطّلة",
+      "UNDER_REVIEW": "قيد المراجعة",
+      "COMPLETED": "مكتملة",
+      "SKIPPED": "متخطاة"
+    },
+    "code": {
+      "INITIATION": "الانطلاق",
+      "KICKOFF": "الانطلاقة مع العميل",
+      "EXECUTION": "التنفيذ",
+      "REVIEW": "المراجعة",
+      "SUBMISSION": "التسليم",
+      "REVISIONS": "التعديلات",
+      "CLOSURE": "الإغلاق",
+      "CUSTOM": "مخصصة"
+    },
+    "owner": "المسؤول",
+    "plannedStart": "البداية المخططة",
+    "plannedEnd": "النهاية المخططة",
+    "markComplete": "تعليم كمكتملة",
+    "evidenceNote": "ملاحظة المستند (تحتاج 50 حرفًا على الأقل)",
+    "clientAcknowledged": "تاريخ موافقة العميل",
+    "evidenceHint": "يجب توفير ملاحظة موقّعة (50+ حرف) أو تاريخ موافقة العميل (BR-14).",
+    "adjustProgress": "تعديل يدوي للإنجاز",
+    "adjustReason": "سبب التعديل (مطلوب)",
+    "reassignOwner": "إعادة إسناد المسؤول",
+    "reassignReason": "سبب إعادة الإسناد",
+    "nothingHere": "لا توجد مراحل."
+  },
+  "task": {
+    "status": {
+      "NOT_STARTED": "لم تبدأ",
+      "IN_PROGRESS": "قيد التنفيذ",
+      "BLOCKED": "معطّلة",
+      "REVIEW": "قيد المراجعة",
+      "DONE": "منجزة",
+      "CANCELLED": "ملغاة"
+    },
+    "priority": {
+      "LOW": "منخفضة",
+      "NORMAL": "عادية",
+      "HIGH": "مرتفعة",
+      "URGENT": "عاجلة"
+    }
+  },
+  "closure": {
+    "title": "قائمة إغلاق المشروع",
+    "subtitle": "جميع الشروط الخمسة يجب أن تُستوفى لإغلاق المشروع (القسم 7).",
+    "initiate": "بدء الإغلاق",
+    "gates": {
+      "ALL_PHASES_COMPLETED": "اكتمال جميع المراحل مع الأدلة",
+      "DELIVERABLES_SUBMITTED": "تسليم جميع المخرجات للعميل",
+      "CLIENT_APPROVAL_RECEIVED": "استلام موافقة العميل الرسمية",
+      "FINAL_PAYMENT_RECEIVED": "استلام الدفعة النهائية",
+      "FINANCE_CLEARANCE_ISSUED": "إصدار الإخلاء المالي"
+    },
+    "ownerPm": "مسؤولية مدير المشروع",
+    "ownerFinance": "مسؤولية المالية",
+    "notInitiated": "لم يبدأ الإغلاق بعد.",
+    "closedAt": "تاريخ الإغلاق"
   },
   "rfq": {
     "title": "طلبات عروض الأسعار",

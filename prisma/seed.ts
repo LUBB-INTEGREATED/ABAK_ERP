@@ -23,6 +23,11 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.closureChecklist.deleteMany();
+  await prisma.taskDependency.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.phase.deleteMany();
+  await prisma.project.deleteMany();
   await prisma.purchaseOrder.deleteMany();
   await prisma.quoteApproval.deleteMany();
   await prisma.paymentMilestone.deleteMany();
@@ -871,6 +876,139 @@ async function main() {
     },
   });
   console.log('✅ Created 1 pipeline entry + 1 RFQ');
+
+  console.log('Creating sample quote + PO + project...');
+  const sampleQuote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${year}-0001`,
+      clientId: vipClient.id,
+      title: 'Residential Tower — Full Design Package',
+      description: 'Architectural + MEP + structural design coordination.',
+      subtotal: 750000,
+      discountType: 'FIXED',
+      discountValue: 0,
+      discountAmount: 0,
+      taxRate: 15,
+      taxAmount: 112500,
+      totalAmount: 862500,
+      status: 'WON',
+      wonAt: new Date(),
+      sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      preparedById: manager?.id ?? salesRep?.id,
+      paymentMilestones: {
+        create: [
+          {
+            description: 'Kickoff advance',
+            percentage: 30,
+            amount: 258_750,
+            daysFromStart: 0,
+            position: 0,
+          },
+          {
+            description: 'Midway',
+            percentage: 40,
+            amount: 345_000,
+            daysFromStart: 60,
+            position: 1,
+          },
+          {
+            description: 'Final delivery',
+            percentage: 30,
+            amount: 258_750,
+            daysFromStart: 120,
+            position: 2,
+          },
+        ],
+      },
+    },
+  });
+  const samplePo = await prisma.purchaseOrder.create({
+    data: {
+      poNumber: `PO-${year}-0001`,
+      quoteId: sampleQuote.id,
+      clientId: vipClient.id,
+      poDate: new Date(),
+      startDate: new Date(),
+      contractValue: sampleQuote.totalAmount,
+      status: 'ACTIVE',
+    },
+  });
+
+  const projectStart = new Date();
+  const sampleProject = await prisma.project.create({
+    data: {
+      projectNumber: `PRJ-${year}-0001`,
+      poId: samplePo.id,
+      clientId: vipClient.id,
+      title: 'Residential Tower — Riyadh',
+      description:
+        'Full consulting engagement for a 12-floor residential tower.',
+      pmId: manager?.id ?? salesRep!.id,
+      status: 'ACTIVE',
+      contractValue: samplePo.contractValue,
+      startDate: projectStart,
+    },
+  });
+  // Seed 7 default phases via the template definition above.
+  const projectPhases: Array<{
+    name: string;
+    phaseCode:
+      | 'INITIATION'
+      | 'KICKOFF'
+      | 'EXECUTION'
+      | 'REVIEW'
+      | 'SUBMISSION'
+      | 'REVISIONS'
+      | 'CLOSURE';
+    durationDays: number;
+    position: number;
+  }> = [
+    {
+      name: 'Initiation',
+      phaseCode: 'INITIATION',
+      position: 0,
+      durationDays: 7,
+    },
+    { name: 'Kickoff', phaseCode: 'KICKOFF', position: 1, durationDays: 5 },
+    {
+      name: 'Execution',
+      phaseCode: 'EXECUTION',
+      position: 2,
+      durationDays: 45,
+    },
+    { name: 'Review', phaseCode: 'REVIEW', position: 3, durationDays: 10 },
+    {
+      name: 'Submission',
+      phaseCode: 'SUBMISSION',
+      position: 4,
+      durationDays: 7,
+    },
+    {
+      name: 'Revisions',
+      phaseCode: 'REVISIONS',
+      position: 5,
+      durationDays: 14,
+    },
+    { name: 'Closure', phaseCode: 'CLOSURE', position: 6, durationDays: 7 },
+  ];
+  let cursor = new Date(projectStart);
+  for (const phase of projectPhases) {
+    const plannedEnd = new Date(cursor);
+    plannedEnd.setDate(plannedEnd.getDate() + phase.durationDays);
+    await prisma.phase.create({
+      data: {
+        projectId: sampleProject.id,
+        name: phase.name,
+        phaseCode: phase.phaseCode,
+        position: phase.position,
+        ownerId: manager?.id ?? salesRep!.id,
+        plannedStart: new Date(cursor),
+        plannedEnd,
+      },
+    });
+    cursor = plannedEnd;
+  }
+  console.log('✅ Created 1 quote + 1 PO + 1 project (with 7 phases)');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

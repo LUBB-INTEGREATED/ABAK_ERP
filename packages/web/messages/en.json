@@ -49,7 +49,104 @@
     "settings": "Settings",
     "holidays": "Public holidays",
     "adminSettings": "System settings",
-    "rfqs": "RFQs"
+    "rfqs": "RFQs",
+    "projects": "Projects"
+  },
+  "project": {
+    "title": "Projects",
+    "subtitle": "Manage projects from planning through closure.",
+    "number": "Project number",
+    "projectTitle": "Project title",
+    "client": "Client",
+    "pm": "Project manager",
+    "po": "Purchase order",
+    "contractValue": "Contract value",
+    "startDate": "Start date",
+    "expectedEnd": "Expected end date",
+    "actualEnd": "Actual end date",
+    "progress": "Progress",
+    "plannedProgress": "Planned progress",
+    "actualProgress": "Actual progress",
+    "status": {
+      "PLANNING": "Planning",
+      "ACTIVE": "Active",
+      "ON_HOLD": "On hold",
+      "AT_RISK": "At risk",
+      "CLOSING": "Closing",
+      "CLOSED": "Closed",
+      "CANCELLED": "Cancelled"
+    },
+    "empty": "No projects yet.",
+    "createNew": "New project",
+    "tabs": {
+      "overview": "Overview",
+      "phases": "Phases",
+      "closure": "Closure"
+    }
+  },
+  "phase": {
+    "status": {
+      "NOT_STARTED": "Not started",
+      "IN_PROGRESS": "In progress",
+      "BLOCKED": "Blocked",
+      "UNDER_REVIEW": "Under review",
+      "COMPLETED": "Completed",
+      "SKIPPED": "Skipped"
+    },
+    "code": {
+      "INITIATION": "Initiation",
+      "KICKOFF": "Kickoff",
+      "EXECUTION": "Execution",
+      "REVIEW": "Review",
+      "SUBMISSION": "Submission",
+      "REVISIONS": "Revisions",
+      "CLOSURE": "Closure",
+      "CUSTOM": "Custom"
+    },
+    "owner": "Owner",
+    "plannedStart": "Planned start",
+    "plannedEnd": "Planned end",
+    "markComplete": "Mark complete",
+    "evidenceNote": "Signed-off note (min 50 chars)",
+    "clientAcknowledged": "Client acknowledgement date",
+    "evidenceHint": "Either a signed-off note (50+ chars) or a client acknowledgement date is required (BR-14).",
+    "adjustProgress": "Adjust progress",
+    "adjustReason": "Reason for adjustment (required)",
+    "reassignOwner": "Reassign owner",
+    "reassignReason": "Reason for reassignment",
+    "nothingHere": "No phases."
+  },
+  "task": {
+    "status": {
+      "NOT_STARTED": "Not started",
+      "IN_PROGRESS": "In progress",
+      "BLOCKED": "Blocked",
+      "REVIEW": "Review",
+      "DONE": "Done",
+      "CANCELLED": "Cancelled"
+    },
+    "priority": {
+      "LOW": "Low",
+      "NORMAL": "Normal",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    }
+  },
+  "closure": {
+    "title": "Project closure checklist",
+    "subtitle": "All five gates must be satisfied before the project can close (PART 7).",
+    "initiate": "Initiate closure",
+    "gates": {
+      "ALL_PHASES_COMPLETED": "All phases completed with evidence",
+      "DELIVERABLES_SUBMITTED": "All deliverables submitted to client",
+      "CLIENT_APPROVAL_RECEIVED": "Client formal approval received",
+      "FINAL_PAYMENT_RECEIVED": "Final payment received",
+      "FINANCE_CLEARANCE_ISSUED": "Finance clearance issued"
+    },
+    "ownerPm": "Owned by PM",
+    "ownerFinance": "Owned by Finance",
+    "notInitiated": "Closure not initiated yet.",
+    "closedAt": "Closed at"
   },
   "rfq": {
     "title": "Requests for Quotation",

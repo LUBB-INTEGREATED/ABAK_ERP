@@ -8,6 +8,7 @@ import {
   Briefcase,
   FileText,
   FileSearch,
+  FolderKanban,
   Megaphone,
   Blocks,
   Menu,
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/pipeline', labelKey: 'nav.pipeline', icon: Blocks },
   { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
   { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
+  { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
   { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
 ];
 

@@ -53,6 +53,10 @@ model User {
   financialReviewRfqs Rfq[] @relation("RfqFinancialReviewer")
   originatedRfqs      Rfq[] @relation("RfqOriginalSalesRep")
 
+  managedProjects Project[] @relation("ProjectPM")
+  ownedPhases     Phase[]   @relation("PhaseOwner")
+  assignedTasks   Task[]    @relation("TaskAssignee")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -373,6 +377,7 @@ model Client {
   quotes          Quote[]
   rfqs            Rfq[]
   purchaseOrders  PurchaseOrder[]
+  projects        Project[]
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -848,6 +853,8 @@ model PurchaseOrder {
   clientId String
   client   Client @relation(fields: [clientId], references: [id])
 
+  project Project?
+
   poDate               DateTime  @default(now())
   startDate            DateTime?
   expectedCompletionAt DateTime?
@@ -1002,4 +1009,217 @@ enum RfqQualityScore {
   MEDIUM
   LOW
   PENDING
+}
+
+// ============================================
+// Module 5 — Project Execution (M5-001)
+// ============================================
+
+model Project {
+  id            String @id @default(cuid())
+  projectNumber String @unique
+
+  poId String        @unique
+  po   PurchaseOrder @relation(fields: [poId], references: [id])
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  opportunityId String?
+  rfqId         String?
+
+  title       String
+  description String?
+
+  pmId String
+  pm   User   @relation("ProjectPM", fields: [pmId], references: [id])
+
+  status          ProjectStatus @default(PLANNING)
+  startDate       DateTime?
+  expectedEndDate DateTime?
+  actualEndDate   DateTime?
+
+  contractValue   Float
+  plannedProgress Float @default(0)
+  actualProgress  Float @default(0)
+
+  financialRiskFlagged   Boolean   @default(false)
+  financialRiskFlaggedAt DateTime?
+  financialRiskReason    String?
+
+  phases           Phase[]
+  tasks            Task[]
+  closureChecklist ClosureChecklist?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([projectNumber])
+  @@index([clientId])
+  @@index([pmId])
+  @@index([status])
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  AT_RISK
+  CLOSING
+  CLOSED
+  CANCELLED
+}
+
+model Phase {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name        String
+  phaseCode   PhaseCode
+  customLabel String?
+
+  position Int
+  ownerId  String
+  owner    User   @relation("PhaseOwner", fields: [ownerId], references: [id])
+
+  status       PhaseStatus @default(NOT_STARTED)
+  plannedStart DateTime
+  plannedEnd   DateTime
+  actualStart  DateTime?
+  actualEnd    DateTime?
+
+  progressPct      Float   @default(0)
+  pmAdjustment     Float?
+  pmAdjustmentNote String?
+
+  evidenceRequired     Boolean   @default(true)
+  evidenceNote         String?
+  clientAcknowledgedAt DateTime?
+  completedAt          DateTime?
+  completedById        String?
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([ownerId])
+  @@map("phases")
+}
+
+enum PhaseCode {
+  INITIATION
+  KICKOFF
+  EXECUTION
+  REVIEW
+  SUBMISSION
+  REVISIONS
+  CLOSURE
+  CUSTOM
+}
+
+enum PhaseStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  UNDER_REVIEW
+  COMPLETED
+  SKIPPED
+}
+
+model Task {
+  id        String  @id @default(cuid())
+  projectId String
+  phaseId   String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase     Phase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  assigneeId  String?
+  assignee    User?   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  status   TaskStatus   @default(NOT_STARTED)
+  priority TaskPriority @default(NORMAL)
+
+  plannedStart   DateTime?
+  plannedEnd     DateTime?
+  actualStart    DateTime?
+  actualEnd      DateTime?
+  estimatedHours Float?
+  actualHours    Float?
+
+  blockers   TaskDependency[] @relation("DependentTask")
+  dependents TaskDependency[] @relation("BlockerTask")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([phaseId])
+  @@index([assigneeId])
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model TaskDependency {
+  id          String @id @default(cuid())
+  dependentId String
+  blockerId   String
+  dependent   Task   @relation("DependentTask", fields: [dependentId], references: [id], onDelete: Cascade)
+  blocker     Task   @relation("BlockerTask", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  @@unique([dependentId, blockerId])
+  @@map("task_dependencies")
+}
+
+// PART 7 — Project Closure (M5-011)
+model ClosureChecklist {
+  id        String  @id @default(cuid())
+  projectId String  @unique
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // PM-owned gates
+  allPhasesCompleted         Boolean   @default(false)
+  allPhasesCompletedAt       DateTime?
+  allPhasesCompletedById     String?
+  deliverablesSubmitted      Boolean   @default(false)
+  deliverablesSubmittedAt    DateTime?
+  deliverablesSubmittedById  String?
+  clientApprovalReceived     Boolean   @default(false)
+  clientApprovalReceivedAt   DateTime?
+  clientApprovalReceivedById String?
+
+  // Finance-owned gates
+  finalPaymentReceived       Boolean   @default(false)
+  finalPaymentReceivedAt     DateTime?
+  finalPaymentReceivedById   String?
+  financeClearanceIssued     Boolean   @default(false)
+  financeClearanceIssuedAt   DateTime?
+  financeClearanceIssuedById String?
+
+  initiatedAt   DateTime  @default(now())
+  initiatedById String?
+  closedAt      DateTime?
+
+  @@map("closure_checklists")
 }
