@@ -37,6 +37,8 @@ model User {
   stageChanges       StageTransition[] @relation("StageActor")
   loggedVisits       FieldVisit[]      @relation("VisitAuthor")
   salesTargets       SalesTarget[]     @relation("TargetOwner")
+  preparedQuotes     Quote[]           @relation("QuotePreparer")
+  approvals          QuoteApproval[]   @relation("QuoteApprover")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -112,8 +114,9 @@ model Service {
   category ServiceCategory @relation(fields: [categoryId], references: [id])
   leads    Lead[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  QuoteItem QuoteItem[]
 
   @@index([categoryId])
   @@index([code])
@@ -202,6 +205,7 @@ model Lead {
   client            Client? @relation(fields: [clientId], references: [id])
 
   pipelineEntry PipelineEntry?
+  quotes        Quote[]
 
   qualificationScore Int?    @default(0)
   qualificationNotes String?
@@ -304,6 +308,8 @@ model Client {
   leads           Lead[]
   pipelineEntries PipelineEntry[]
   fieldVisits     FieldVisit[]
+  quotes          Quote[]
+  purchaseOrders  PurchaseOrder[]
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -589,6 +595,187 @@ enum TargetType {
 enum TargetPeriod {
   MONTHLY
   QUARTERLY
+}
+
+// ============================================
+// Module 4: Quotation & Pricing Engine
+// ============================================
+
+model Quote {
+  id          String      @id @default(cuid())
+  quoteNumber String      @unique
+  version     Int         @default(1)
+  status      QuoteStatus @default(DRAFT)
+
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id])
+  leadId   String?
+  lead     Lead?   @relation(fields: [leadId], references: [id])
+
+  title              String
+  description        String?
+  validUntil         DateTime?
+  deliveryTimeline   String?
+  paymentTerms       String?
+  termsAndConditions String?
+  internalNotes      String?
+  clientNotes        String?
+
+  subtotal       Float        @default(0)
+  discountType   DiscountType @default(FIXED)
+  discountValue  Float        @default(0)
+  discountAmount Float        @default(0)
+  taxRate        Float        @default(15)
+  taxAmount      Float        @default(0)
+  totalAmount    Float        @default(0)
+
+  preparedById String?
+  preparedBy   User?   @relation("QuotePreparer", fields: [preparedById], references: [id])
+
+  sentAt         DateTime?
+  viewedAt       DateTime?
+  acceptedAt     DateTime?
+  rejectedAt     DateTime?
+  rejectedReason String?
+
+  items             QuoteItem[]
+  paymentMilestones PaymentMilestone[]
+  approvals         QuoteApproval[]
+  purchaseOrder     PurchaseOrder?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([quoteNumber])
+  @@index([clientId])
+  @@index([leadId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([preparedById])
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  DRAFT
+  PENDING_REVIEW
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  VIEWED
+  UNDER_NEGOTIATION
+  REVISED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+model QuoteItem {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  description String
+  quantity    Float
+  unit        String?
+  unitPrice   Float
+  discountPct Float   @default(0)
+  subtotal    Float   @default(0)
+  notes       String?
+  position    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model PaymentMilestone {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  description   String
+  percentage    Float
+  amount        Float
+  daysFromStart Int?
+  notes         String?
+  position      Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteId])
+  @@map("payment_milestones")
+}
+
+model QuoteApproval {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  tier       Int
+  approverId String
+  approver   User   @relation("QuoteApprover", fields: [approverId], references: [id])
+
+  status    ApprovalStatus @default(PENDING)
+  decidedAt DateTime?
+  comments  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteId])
+  @@index([approverId])
+  @@index([status])
+  @@map("quote_approvals")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PurchaseOrder {
+  id       String @id @default(cuid())
+  poNumber String @unique
+
+  quoteId String @unique
+  quote   Quote  @relation(fields: [quoteId], references: [id])
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  poDate               DateTime  @default(now())
+  startDate            DateTime?
+  expectedCompletionAt DateTime?
+  contractValue        Float
+  status               POStatus  @default(ACTIVE)
+  contractDocUrl       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([poNumber])
+  @@index([clientId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+enum POStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
 // ============================================
