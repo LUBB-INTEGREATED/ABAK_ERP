@@ -1,5 +1,6 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const webpack = require('webpack');
+const nodeExternals = require('webpack-node-externals');
 const { join } = require('path');
 
 // NestJS core lazy-imports several optional peer deps it doesn't use at runtime
@@ -15,17 +16,6 @@ const lazyImports = [
   'class-transformer/storage',
 ];
 
-// Keep all node_modules external so pino's worker-thread transports
-// (pino-pretty, thread-stream) can resolve their own files at runtime. Webpack
-// bundling breaks pino-pretty because it loads `./lib/worker.js` relative to
-// its own package dir.
-const externalizeNodeModules = ({ request }, callback) => {
-  if (request && /^[a-z@]/i.test(request) && !request.startsWith('.')) {
-    return callback(null, 'commonjs ' + request);
-  }
-  callback();
-};
-
 module.exports = {
   output: {
     path: join(__dirname, 'dist'),
@@ -34,7 +24,22 @@ module.exports = {
       devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     }),
   },
-  externals: [externalizeNodeModules],
+  resolve: {
+    // Mirror the `customConditions: ['abak-erp']` entry in tsconfig.base.json so
+    // webpack resolves workspace packages to their `src/*.ts` entry points
+    // instead of the emitted `dist/*.js` files.
+    conditionNames: ['abak-erp', 'import', 'require', 'node', 'default'],
+  },
+  // Keep every node_modules dep external — bundling Express 5's router breaks
+  // its `is-promise` interop (throws TypeError at runtime), and bundling
+  // pino's worker transports breaks their relative worker-file loads. The
+  // allowlist keeps workspace `shared-*` packages bundled in because they
+  // have no published dist entry.
+  externals: [
+    nodeExternals({
+      allowlist: [/^shared-/],
+    }),
+  ],
   plugins: [
     new webpack.IgnorePlugin({
       checkResource(resource) {
@@ -57,6 +62,9 @@ module.exports = {
       outputHashing: 'none',
       generatePackageJson: true,
       sourceMap: true,
+      // Preserve the top-level `externals` array so workspace libs stay
+      // bundled while every other node_modules dep is loaded at runtime.
+      mergeExternals: true,
     }),
   ],
 };

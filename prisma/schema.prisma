@@ -202,6 +202,7 @@ model Lead {
   updatedAt DateTime  @updatedAt
   createdBy String?
   closedAt  DateTime?
+  deletedAt DateTime?
 
   @@index([leadNumber])
   @@index([channel])
@@ -210,6 +211,7 @@ model Lead {
   @@index([slaStatus])
   @@index([createdAt])
   @@index([serviceId])
+  @@index([deletedAt])
   @@map("leads")
 }
 

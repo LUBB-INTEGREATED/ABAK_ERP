@@ -6,6 +6,7 @@ import authConfig from '../config/auth.config';
 import databaseConfig from '../config/database.config';
 import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
+import { LeadsModule } from '../modules/leads/leads.module';
 import { UsersModule } from '../modules/users/users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AppController } from './app.controller';
@@ -21,11 +22,9 @@ import { AppService } from './app.service';
     PrismaModule,
     AuthModule,
     UsersModule,
+    LeadsModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
-  ],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}
