@@ -477,6 +477,100 @@ export class QuotesService {
     });
   }
 
+  // BR-08 — approved quotations may not be modified; revise creates a new
+  // Quote with version = parent.version + 1, copies items + milestones,
+  // links parentQuoteId, and locks the parent as REVISED.
+  async revise(id: string, actorId: string) {
+    const parent = await this.prisma.quote.findUnique({
+      where: { id },
+      include: { items: true, paymentMilestones: true, rfq: true },
+    });
+    if (!parent) throw new NotFoundException();
+    const REVISABLE: QuoteStatus[] = [
+      QuoteStatus.APPROVED,
+      QuoteStatus.SENT,
+      QuoteStatus.IN_DISCUSSION,
+      QuoteStatus.IN_NEGOTIATION,
+      QuoteStatus.LOST,
+    ];
+    if (!REVISABLE.includes(parent.status)) {
+      throw new BadRequestException(
+        'Quote cannot be revised in its current status',
+      );
+    }
+    if (parent.status === QuoteStatus.WON) {
+      throw new BadRequestException(
+        'Won quotes cannot be revised — commercial confirmation already issued.',
+      );
+    }
+
+    const number = await this.nextQuoteNumber();
+
+    return this.prisma.$transaction(async (tx) => {
+      const next = await tx.quote.create({
+        data: {
+          quoteNumber: number,
+          version: parent.version + 1,
+          parentQuoteId: parent.id,
+          status: QuoteStatus.DRAFT,
+          title: parent.title,
+          description: parent.description,
+          validUntil: parent.validUntil,
+          deliveryTimeline: parent.deliveryTimeline,
+          paymentTerms: parent.paymentTerms,
+          termsAndConditions: parent.termsAndConditions,
+          internalNotes: parent.internalNotes,
+          clientNotes: parent.clientNotes,
+          subtotal: parent.subtotal,
+          discountType: parent.discountType,
+          discountValue: parent.discountValue,
+          discountAmount: parent.discountAmount,
+          taxRate: parent.taxRate,
+          taxAmount: parent.taxAmount,
+          totalAmount: parent.totalAmount,
+          clientId: parent.clientId,
+          leadId: parent.leadId,
+          preparedById: actorId,
+          items: {
+            create: parent.items.map((item) => ({
+              serviceId: item.serviceId,
+              description: item.description,
+              quantity: item.quantity,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              discountPct: item.discountPct,
+              subtotal: item.subtotal,
+              notes: item.notes,
+              position: item.position,
+            })),
+          },
+          paymentMilestones: {
+            create: parent.paymentMilestones.map((m) => ({
+              description: m.description,
+              percentage: m.percentage,
+              amount: m.amount,
+              daysFromStart: m.daysFromStart,
+              notes: m.notes,
+              position: m.position,
+            })),
+          },
+        },
+        include: QUOTE_INCLUDE,
+      });
+      await tx.quote.update({
+        where: { id: parent.id },
+        data: { status: QuoteStatus.REVISED },
+      });
+      if (parent.rfq) {
+        await tx.rfq.update({
+          where: { id: parent.rfq.id },
+          data: { revisionCount: { increment: 1 } },
+        });
+      }
+      return next;
+    });
+  }
+
   async stats() {
     const where: Prisma.QuoteWhereInput = { deletedAt: null };
     const [total, byStatus, acceptedAgg, pendingApproval] = await Promise.all([

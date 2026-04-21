@@ -130,6 +130,19 @@ export function useRejectQuote(id: string) {
   });
 }
 
+export function useReviseQuote(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<ApiEnvelope<Quote>>(
+        `/quotes/${id}/revise`,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, id),
+  });
+}
+
 export function useDecideApproval(quoteId: string) {
   const qc = useQueryClient();
   return useMutation({

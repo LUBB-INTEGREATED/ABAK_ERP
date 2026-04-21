@@ -106,6 +106,15 @@ export class QuotesController {
     return this.quotes.reject(id, dto);
   }
 
+  @Post('quotes/:id/revise')
+  @ApiOperation({
+    summary:
+      'Create a new revision. Parent quote is locked to REVISED (BR-08).',
+  })
+  revise(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.quotes.revise(id, actorId);
+  }
+
   // Approvals ------------------------------------------------------
 
   @Patch('quotes/:id/approvals/:approvalId')
