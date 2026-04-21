@@ -204,6 +204,9 @@ importers:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
+      '@types/jsonwebtoken':
+        specifier: ^9.0.10
+        version: 9.0.10
       '@types/passport-jwt':
         specifier: ^4.0.1
         version: 4.0.1
@@ -211,7 +214,17 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(webpack@5.106.2)
 
-  packages/api-e2e: {}
+  packages/api-e2e:
+    devDependencies:
+      '@nx/node':
+        specifier: 22.6.5
+        version: 22.6.5(@swc-node/register@1.11.1)(@swc/core@1.15.8)(@types/node@20.19.9)(eslint@9.39.4)(nx@22.6.5)(ts-node@10.9.2)(typescript@5.9.3)
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      axios:
+        specifier: ^1
+        version: 1.15.0
 
   packages/shared/types:
     dependencies:
@@ -8561,6 +8574,16 @@ packages:
       }
     dependencies:
       '@types/istanbul-lib-report': 3.0.3
+    dev: true
+
+  /@types/jest@30.0.0:
+    resolution:
+      {
+        integrity: sha512-XTYugzhuwqWjws0CVz8QpM36+T+Dz5mTEBKhNs/esGLnCIlGdRy+Dq78NRjd7ls7r8BC8ZRMOrKlkO1hU0JOwA==,
+      }
+    dependencies:
+      expect: 30.3.0
+      pretty-format: 30.3.0
     dev: true
 
   /@types/json-schema@7.0.15:
