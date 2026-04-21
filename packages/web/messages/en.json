@@ -56,6 +56,16 @@
     "govTransactions": "Gov Transactions",
     "pro": "PRO dashboard"
   },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Latest alerts and events for you.",
+    "bell": "Notifications",
+    "empty": "No new notifications.",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all notifications",
+    "unread": "Unread",
+    "all": "All"
+  },
   "audit": {
     "title": "Audit log",
     "subtitle": "Every sensitive operation in the system is logged here.",

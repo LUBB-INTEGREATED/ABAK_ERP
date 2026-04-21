@@ -15,6 +15,7 @@ import { GovTransactionsModule } from '../modules/gov-transactions/gov-transacti
 import { HolidaysModule } from '../modules/holidays/holidays.module';
 import { I18nModule } from '../modules/i18n/i18n.module';
 import { LeadsModule } from '../modules/leads/leads.module';
+import { NotificationsModule } from '../modules/notifications/notifications.module';
 import { PipelineModule } from '../modules/pipeline/pipeline.module';
 import { ProjectsModule } from '../modules/projects/projects.module';
 import { QuotesModule } from '../modules/quotes/quotes.module';
@@ -37,6 +38,7 @@ import { AppService } from './app.service';
     PrismaModule,
     I18nModule,
     AuditModule,
+    NotificationsModule,
     AuthModule,
     UsersModule,
     LeadsModule,

@@ -13,6 +13,7 @@ import {
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type {
   CreateInvoiceDto,
   ListInvoicesDto,
@@ -27,6 +28,7 @@ export class FinanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ─── Commercial confirmations ─────────────────────────────────
@@ -120,6 +122,29 @@ export class FinanceService {
         contractValue: confirmation.contractValue,
       },
     });
+
+    // Notify quote preparer (if any) of the outcome
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: confirmation.quoteId },
+      select: { preparedById: true, quoteNumber: true },
+    });
+    if (quote?.preparedById) {
+      const isValidated = dto.status === PaymentValidationStatus.VALIDATED;
+      await this.notifications.send({
+        recipientId: quote.preparedById,
+        eventCode: isValidated
+          ? 'commercial_confirmation.validated'
+          : 'commercial_confirmation.rejected',
+        subject: isValidated
+          ? `تم اعتماد التأكيد التجاري للعرض ${quote.quoteNumber}`
+          : `تم رفض التأكيد التجاري للعرض ${quote.quoteNumber}`,
+        body: isValidated
+          ? `تم إصدار أمر الشراء. يمكن الآن إنشاء المشروع.`
+          : `السبب: ${dto.note ?? '—'}`,
+        priority: isValidated ? 'HIGH' : 'HIGH',
+        deepLink: `/quotes/${confirmation.quoteId}`,
+      });
+    }
 
     return this.prisma.commercialConfirmation.findUnique({
       where: { id },

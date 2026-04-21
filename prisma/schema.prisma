@@ -65,6 +65,8 @@ model User {
   loggedGovVisits                   GovVisit[]       @relation("GovVisitPro")
   respondedGovComments              GovComment[]     @relation("GovCommentResponder")
 
+  notifications Notification[] @relation("NotificationRecipient")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -1520,4 +1522,38 @@ model GovDocument {
 
   @@index([transactionId])
   @@map("gov_documents")
+}
+
+// ============================================
+// Sprint 8 — Notifications (M8-001)
+// ============================================
+
+model Notification {
+  id          String @id @default(cuid())
+  recipientId String
+  recipient   User   @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  eventCode String
+  subject   String
+  body      String
+  locale    String               @default("ar")
+  priority  NotificationPriority @default(NORMAL)
+
+  deepLink String?
+  payload  Json?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([recipientId, readAt])
+  @@index([eventCode])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }

@@ -23,6 +23,7 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.notification.deleteMany();
   await prisma.govDocument.deleteMany();
   await prisma.govComment.deleteMany();
   await prisma.govVisit.deleteMany();
@@ -1133,6 +1134,39 @@ async function main() {
     },
   });
   console.log('✅ Created 1 gov transaction + 1 visit + 1 pending comment');
+
+  console.log('Creating sample notifications...');
+  if (manager?.id) {
+    await prisma.notification.createMany({
+      data: [
+        {
+          recipientId: manager.id,
+          eventCode: 'commercial_confirmation.pending',
+          subject: 'تأكيد تجاري بانتظار الاعتماد',
+          body: 'العرض QUO-2026-0002 بقيمة 207,000 ر.س بانتظار اعتمادك.',
+          priority: 'HIGH',
+          deepLink: '/finance',
+        },
+        {
+          recipientId: manager.id,
+          eventCode: 'payment.validation_pending',
+          subject: 'دفعة بانتظار التحقق',
+          body: 'تم استلام دفعة 258,750 ر.س على PO-2026-0001. يلزم التحقق.',
+          priority: 'HIGH',
+          deepLink: '/finance',
+        },
+        {
+          recipientId: manager.id,
+          eventCode: 'gov.comment_received',
+          subject: 'تعليق جديد من الأمانة',
+          body: 'وردت ملاحظة على معاملة GOV-2026-0001 بخصوص الأحمال الزلزالية.',
+          priority: 'NORMAL',
+          deepLink: '/gov-transactions',
+        },
+      ],
+    });
+  }
+  console.log('✅ Created 3 sample notifications');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);
