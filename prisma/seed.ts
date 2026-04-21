@@ -23,6 +23,8 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.escalationInstance.deleteMany();
+  await prisma.escalationRule.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.govDocument.deleteMany();
   await prisma.govComment.deleteMany();
@@ -1167,6 +1169,53 @@ async function main() {
     });
   }
   console.log('✅ Created 3 sample notifications');
+
+  console.log('Seeding escalation rules (PART 8)...');
+  await prisma.escalationRule.createMany({
+    data: [
+      {
+        code: 'QUOTE_APPROVAL_BREACH',
+        name: 'Quote awaiting approval past SLA',
+        descriptionAr: 'تجاوز عرض السعر SLA الموافقة.',
+        descriptionEn: 'Quote has been pending approval past the SLA window.',
+        level1DelayHours: 24,
+        level2DelayHours: 24,
+        level3DelayHours: 24,
+        level1RecipientSelector: 'role:SALES_MANAGER',
+        level2RecipientSelector: 'role:ADMIN',
+        level3RecipientSelector: 'role:SUPER_ADMIN',
+        channels: ['IN_APP', 'EMAIL'],
+      },
+      {
+        code: 'PAYMENT_VALIDATION_OVERDUE',
+        name: 'Payment awaiting validation past 24h',
+        descriptionAr: 'دفعة لم يتم التحقق منها خلال 24 ساعة.',
+        descriptionEn:
+          'Payment has been awaiting Finance validation for > 24h.',
+        level1DelayHours: 24,
+        level2DelayHours: 24,
+        level3DelayHours: 24,
+        level1RecipientSelector: 'role:FINANCE_MANAGER',
+        level2RecipientSelector: 'role:ADMIN',
+        level3RecipientSelector: 'role:SUPER_ADMIN',
+        channels: ['IN_APP', 'EMAIL'],
+      },
+      {
+        code: 'GOV_WEEKLY_STATUS_MISSING',
+        name: 'Weekly gov status missing',
+        descriptionAr: 'لم يتم إدخال تحديث أسبوعي على معاملة حكومية.',
+        descriptionEn: 'No weekly status update on a gov transaction.',
+        level1DelayHours: 24,
+        level2DelayHours: 24,
+        level3DelayHours: 24,
+        level1RecipientSelector: 'role:PRO',
+        level2RecipientSelector: 'role:SALES_MANAGER',
+        level3RecipientSelector: 'role:SUPER_ADMIN',
+        channels: ['IN_APP'],
+      },
+    ],
+  });
+  console.log('✅ Seeded 3 escalation rules');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

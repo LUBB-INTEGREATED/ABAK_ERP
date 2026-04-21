@@ -10,6 +10,7 @@ import { AuditModule } from '../modules/audit/audit.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { ClientsModule } from '../modules/clients/clients.module';
+import { EscalationModule } from '../modules/escalation/escalation.module';
 import { FilesModule } from '../modules/files/files.module';
 import { FinanceModule } from '../modules/finance/finance.module';
 import { GovTransactionsModule } from '../modules/gov-transactions/gov-transactions.module';
@@ -51,6 +52,7 @@ import { AppService } from './app.service';
     ServicesModule,
     HolidaysModule,
     SettingsModule,
+    EscalationModule,
     FinanceModule,
     FilesModule,
     GovTransactionsModule,

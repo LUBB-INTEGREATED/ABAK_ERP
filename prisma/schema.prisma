@@ -1580,3 +1580,52 @@ model FileAsset {
   @@index([ownerResource, ownerResourceId])
   @@map("file_assets")
 }
+
+// ============================================
+// Sprint 11 — Escalation Ladder (M11-007, PART 8)
+// ============================================
+
+model EscalationRule {
+  id            String  @id @default(cuid())
+  code          String  @unique
+  name          String
+  descriptionAr String?
+  descriptionEn String?
+
+  level1DelayHours Float
+  level2DelayHours Float
+  level3DelayHours Float
+
+  level1RecipientSelector String // e.g. "entity.assignedTo"
+  level2RecipientSelector String // e.g. "entity.assignedTo.manager"
+  level3RecipientSelector String // e.g. "role:SUPER_ADMIN"
+
+  channels String[] @default([])
+  enabled  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instances EscalationInstance[]
+
+  @@map("escalation_rules")
+}
+
+model EscalationInstance {
+  id     String         @id @default(cuid())
+  ruleId String
+  rule   EscalationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  resource   String
+  resourceId String
+
+  triggeredAt     DateTime  @default(now())
+  currentLevel    Int       @default(0)
+  lastEscalatedAt DateTime?
+  resolvedAt      DateTime?
+  resolvedReason  String?
+
+  @@unique([ruleId, resource, resourceId])
+  @@index([resolvedAt])
+  @@map("escalation_instances")
+}
