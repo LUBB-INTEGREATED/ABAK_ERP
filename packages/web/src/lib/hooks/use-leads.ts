@@ -73,6 +73,38 @@ export function useUsers() {
   });
 }
 
+export type ServiceOption = {
+  id: string;
+  code: string;
+  name: string;
+  category: { id: string; name: string };
+};
+
+export function useServices() {
+  return useQuery({
+    queryKey: ['services'],
+    queryFn: async () => {
+      const { data } =
+        await apiClient.get<ApiEnvelope<ServiceOption[]>>('/services');
+      return data.data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+export function useCreateLead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const { data } = await apiClient.post<ApiEnvelope<Lead>>('/leads', body);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+}
+
 function invalidateLead(
   queryClient: ReturnType<typeof useQueryClient>,
   id: string,

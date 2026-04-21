@@ -252,6 +252,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.2.2
+        version: 5.2.2(react-hook-form@7.73.1)
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3)(@types/react@19.2.14)(react-dom@19.2.5)(react@19.2.5)
@@ -312,6 +315,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.5(react@19.2.5)
+      react-hook-form:
+        specifier: ^7.73.1
+        version: 7.73.1(react@19.2.5)
       shared-types:
         specifier: workspace:*
         version: link:../shared/types
@@ -327,6 +333,9 @@ importers:
       tailwind-merge:
         specifier: ^2
         version: 2.6.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
       zustand:
         specifier: ^4
         version: 4.5.7(@types/react@19.2.14)(react@19.2.5)
@@ -2563,6 +2572,18 @@ packages:
       {
         integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==,
       }
+    dev: false
+
+  /@hookform/resolvers@5.2.2(react-hook-form@7.73.1):
+    resolution:
+      {
+        integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==,
+      }
+    peerDependencies:
+      react-hook-form: ^7.55.0
+    dependencies:
+      '@standard-schema/utils': 0.3.0
+      react-hook-form: 7.73.1(react@19.2.5)
     dev: false
 
   /@humanfs/core@0.19.2:
@@ -7798,6 +7819,13 @@ packages:
       }
     dev: true
     optional: true
+
+  /@standard-schema/utils@0.3.0:
+    resolution:
+      {
+        integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==,
+      }
+    dev: false
 
   /@svgr/babel-plugin-add-jsx-attribute@8.0.0(@babel/core@7.29.0):
     resolution:
@@ -18899,6 +18927,18 @@ packages:
       react: 19.2.5
       scheduler: 0.27.0
 
+  /react-hook-form@7.73.1(react@19.2.5):
+    resolution:
+      {
+        integrity: sha512-VAfVYOPcx3piiEVQy95vyFmBwbVUsP/AUIN+mpFG8h11yshDd444nn0VyfaGWSRnhOLVgiDu7HIuBtAIzxn9dA==,
+      }
+    engines: { node: '>=18.0.0' }
+    peerDependencies:
+      react: ^16.8.0 || ^17 || ^18 || ^19
+    dependencies:
+      react: 19.2.5
+    dev: false
+
   /react-is@16.13.1:
     resolution:
       {
@@ -22634,7 +22674,6 @@ packages:
       {
         integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==,
       }
-    dev: true
 
   /zustand@4.5.7(@types/react@19.2.14)(react@19.2.5):
     resolution:
