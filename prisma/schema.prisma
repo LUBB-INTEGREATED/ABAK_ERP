@@ -28,11 +28,15 @@ model User {
   resetPasswordExpires DateTime?
 
   refreshTokens      RefreshToken[]
-  assignedLeads      Lead[]         @relation("LeadAssignee")
-  managedClients     Client[]       @relation("AccountManager")
-  loggedInteractions Interaction[]  @relation("InteractionAuthor")
-  assignedFollowUps  FollowUp[]     @relation("FollowUpAssignee")
-  authoredNotes      ClientNote[]   @relation("NoteAuthor")
+  assignedLeads      Lead[]            @relation("LeadAssignee")
+  managedClients     Client[]          @relation("AccountManager")
+  loggedInteractions Interaction[]     @relation("InteractionAuthor")
+  assignedFollowUps  FollowUp[]        @relation("FollowUpAssignee")
+  authoredNotes      ClientNote[]      @relation("NoteAuthor")
+  pipelineEntries    PipelineEntry[]   @relation("PipelineOwner")
+  stageChanges       StageTransition[] @relation("StageActor")
+  loggedVisits       FieldVisit[]      @relation("VisitAuthor")
+  salesTargets       SalesTarget[]     @relation("TargetOwner")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -197,6 +201,8 @@ model Lead {
   clientId          String?
   client            Client? @relation(fields: [clientId], references: [id])
 
+  pipelineEntry PipelineEntry?
+
   qualificationScore Int?    @default(0)
   qualificationNotes String?
 
@@ -292,10 +298,12 @@ model Client {
   lifetimeValue     Float @default(0)
   satisfactionScore Int?
 
-  notes        ClientNote[]
-  interactions Interaction[]
-  followUps    FollowUp[]
-  leads        Lead[]
+  notes           ClientNote[]
+  interactions    Interaction[]
+  followUps       FollowUp[]
+  leads           Lead[]
+  pipelineEntries PipelineEntry[]
+  fieldVisits     FieldVisit[]
 
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -443,6 +451,144 @@ enum NoteTag {
   IMPORTANT
   ISSUE
   OPPORTUNITY
+}
+
+// ============================================
+// Module 3: Sales Pipeline & Team Management
+// ============================================
+
+model PipelineEntry {
+  id    String        @id @default(cuid())
+  stage PipelineStage @default(NEW_LEAD)
+
+  leadId   String? @unique
+  lead     Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  ownerId String?
+  owner   User?   @relation("PipelineOwner", fields: [ownerId], references: [id])
+
+  estimatedValue  Float?
+  probability     Int?      @default(10)
+  expectedCloseAt DateTime?
+  stageEnteredAt  DateTime  @default(now())
+  lostReason      String?
+  postponedUntil  DateTime?
+
+  transitions StageTransition[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+
+  @@index([stage])
+  @@index([ownerId])
+  @@index([clientId])
+  @@index([leadId])
+  @@index([expectedCloseAt])
+  @@map("pipeline_entries")
+}
+
+enum PipelineStage {
+  NEW_LEAD
+  INITIAL_CONTACT
+  QUALIFICATION
+  RFQ_RECEIVED
+  QUOTE_SENT
+  NEGOTIATION
+  WON
+  LOST
+  POSTPONED
+}
+
+model StageTransition {
+  id              String        @id @default(cuid())
+  pipelineEntryId String
+  pipelineEntry   PipelineEntry @relation(fields: [pipelineEntryId], references: [id], onDelete: Cascade)
+
+  fromStage PipelineStage
+  toStage   PipelineStage
+  reason    String?
+
+  actorId String?
+  actor   User?   @relation("StageActor", fields: [actorId], references: [id])
+
+  durationSeconds Int?
+  occurredAt      DateTime @default(now())
+
+  @@index([pipelineEntryId])
+  @@index([occurredAt])
+  @@map("stage_transitions")
+}
+
+model FieldVisit {
+  id       String  @id @default(cuid())
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  visitType  VisitType
+  purpose    String
+  findings   String?
+  nextAction String?
+
+  scheduledAt   DateTime
+  completedAt   DateTime?
+  locationLabel String?
+  latitude      Float?
+  longitude     Float?
+  attendees     String?
+
+  authorId String?
+  author   User?   @relation("VisitAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([authorId])
+  @@index([scheduledAt])
+  @@map("field_visits")
+}
+
+enum VisitType {
+  INITIAL
+  FOLLOW_UP
+  TECHNICAL
+  PRESENTATION
+  CLOSING
+}
+
+model SalesTarget {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation("TargetOwner", fields: [ownerId], references: [id])
+
+  type          TargetType
+  period        TargetPeriod
+  periodStart   DateTime
+  periodEnd     DateTime
+  targetValue   Float
+  achievedValue Float        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, type, period, periodStart])
+  @@index([ownerId])
+  @@map("sales_targets")
+}
+
+enum TargetType {
+  REVENUE
+  QUOTES_SENT
+  CONVERSIONS
+  VISITS
+}
+
+enum TargetPeriod {
+  MONTHLY
+  QUARTERLY
 }
 
 // ============================================
