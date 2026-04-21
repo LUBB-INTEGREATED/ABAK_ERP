@@ -1,17 +1,21 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import appConfig from '../config/app.config';
 import authConfig from '../config/auth.config';
 import databaseConfig from '../config/database.config';
+import { LocaleMiddleware } from '../common/middleware/locale.middleware';
 import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { ClientsModule } from '../modules/clients/clients.module';
+import { HolidaysModule } from '../modules/holidays/holidays.module';
+import { I18nModule } from '../modules/i18n/i18n.module';
 import { LeadsModule } from '../modules/leads/leads.module';
 import { PipelineModule } from '../modules/pipeline/pipeline.module';
 import { QuotesModule } from '../modules/quotes/quotes.module';
 import { ServicesModule } from '../modules/services/services.module';
+import { SettingsModule } from '../modules/settings/settings.module';
 import { UsersModule } from '../modules/users/users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AppController } from './app.controller';
@@ -26,6 +30,7 @@ import { AppService } from './app.service';
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    I18nModule,
     AuthModule,
     UsersModule,
     LeadsModule,
@@ -33,8 +38,14 @@ import { AppService } from './app.service';
     PipelineModule,
     QuotesModule,
     ServicesModule,
+    HolidaysModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LocaleMiddleware).forRoutes('*');
+  }
+}

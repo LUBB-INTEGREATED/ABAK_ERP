@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLeadsList, useLeadStats } from '@/lib/hooks/use-leads';
@@ -29,6 +29,7 @@ import {
   CLASSIFICATION_LABELS,
   type ClientClassification,
 } from '@/lib/types/client';
+import { Link } from '@/i18n/navigation';
 
 const CLASSIFICATION_COLORS: Record<ClientClassification, string> = {
   NEW: '#0ea5e9',
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   const stats = useLeadStats();
   const clientStats = useClientStats();
   const recent = useLeadsList({ limit: 5, sort: 'createdAt', order: 'desc' });
+  const t = useTranslations();
 
   const classificationData = (clientStats.data?.byClassification ?? []).map(
     (row) => ({
@@ -97,24 +99,31 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-abak-blue">Overview</h1>
+        <h1 className="text-2xl font-bold text-abak-blue">
+          {t('dashboard.title')}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Lead health at a glance. Pipeline, quote, and marketing widgets land
-          with their respective sprints.
+          {t('dashboard.subtitle')}
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total leads" value={total} />
-        <KpiCard label="New today" value={today} highlight />
-        <KpiCard label="Overdue SLA" value={overdue} danger />
-        <KpiCard label="Conversion rate" value={conversionRate} />
+        <KpiCard label={t('dashboard.kpi.totalLeads')} value={total} />
+        <KpiCard label={t('dashboard.kpi.newToday')} value={today} highlight />
+        <KpiCard label={t('dashboard.kpi.overdueSla')} value={overdue} danger />
+        <KpiCard
+          label={t('dashboard.kpi.conversionRate')}
+          value={conversionRate}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total clients" value={clientStats.data?.total ?? '—'} />
         <KpiCard
-          label="VIP clients"
+          label={t('dashboard.kpi.totalClients')}
+          value={clientStats.data?.total ?? '—'}
+        />
+        <KpiCard
+          label={t('dashboard.kpi.vipClients')}
           value={
             clientStats.data?.byClassification.find(
               (r) => r.classification === 'VIP',
@@ -123,7 +132,7 @@ export default function DashboardPage() {
           highlight
         />
         <KpiCard
-          label="Dormant clients"
+          label={t('dashboard.kpi.dormantClients')}
           value={
             clientStats.data?.byClassification.find(
               (r) => r.classification === 'DORMANT',
@@ -131,10 +140,10 @@ export default function DashboardPage() {
           }
         />
         <KpiCard
-          label="Avg. lifetime value"
+          label={t('dashboard.kpi.avgLifetimeValue')}
           value={
             clientStats.data
-              ? `${Math.round(clientStats.data.averageLifetimeValue).toLocaleString()} SAR`
+              ? `${Math.round(clientStats.data.averageLifetimeValue).toLocaleString()} ${t('units.sar')}`
               : '—'
           }
         />
@@ -143,7 +152,9 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads by status</CardTitle>
+            <CardTitle className="text-base">
+              {t('dashboard.charts.leadsByStatus')}
+            </CardTitle>
           </CardHeader>
           <CardContent className="h-[280px]">
             {statusData.length === 0 ? (
@@ -176,7 +187,9 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Leads by channel</CardTitle>
+            <CardTitle className="text-base">
+              {t('dashboard.charts.leadsByChannel')}
+            </CardTitle>
           </CardHeader>
           <CardContent className="h-[280px]">
             {channelData.length === 0 ? (
@@ -206,7 +219,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Clients by classification
+              {t('dashboard.charts.clientsByClassification')}
             </CardTitle>
           </CardHeader>
           <CardContent className="h-[260px]">
@@ -239,7 +252,9 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">SLA compliance</CardTitle>
+            <CardTitle className="text-base">
+              {t('dashboard.charts.slaCompliance')}
+            </CardTitle>
           </CardHeader>
           <CardContent className="h-[240px]">
             {slaData.length === 0 ? (
@@ -271,17 +286,23 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Recent leads</CardTitle>
+            <CardTitle className="text-base">
+              {t('dashboard.charts.recentLeads')}
+            </CardTitle>
             <Button asChild size="sm" variant="ghost">
-              <Link href="/leads">View all</Link>
+              <Link href="/leads">{t('common.viewAll')}</Link>
             </Button>
           </CardHeader>
           <CardContent>
             {recent.isLoading && (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <div className="text-sm text-muted-foreground">
+                {t('common.loading')}
+              </div>
             )}
             {!recent.isLoading && recent.data?.data.length === 0 && (
-              <div className="text-sm text-muted-foreground">No leads yet.</div>
+              <div className="text-sm text-muted-foreground">
+                {t('dashboard.noLeads')}
+              </div>
             )}
             <ul className="space-y-2">
               {recent.data?.data.map((lead) => (
@@ -348,9 +369,10 @@ function KpiCard({
 }
 
 function EmptyChart() {
+  const t = useTranslations();
   return (
     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-      No data yet.
+      {t('common.noDataYet')}
     </div>
   );
 }

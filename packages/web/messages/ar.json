@@ -1,0 +1,211 @@
+{
+  "common": {
+    "appName": "نظام أباك",
+    "appTagline": "منصة إدارة الاستشارات الهندسية",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "loading": "جارٍ التحميل...",
+    "empty": "لا توجد بيانات",
+    "noDataYet": "لا توجد بيانات حتى الآن.",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "viewAll": "عرض الكل",
+    "required": "حقل مطلوب",
+    "optional": "اختياري",
+    "yes": "نعم",
+    "no": "لا",
+    "language": "اللغة",
+    "arabic": "العربية",
+    "english": "الإنجليزية",
+    "signOut": "تسجيل الخروج",
+    "signIn": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "error": "خطأ",
+    "success": "تم بنجاح",
+    "retry": "إعادة المحاولة",
+    "openNavigation": "فتح القائمة",
+    "navigation": "التنقل"
+  },
+  "nav": {
+    "admin": "الإدارة",
+    "overview": "نظرة عامة",
+    "leads": "العملاء المحتملون",
+    "clients": "العملاء",
+    "pipeline": "خط المبيعات",
+    "quotes": "عروض الأسعار",
+    "marketing": "التسويق",
+    "services": "الخدمات",
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "holidays": "العطلات الرسمية",
+    "adminSettings": "إعدادات النظام"
+  },
+  "profile": {
+    "title": "الإعدادات الشخصية",
+    "subtitle": "تخصيص اللغة والتقويم والإشعارات.",
+    "personalHeading": "المعلومات الشخصية",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "phone": "رقم الهاتف",
+    "localizationHeading": "اللغة والتقويم",
+    "language": "لغة الواجهة",
+    "calendar": "نظام التقويم",
+    "calendarGregorian": "ميلادي",
+    "calendarHijri": "هجري",
+    "calendarBoth": "ميلادي + هجري",
+    "numerals": "نظام الأرقام",
+    "numeralsLatin": "1234",
+    "numeralsArabicIndic": "١٢٣٤",
+    "timezone": "المنطقة الزمنية",
+    "notificationsHeading": "الإشعارات",
+    "quietHoursStart": "بداية ساعات الهدوء",
+    "quietHoursEnd": "نهاية ساعات الهدوء",
+    "quietHoursHelper": "لن يتم إرسال إشعارات فورية خلال هذه الفترة.",
+    "todayPreview": "تاريخ اليوم",
+    "sampleAmount": "عيّنة المبلغ",
+    "saveSuccess": "تم حفظ التفضيلات.",
+    "saveFailed": "تعذر حفظ التفضيلات."
+  },
+  "home": {
+    "title": "نظام أباك لإدارة الموارد",
+    "subtitle": "منصة إدارة الاستشارات الهندسية",
+    "loginCta": "تسجيل الدخول",
+    "dashboardCta": "لوحة التحكم",
+    "registerCta": "إنشاء حساب",
+    "sampleIdLabel": "معرّف عيّنة (من <code>shared-utils</code>):"
+  },
+  "auth": {
+    "loginTitle": "تسجيل الدخول",
+    "loginSubtitle": "قم بتسجيل الدخول إلى حسابك في نظام أباك.",
+    "emailLabel": "البريد الإلكتروني",
+    "emailPlaceholder": "you@abak.com.sa",
+    "passwordLabel": "كلمة المرور",
+    "passwordPlaceholder": "••••••••",
+    "submitLogin": "تسجيل الدخول",
+    "submittingLogin": "جارٍ تسجيل الدخول...",
+    "noAccount": "لا يوجد حساب؟",
+    "signInLink": "تسجيل الدخول",
+    "registerLink": "إنشاء حساب",
+    "loginFailed": "فشل تسجيل الدخول. تحقق من بيانات الاعتماد.",
+    "devCredentials": "بيانات اعتماد التطوير: admin@abak.com / Password123!",
+    "registerTitle": "إنشاء حساب",
+    "registerSubtitle": "أنشئ حساباً جديداً في نظام أباك.",
+    "firstNameLabel": "الاسم الأول",
+    "lastNameLabel": "اسم العائلة",
+    "phoneLabel": "رقم الهاتف (اختياري)",
+    "submitRegister": "إنشاء الحساب",
+    "submittingRegister": "جارٍ إنشاء الحساب...",
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "registerFailed": "فشل إنشاء الحساب.",
+    "asideHeading": "الاستشارات الهندسية، مُنظَّمة.",
+    "asideDescription": "العملاء المحتملون، وإدارة العلاقات، وخطوط المبيعات، والعروض، والتسويق — في نظام واحد.",
+    "copyright": "© {year} أباك للاستشارات الهندسية"
+  },
+  "dashboard": {
+    "title": "نظرة عامة",
+    "subtitle": "الحالة الصحية للعملاء المحتملين باختصار. ستتم إضافة خطوط المبيعات والعروض والتسويق في مراحل التطوير التالية.",
+    "kpi": {
+      "totalLeads": "إجمالي العملاء المحتملين",
+      "newToday": "الجدد اليوم",
+      "overdueSla": "تجاوز SLA",
+      "conversionRate": "نسبة التحويل",
+      "totalClients": "إجمالي العملاء",
+      "vipClients": "عملاء VIP",
+      "dormantClients": "عملاء خاملون",
+      "avgLifetimeValue": "متوسط القيمة الدائمة"
+    },
+    "charts": {
+      "leadsByStatus": "العملاء المحتملون حسب الحالة",
+      "leadsByChannel": "العملاء المحتملون حسب القناة",
+      "clientsByClassification": "العملاء حسب التصنيف",
+      "slaCompliance": "الالتزام بـ SLA",
+      "recentLeads": "آخر العملاء المحتملين"
+    },
+    "noLeads": "لا يوجد عملاء محتملون حتى الآن."
+  },
+  "lead": {
+    "status": {
+      "NEW": "جديد",
+      "ASSIGNED": "تم الإسناد",
+      "CONTACTED": "تم التواصل",
+      "QUALIFIED": "مؤهل",
+      "UNQUALIFIED": "غير مؤهل",
+      "CONVERTED": "تم التحويل",
+      "LOST": "خاسر",
+      "DUPLICATE": "مكرر"
+    },
+    "channel": {
+      "CH_GOV": "مناقصات حكومية",
+      "CH_REF": "إحالة",
+      "CH_WIN": "زيارة مباشرة",
+      "CH_SOC": "وسائل التواصل",
+      "CH_WEB": "الموقع الإلكتروني",
+      "CH_MAP": "خرائط جوجل",
+      "CH_AI": "روبوت الدردشة الذكي"
+    },
+    "sla": {
+      "ON_TIME": "في الوقت",
+      "DUE_SOON": "يقترب موعد الاستحقاق",
+      "OVERDUE": "متأخر"
+    }
+  },
+  "client": {
+    "classification": {
+      "NEW": "جديد",
+      "RETURNING": "عائد",
+      "VIP": "كبار العملاء",
+      "DORMANT": "خامل",
+      "ARCHIVED": "مؤرشف"
+    }
+  },
+  "units": {
+    "sar": "ر.س"
+  },
+  "adminSettings": {
+    "title": "إعدادات النظام",
+    "subtitle": "حدود SLA والنسب والتفضيلات الافتراضية.",
+    "category": {
+      "sla": "اتفاقيات مستوى الخدمة",
+      "pipeline": "خط المبيعات",
+      "crm": "إدارة العملاء",
+      "approval": "الموافقات",
+      "commission": "العمولات",
+      "finance": "المالية",
+      "localization": "اللغة والتقويم",
+      "notifications": "الإشعارات",
+      "assignment": "التخصيص التلقائي",
+      "other": "أخرى"
+    },
+    "default": "القيمة الافتراضية",
+    "resetToDefault": "إعادة للافتراضي",
+    "viewHistory": "سجل التغييرات",
+    "updatedAt": "آخر تحديث",
+    "saveSuccess": "تم حفظ الإعداد.",
+    "saveFailed": "تعذر حفظ الإعداد.",
+    "editable": "قابل للتعديل بواسطة",
+    "min": "الحد الأدنى",
+    "max": "الحد الأقصى"
+  },
+  "holidays": {
+    "title": "العطلات الرسمية",
+    "subtitle": "يتم استبعاد هذه التواريخ من حسابات أيام العمل.",
+    "date": "التاريخ",
+    "nameAr": "الاسم بالعربية",
+    "nameEn": "الاسم بالإنجليزية",
+    "recurring": "متكرر سنوياً",
+    "addNew": "إضافة عطلة"
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع. حاول مرة أخرى.",
+    "network": "فشل الاتصال بالخادم."
+  }
+}

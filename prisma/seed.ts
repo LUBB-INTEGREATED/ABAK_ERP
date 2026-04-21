@@ -39,6 +39,7 @@ async function main() {
   await prisma.client.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.publicHoliday.deleteMany();
   await prisma.systemSetting.deleteMany();
   await prisma.service.deleteMany();
   await prisma.serviceCategory.deleteMany();
@@ -95,160 +96,501 @@ async function main() {
   console.log(`✅ Created 4 users (default password: ${DEFAULT_PASSWORD})`);
 
   console.log('Creating service categories...');
-  const structural = await prisma.serviceCategory.create({
+  const design = await prisma.serviceCategory.create({
     data: {
-      name: 'Structural Engineering',
-      description: 'Structural design and analysis services',
-      icon: 'building',
+      name: 'Design',
+      nameAr: 'التصميم',
+      description: 'Architectural, structural, MEP, interior, landscape design',
+      icon: 'blueprint',
       order: 1,
     },
   });
 
-  const architectural = await prisma.serviceCategory.create({
+  const planning = await prisma.serviceCategory.create({
     data: {
-      name: 'Architectural Design',
-      description: 'Architectural design and planning services',
-      icon: 'blueprint',
+      name: 'Planning',
+      nameAr: 'التخطيط والدراسات',
+      description: 'Urban planning, feasibility, studies & consultations',
+      icon: 'map',
       order: 2,
     },
   });
 
-  const mep = await prisma.serviceCategory.create({
+  const supervision = await prisma.serviceCategory.create({
     data: {
-      name: 'MEP Engineering',
-      description: 'Mechanical, Electrical, and Plumbing services',
-      icon: 'settings',
+      name: 'Supervision & Management',
+      nameAr: 'الإشراف والإدارة',
+      description: 'Project supervision, project management, permits',
+      icon: 'hard-hat',
       order: 3,
     },
   });
   console.log('✅ Created 3 service categories');
 
-  console.log('Creating services...');
+  console.log('Creating services (SRV-01..SRV-11)...');
   const services = await prisma.service.createMany({
     data: [
       {
-        categoryId: structural.id,
-        name: 'Structural Design & Calculations',
-        description:
-          'Complete structural design and calculations for buildings',
-        code: 'STRUCT-001',
-        basePrice: 50000,
-        unit: 'per project',
-      },
-      {
-        categoryId: structural.id,
-        name: 'Foundation Design',
-        description: 'Foundation design and soil analysis',
-        code: 'STRUCT-002',
-        basePrice: 25000,
-        unit: 'per project',
-      },
-      {
-        categoryId: structural.id,
-        name: 'Structural Inspection',
-        description: 'On-site structural inspection and reporting',
-        code: 'STRUCT-003',
-        basePrice: 5000,
-        unit: 'per visit',
-      },
-      {
-        categoryId: architectural.id,
+        categoryId: design.id,
+        code: 'SRV-01',
         name: 'Architectural Design',
-        description: 'Complete architectural design and planning',
-        code: 'ARCH-001',
-        basePrice: 60000,
+        nameEn: 'Architectural Design',
+        nameAr: 'التصميم المعماري',
         unit: 'per project',
       },
       {
-        categoryId: architectural.id,
-        name: '3D Visualization',
-        description: '3D rendering and visualization services',
-        code: 'ARCH-002',
-        basePrice: 15000,
+        categoryId: design.id,
+        code: 'SRV-02',
+        name: 'Structural Design',
+        nameEn: 'Structural Design',
+        nameAr: 'التصميم الإنشائي',
         unit: 'per project',
       },
       {
-        categoryId: mep.id,
+        categoryId: design.id,
+        code: 'SRV-03',
         name: 'MEP Design',
-        description: 'Mechanical, Electrical, and Plumbing design',
-        code: 'MEP-001',
-        basePrice: 45000,
+        nameEn: 'MEP Design',
+        nameAr: 'تصميم MEP',
         unit: 'per project',
       },
       {
-        categoryId: mep.id,
-        name: 'Energy Efficiency Analysis',
-        description: 'Energy efficiency and sustainability analysis',
-        code: 'MEP-002',
-        basePrice: 20000,
+        categoryId: design.id,
+        code: 'SRV-04',
+        name: 'Interior Design',
+        nameEn: 'Interior Design',
+        nameAr: 'التصميم الداخلي',
         unit: 'per project',
+      },
+      {
+        categoryId: design.id,
+        code: 'SRV-05',
+        name: 'Landscape Design',
+        nameEn: 'Landscape Design',
+        nameAr: 'تصميم المناظر الطبيعية',
+        unit: 'per project',
+      },
+      {
+        categoryId: planning.id,
+        code: 'SRV-06',
+        name: 'Urban Planning',
+        nameEn: 'Urban Planning',
+        nameAr: 'التخطيط العمراني',
+        unit: 'per project',
+      },
+      {
+        categoryId: supervision.id,
+        code: 'SRV-07',
+        name: 'Project Supervision',
+        nameEn: 'Project Supervision',
+        nameAr: 'الإشراف على المشاريع',
+        unit: 'per project',
+      },
+      {
+        categoryId: supervision.id,
+        code: 'SRV-08',
+        name: 'Project Management',
+        nameEn: 'Project Management',
+        nameAr: 'إدارة المشاريع',
+        unit: 'per project',
+      },
+      {
+        categoryId: planning.id,
+        code: 'SRV-09',
+        name: 'Studies & Consultations',
+        nameEn: 'Studies & Consultations',
+        nameAr: 'الدراسات والاستشارات',
+        unit: 'per engagement',
+      },
+      {
+        categoryId: supervision.id,
+        code: 'SRV-10',
+        name: 'Municipal & Gov Permits',
+        nameEn: 'Municipal & Gov Permits',
+        nameAr: 'التراخيص البلدية والحكومية',
+        unit: 'per permit',
+      },
+      {
+        categoryId: planning.id,
+        code: 'SRV-11',
+        name: 'Feasibility Studies',
+        nameEn: 'Feasibility Studies',
+        nameAr: 'دراسات الجدوى',
+        unit: 'per study',
       },
     ],
   });
-  console.log(`✅ Created ${services.count} services`);
+  console.log(`✅ Created ${services.count} services (SRV-01..SRV-11)`);
 
   console.log('Creating system settings...');
   await prisma.systemSetting.createMany({
     data: [
+      // SLA
       {
-        key: 'sla_lead_response_hours',
+        key: 'sla_lead_assignment_hours',
+        value: '4',
+        defaultValue: '4',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'مدة تخصيص العميل المحتمل (ساعة)',
+        labelEn: 'Lead assignment SLA (hours)',
+        descriptionAr: 'المدة القصوى قبل تصعيد عدم تخصيص العميل المحتمل.',
+        descriptionEn: 'Maximum time before an unassigned lead is escalated.',
+        minValue: 1,
+        maxValue: 48,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'sla_first_contact_hours',
         value: '24',
+        defaultValue: '24',
         type: SettingType.NUMBER,
         category: 'sla',
-        description: 'Hours before lead requires response',
+        labelAr: 'مدة أول تواصل (ساعة)',
+        labelEn: 'First contact SLA (hours)',
+        minValue: 1,
+        maxValue: 168,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
-        key: 'sla_quote_delivery_days',
-        value: '7',
+        key: 'sla_quote_approval_level1_hours',
+        value: '24',
+        defaultValue: '24',
         type: SettingType.NUMBER,
         category: 'sla',
-        description: 'Days to deliver quote after RFQ',
+        labelAr: 'SLA موافقة العرض - المستوى 1 (ساعة)',
+        labelEn: 'Quote approval SLA L1 (hours)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
-        key: 'approval_threshold_tier1',
-        value: '50000',
+        key: 'sla_quote_approval_level2_hours',
+        value: '48',
+        defaultValue: '48',
         type: SettingType.NUMBER,
-        category: 'approval',
-        description: 'Quote value requiring manager approval (SAR)',
+        category: 'sla',
+        labelAr: 'SLA موافقة العرض - المستوى 2 (ساعة)',
+        labelEn: 'Quote approval SLA L2 (hours)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
-        key: 'approval_threshold_tier2',
-        value: '200000',
+        key: 'sla_payment_validation_hours',
+        value: '24',
+        defaultValue: '24',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'SLA التحقق من الدفع (ساعة)',
+        labelEn: 'Payment validation SLA (hours)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'sla_invoice_auto_issue_hours',
+        value: '48',
+        defaultValue: '48',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'إصدار الفاتورة التلقائي (ساعة)',
+        labelEn: 'Invoice auto-issue window (hours)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      // Pipeline / CRM
+      {
+        key: 'pipeline_stuck_lead_days',
+        value: '14',
+        defaultValue: '14',
+        type: SettingType.NUMBER,
+        category: 'pipeline',
+        labelAr: 'أيام العميل المتوقف (يوم)',
+        labelEn: 'Stuck lead threshold (days)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'crm_dormant_days',
+        value: '180',
+        defaultValue: '180',
+        type: SettingType.NUMBER,
+        category: 'crm',
+        labelAr: 'أيام خمول العميل (يوم)',
+        labelEn: 'Client dormant threshold (days)',
+        minValue: 30,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'crm_followup_overdue_threshold_days',
+        value: '3',
+        defaultValue: '3',
+        type: SettingType.NUMBER,
+        category: 'crm',
+        labelAr: 'حد تأخر المتابعة (يوم)',
+        labelEn: 'Follow-up overdue threshold (days)',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      // Approval thresholds
+      {
+        key: 'approval_quote_level2_threshold',
+        value: '500000',
+        defaultValue: '500000',
         type: SettingType.NUMBER,
         category: 'approval',
-        description: 'Quote value requiring senior management approval (SAR)',
+        labelAr: 'حد موافقة المستوى 2 (ريال)',
+        labelEn: 'Level 2 approval threshold (SAR)',
+        minValue: 0,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
+      // Commission
+      {
+        key: 'commission_rate_broker_default',
+        value: '3',
+        defaultValue: '3',
+        type: SettingType.NUMBER,
+        category: 'commission',
+        labelAr: 'نسبة عمولة الوسيط الافتراضية (%)',
+        labelEn: 'Default broker commission rate (%)',
+        minValue: 0,
+        maxValue: 20,
+        editableByRoles: ['SUPER_ADMIN', 'FINANCE_MANAGER'],
+      },
+      {
+        key: 'commission_rate_salesrep_default',
+        value: '2',
+        defaultValue: '2',
+        type: SettingType.NUMBER,
+        category: 'commission',
+        labelAr: 'نسبة عمولة المندوب الافتراضية (%)',
+        labelEn: 'Default sales rep commission rate (%)',
+        minValue: 0,
+        maxValue: 20,
+        editableByRoles: ['SUPER_ADMIN', 'FINANCE_MANAGER'],
+      },
+      // Finance
+      {
+        key: 'vat_rate_standard',
+        value: '15',
+        defaultValue: '15',
+        type: SettingType.NUMBER,
+        category: 'finance',
+        labelAr: 'نسبة ضريبة القيمة المضافة (%)',
+        labelEn: 'Standard VAT rate (%)',
+        minValue: 0,
+        maxValue: 30,
+        editableByRoles: ['SUPER_ADMIN', 'FINANCE_MANAGER'],
+      },
+      // Localization
+      {
+        key: 'default_locale',
+        value: 'ar-SA',
+        defaultValue: 'ar-SA',
+        type: SettingType.STRING,
+        category: 'localization',
+        labelAr: 'اللغة الافتراضية',
+        labelEn: 'Default locale',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'default_calendar_display',
+        value: 'BOTH',
+        defaultValue: 'BOTH',
+        type: SettingType.STRING,
+        category: 'localization',
+        labelAr: 'عرض التقويم الافتراضي',
+        labelEn: 'Default calendar display',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'default_timezone',
+        value: 'Asia/Riyadh',
+        defaultValue: 'Asia/Riyadh',
+        type: SettingType.STRING,
+        category: 'localization',
+        labelAr: 'المنطقة الزمنية الافتراضية',
+        labelEn: 'Default timezone',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'week_start_day',
+        value: 'SUNDAY',
+        defaultValue: 'SUNDAY',
+        type: SettingType.STRING,
+        category: 'localization',
+        labelAr: 'أول أيام الأسبوع',
+        labelEn: 'Week start day',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      // Notifications
       {
         key: 'notification_email_enabled',
         value: 'true',
+        defaultValue: 'true',
         type: SettingType.BOOLEAN,
-        category: 'notification',
-        description: 'Enable email notifications',
+        category: 'notifications',
+        labelAr: 'تفعيل إشعارات البريد الإلكتروني',
+        labelEn: 'Enable email notifications',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
         key: 'notification_whatsapp_enabled',
         value: 'false',
+        defaultValue: 'false',
         type: SettingType.BOOLEAN,
-        category: 'notification',
-        description: 'Enable WhatsApp notifications',
+        category: 'notifications',
+        labelAr: 'تفعيل إشعارات واتساب',
+        labelEn: 'Enable WhatsApp notifications',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
+      {
+        key: 'notification_quiet_hours_start',
+        value: '22',
+        defaultValue: '22',
+        type: SettingType.NUMBER,
+        category: 'notifications',
+        labelAr: 'بداية ساعات الهدوء',
+        labelEn: 'Quiet hours start',
+        minValue: 0,
+        maxValue: 23,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'notification_quiet_hours_end',
+        value: '7',
+        defaultValue: '7',
+        type: SettingType.NUMBER,
+        category: 'notifications',
+        labelAr: 'نهاية ساعات الهدوء',
+        labelEn: 'Quiet hours end',
+        minValue: 0,
+        maxValue: 23,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      // Assignment
       {
         key: 'lead_auto_assign_strategy',
         value: 'round_robin',
+        defaultValue: 'round_robin',
         type: SettingType.STRING,
         category: 'assignment',
-        description: 'Lead auto-assign: off | round_robin | load_based',
+        labelAr: 'استراتيجية التخصيص التلقائي',
+        labelEn: 'Auto-assign strategy',
+        descriptionAr: 'off | round_robin | load_based',
+        descriptionEn: 'off | round_robin | load_based',
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
       },
     ],
   });
-  console.log('✅ Created 7 system settings');
+  console.log('✅ Created 22 system settings');
+
+  console.log('Seeding Saudi public holidays (2026-2027)...');
+  const d = (isoDate: string) => new Date(`${isoDate}T00:00:00.000Z`);
+  await prisma.publicHoliday.createMany({
+    data: [
+      {
+        date: d('2026-02-22'),
+        nameAr: 'يوم التأسيس',
+        nameEn: 'Saudi Founding Day',
+        isRecurring: true,
+      },
+      {
+        date: d('2026-03-20'),
+        nameAr: 'عيد الفطر - اليوم الأول',
+        nameEn: 'Eid al-Fitr — Day 1',
+      },
+      {
+        date: d('2026-03-21'),
+        nameAr: 'عيد الفطر - اليوم الثاني',
+        nameEn: 'Eid al-Fitr — Day 2',
+      },
+      {
+        date: d('2026-03-22'),
+        nameAr: 'عيد الفطر - اليوم الثالث',
+        nameEn: 'Eid al-Fitr — Day 3',
+      },
+      {
+        date: d('2026-05-27'),
+        nameAr: 'عيد الأضحى - اليوم الأول',
+        nameEn: 'Eid al-Adha — Day 1',
+      },
+      {
+        date: d('2026-05-28'),
+        nameAr: 'عيد الأضحى - اليوم الثاني',
+        nameEn: 'Eid al-Adha — Day 2',
+      },
+      {
+        date: d('2026-05-29'),
+        nameAr: 'عيد الأضحى - اليوم الثالث',
+        nameEn: 'Eid al-Adha — Day 3',
+      },
+      {
+        date: d('2026-05-30'),
+        nameAr: 'عيد الأضحى - اليوم الرابع',
+        nameEn: 'Eid al-Adha — Day 4',
+      },
+      {
+        date: d('2026-09-23'),
+        nameAr: 'اليوم الوطني',
+        nameEn: 'Saudi National Day',
+        isRecurring: true,
+      },
+      {
+        date: d('2027-02-22'),
+        nameAr: 'يوم التأسيس',
+        nameEn: 'Saudi Founding Day',
+        isRecurring: true,
+      },
+      {
+        date: d('2027-03-09'),
+        nameAr: 'عيد الفطر - اليوم الأول',
+        nameEn: 'Eid al-Fitr — Day 1',
+      },
+      {
+        date: d('2027-03-10'),
+        nameAr: 'عيد الفطر - اليوم الثاني',
+        nameEn: 'Eid al-Fitr — Day 2',
+      },
+      {
+        date: d('2027-03-11'),
+        nameAr: 'عيد الفطر - اليوم الثالث',
+        nameEn: 'Eid al-Fitr — Day 3',
+      },
+      {
+        date: d('2027-05-16'),
+        nameAr: 'عيد الأضحى - اليوم الأول',
+        nameEn: 'Eid al-Adha — Day 1',
+      },
+      {
+        date: d('2027-05-17'),
+        nameAr: 'عيد الأضحى - اليوم الثاني',
+        nameEn: 'Eid al-Adha — Day 2',
+      },
+      {
+        date: d('2027-05-18'),
+        nameAr: 'عيد الأضحى - اليوم الثالث',
+        nameEn: 'Eid al-Adha — Day 3',
+      },
+      {
+        date: d('2027-05-19'),
+        nameAr: 'عيد الأضحى - اليوم الرابع',
+        nameEn: 'Eid al-Adha — Day 4',
+      },
+      {
+        date: d('2027-09-23'),
+        nameAr: 'اليوم الوطني',
+        nameEn: 'Saudi National Day',
+        isRecurring: true,
+      },
+    ],
+  });
+  console.log('✅ Seeded 18 Saudi public holidays');
 
   console.log('Creating sample leads...');
   const salesRep = await prisma.user.findFirst({
     where: { role: UserRole.SALES_REPRESENTATIVE },
   });
   const structuralService = await prisma.service.findUnique({
-    where: { code: 'STRUCT-001' },
+    where: { code: 'SRV-02' },
   });
   const year = new Date().getFullYear();
   const hour = 60 * 60 * 1000;

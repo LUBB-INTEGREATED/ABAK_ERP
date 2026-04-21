@@ -1,12 +1,14 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/lib/auth';
+import { useRouter } from '@/i18n/navigation';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const t = useTranslations();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -17,7 +19,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-off-white">
-        <p className="text-muted-foreground">Redirecting to sign in…</p>
+        <p className="text-muted-foreground">{t('common.loading')}</p>
       </div>
     );
   }

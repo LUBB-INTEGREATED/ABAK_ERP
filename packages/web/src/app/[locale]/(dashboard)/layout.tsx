@@ -1,0 +1,45 @@
+import { useTranslations } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
+import AuthGuard from '@/components/auth-guard';
+import Providers from '@/components/providers';
+import { DesktopSidebar, MobileSidebar } from '@/components/sidebar-nav';
+import { LanguageSwitcher } from '@/components/language-switcher';
+
+export default async function DashboardLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  return (
+    <Providers>
+      <AuthGuard>
+        <DashboardChrome>{children}</DashboardChrome>
+      </AuthGuard>
+    </Providers>
+  );
+}
+
+function DashboardChrome({ children }: { children: React.ReactNode }) {
+  const t = useTranslations();
+  return (
+    <div className="flex min-h-screen bg-off-white">
+      <DesktopSidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-white px-4 py-3 md:hidden">
+          <MobileSidebar />
+          <span className="font-semibold text-abak-blue">
+            {t('common.appName')}
+          </span>
+          <div className="ms-auto">
+            <LanguageSwitcher />
+          </div>
+        </header>
+        <main className="flex-1 p-6">{children}</main>
+      </div>
+    </div>
+  );
+}

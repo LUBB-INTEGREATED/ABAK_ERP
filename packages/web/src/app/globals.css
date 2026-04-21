@@ -76,19 +76,35 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   [dir='rtl'] {
     direction: rtl;
+    line-height: 1.7;
   }
 
   [dir='ltr'] {
     direction: ltr;
   }
+
+  [dir='rtl'] body {
+    font-family: var(--font-cairo), 'Cairo', system-ui, sans-serif;
+  }
+
+  [dir='ltr'] body {
+    font-family:
+      var(--font-inter), var(--font-cairo), 'Inter', system-ui, sans-serif;
+  }
 }
 
 @layer components {
+  .input-base {
+    @apply w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-abak-blue disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
   .btn-primary {
     @apply bg-abak-blue hover:bg-abak-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
   }

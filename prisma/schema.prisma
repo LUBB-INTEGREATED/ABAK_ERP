@@ -23,6 +23,14 @@ model User {
   role   UserRole   @default(SALES_REPRESENTATIVE)
   status UserStatus @default(ACTIVE)
 
+  // Localization preferences (M9-008)
+  preferredLanguage           String @default("ar") // 'ar' | 'en'
+  calendarDisplay             String @default("BOTH") // GREGORIAN | HIJRI | BOTH
+  numeralSystem               String @default("LATIN") // LATIN | ARABIC_INDIC
+  timezone                    String @default("Asia/Riyadh")
+  notificationQuietHoursStart Int?   @default(22)
+  notificationQuietHoursEnd   Int?   @default(7)
+
   emailVerified        Boolean   @default(false)
   resetPasswordToken   String?
   resetPasswordExpires DateTime?
@@ -86,6 +94,7 @@ enum UserStatus {
 model ServiceCategory {
   id          String  @id @default(cuid())
   name        String  @unique
+  nameAr      String?
   description String?
   icon        String?
   order       Int     @default(0)
@@ -103,6 +112,8 @@ model Service {
   id          String  @id @default(cuid())
   categoryId  String
   name        String
+  nameAr      String?
+  nameEn      String?
   description String?
   code        String  @unique
 
@@ -133,11 +144,23 @@ model SystemSetting {
   value String
   type  SettingType @default(STRING)
 
+  labelAr         String?
+  labelEn         String?
+  descriptionAr   String?
+  descriptionEn   String?
+  defaultValue    String?
+  minValue        Float?
+  maxValue        Float?
+  editableByRoles String[] @default([])
+
   description String?
   category    String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  history SettingHistory[]
 
   @@index([category])
   @@map("system_settings")
@@ -148,6 +171,40 @@ enum SettingType {
   NUMBER
   BOOLEAN
   JSON
+}
+
+model SettingHistory {
+  id          String        @id @default(cuid())
+  settingId   String
+  setting     SystemSetting @relation(fields: [settingId], references: [id], onDelete: Cascade)
+  oldValue    String?
+  newValue    String
+  changedById String?
+  changedAt   DateTime      @default(now())
+
+  @@index([settingId])
+  @@index([changedAt])
+  @@map("setting_history")
+}
+
+// ============================================
+// Public Holidays (M9-002)
+// ============================================
+
+model PublicHoliday {
+  id          String   @id @default(cuid())
+  date        DateTime // date-only, stored as UTC midnight
+  nameAr      String
+  nameEn      String
+  isRecurring Boolean  @default(false)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date])
+  @@index([isRecurring])
+  @@map("public_holidays")
 }
 
 // ============================================

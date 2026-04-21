@@ -1,11 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
-import { Toaster } from '@/components/ui/sonner';
-import { PWARegister } from '@/components/pwa-register';
-import { InstallPrompt } from '@/components/install-prompt';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'ABAK ERP - Engineering Consultancy Management',
@@ -35,14 +29,5 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        {children}
-        <Toaster />
-        <PWARegister />
-        <InstallPrompt />
-      </body>
-    </html>
-  );
+  return children;
 }

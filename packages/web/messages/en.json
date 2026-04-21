@@ -1,0 +1,211 @@
+{
+  "common": {
+    "appName": "ABAK ERP",
+    "appTagline": "Engineering Consultancy Management Platform",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "close": "Close",
+    "loading": "Loading...",
+    "empty": "No data",
+    "noDataYet": "No data yet.",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "viewAll": "View all",
+    "required": "Required",
+    "optional": "Optional",
+    "yes": "Yes",
+    "no": "No",
+    "language": "Language",
+    "arabic": "Arabic",
+    "english": "English",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "register": "Register",
+    "error": "Error",
+    "success": "Success",
+    "retry": "Retry",
+    "openNavigation": "Open navigation",
+    "navigation": "Navigation"
+  },
+  "nav": {
+    "admin": "Admin",
+    "overview": "Overview",
+    "leads": "Leads",
+    "clients": "Clients",
+    "pipeline": "Pipeline",
+    "quotes": "Quotes",
+    "marketing": "Marketing",
+    "services": "Services",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "settings": "Settings",
+    "holidays": "Public holidays",
+    "adminSettings": "System settings"
+  },
+  "profile": {
+    "title": "Personal settings",
+    "subtitle": "Customise language, calendar, and notifications.",
+    "personalHeading": "Personal information",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "phone": "Phone",
+    "localizationHeading": "Language & calendar",
+    "language": "Interface language",
+    "calendar": "Calendar system",
+    "calendarGregorian": "Gregorian",
+    "calendarHijri": "Hijri",
+    "calendarBoth": "Gregorian + Hijri",
+    "numerals": "Numeral system",
+    "numeralsLatin": "1234",
+    "numeralsArabicIndic": "١٢٣٤",
+    "timezone": "Timezone",
+    "notificationsHeading": "Notifications",
+    "quietHoursStart": "Quiet hours start",
+    "quietHoursEnd": "Quiet hours end",
+    "quietHoursHelper": "Push notifications are suppressed during this window.",
+    "todayPreview": "Today",
+    "sampleAmount": "Sample amount",
+    "saveSuccess": "Preferences saved.",
+    "saveFailed": "Could not save preferences."
+  },
+  "home": {
+    "title": "ABAK ERP System",
+    "subtitle": "Engineering Consultancy Management Platform",
+    "loginCta": "Login",
+    "dashboardCta": "Dashboard",
+    "registerCta": "Register",
+    "sampleIdLabel": "Sample entity ID (from <code>shared-utils</code>):"
+  },
+  "auth": {
+    "loginTitle": "Login",
+    "loginSubtitle": "Sign in to your ABAK ERP account.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@abak.com.sa",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "submitLogin": "Sign in",
+    "submittingLogin": "Signing in…",
+    "noAccount": "No account?",
+    "signInLink": "Sign in",
+    "registerLink": "Register",
+    "loginFailed": "Login failed. Check your credentials.",
+    "devCredentials": "Dev credentials: admin@abak.com / Password123!",
+    "registerTitle": "Register",
+    "registerSubtitle": "Create a new ABAK ERP account.",
+    "firstNameLabel": "First name",
+    "lastNameLabel": "Last name",
+    "phoneLabel": "Phone (optional)",
+    "submitRegister": "Create account",
+    "submittingRegister": "Creating account…",
+    "alreadyHaveAccount": "Already have an account?",
+    "registerFailed": "Registration failed.",
+    "asideHeading": "Engineering Consultancy, organised.",
+    "asideDescription": "Leads, CRM, pipelines, quotations, and marketing — one system.",
+    "copyright": "© {year} ABAK Engineering Consultancy"
+  },
+  "dashboard": {
+    "title": "Overview",
+    "subtitle": "Lead health at a glance. Pipeline, quote, and marketing widgets land with their respective sprints.",
+    "kpi": {
+      "totalLeads": "Total leads",
+      "newToday": "New today",
+      "overdueSla": "Overdue SLA",
+      "conversionRate": "Conversion rate",
+      "totalClients": "Total clients",
+      "vipClients": "VIP clients",
+      "dormantClients": "Dormant clients",
+      "avgLifetimeValue": "Avg. lifetime value"
+    },
+    "charts": {
+      "leadsByStatus": "Leads by status",
+      "leadsByChannel": "Leads by channel",
+      "clientsByClassification": "Clients by classification",
+      "slaCompliance": "SLA compliance",
+      "recentLeads": "Recent leads"
+    },
+    "noLeads": "No leads yet."
+  },
+  "lead": {
+    "status": {
+      "NEW": "New",
+      "ASSIGNED": "Assigned",
+      "CONTACTED": "Contacted",
+      "QUALIFIED": "Qualified",
+      "UNQUALIFIED": "Unqualified",
+      "CONVERTED": "Converted",
+      "LOST": "Lost",
+      "DUPLICATE": "Duplicate"
+    },
+    "channel": {
+      "CH_GOV": "Government",
+      "CH_REF": "Referral",
+      "CH_WIN": "Walk-in",
+      "CH_SOC": "Social",
+      "CH_WEB": "Website",
+      "CH_MAP": "Google Maps",
+      "CH_AI": "AI Chatbot"
+    },
+    "sla": {
+      "ON_TIME": "On time",
+      "DUE_SOON": "Due soon",
+      "OVERDUE": "Overdue"
+    }
+  },
+  "client": {
+    "classification": {
+      "NEW": "New",
+      "RETURNING": "Returning",
+      "VIP": "VIP",
+      "DORMANT": "Dormant",
+      "ARCHIVED": "Archived"
+    }
+  },
+  "units": {
+    "sar": "SAR"
+  },
+  "adminSettings": {
+    "title": "System settings",
+    "subtitle": "SLA windows, thresholds, and defaults.",
+    "category": {
+      "sla": "SLA windows",
+      "pipeline": "Pipeline",
+      "crm": "CRM",
+      "approval": "Approvals",
+      "commission": "Commissions",
+      "finance": "Finance",
+      "localization": "Language & calendar",
+      "notifications": "Notifications",
+      "assignment": "Auto-assignment",
+      "other": "Other"
+    },
+    "default": "Default",
+    "resetToDefault": "Reset to default",
+    "viewHistory": "History",
+    "updatedAt": "Updated",
+    "saveSuccess": "Setting saved.",
+    "saveFailed": "Could not save setting.",
+    "editable": "Editable by",
+    "min": "Min",
+    "max": "Max"
+  },
+  "holidays": {
+    "title": "Public holidays",
+    "subtitle": "These dates are excluded from working-day calculations.",
+    "date": "Date",
+    "nameAr": "Arabic name",
+    "nameEn": "English name",
+    "recurring": "Recurring yearly",
+    "addNew": "Add holiday"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Failed to reach the server."
+  }
+}

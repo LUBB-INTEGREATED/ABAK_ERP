@@ -79,8 +79,22 @@ const config: Config = {
         info: '#3B82F6',
       },
       fontFamily: {
-        sans: ['Inter', 'Cairo', 'system-ui', 'sans-serif'],
-        arabic: ['Cairo', 'sans-serif'],
+        sans: [
+          'var(--font-cairo)',
+          'var(--font-inter)',
+          'Cairo',
+          'Inter',
+          'system-ui',
+          'sans-serif',
+        ],
+        arabic: ['var(--font-cairo)', 'Cairo', 'system-ui', 'sans-serif'],
+        latin: [
+          'var(--font-inter)',
+          'var(--font-cairo)',
+          'Inter',
+          'system-ui',
+          'sans-serif',
+        ],
         mono: ['JetBrains Mono', 'Courier New', 'monospace'],
       },
       borderRadius: {
