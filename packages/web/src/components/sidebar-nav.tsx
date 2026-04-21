@@ -7,6 +7,7 @@ import {
   UsersRound,
   Briefcase,
   FileText,
+  FileSearch,
   Megaphone,
   Blocks,
   Menu,
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/leads', labelKey: 'nav.leads', icon: UsersRound },
   { href: '/clients', labelKey: 'nav.clients', icon: Briefcase },
   { href: '/pipeline', labelKey: 'nav.pipeline', icon: Blocks },
+  { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
   { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
   { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
 ];

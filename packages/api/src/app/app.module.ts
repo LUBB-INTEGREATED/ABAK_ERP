@@ -14,6 +14,7 @@ import { I18nModule } from '../modules/i18n/i18n.module';
 import { LeadsModule } from '../modules/leads/leads.module';
 import { PipelineModule } from '../modules/pipeline/pipeline.module';
 import { QuotesModule } from '../modules/quotes/quotes.module';
+import { RfqsModule } from '../modules/rfqs/rfqs.module';
 import { ServicesModule } from '../modules/services/services.module';
 import { SettingsModule } from '../modules/settings/settings.module';
 import { UsersModule } from '../modules/users/users.module';
@@ -37,6 +38,7 @@ import { AppService } from './app.service';
     ClientsModule,
     PipelineModule,
     QuotesModule,
+    RfqsModule,
     ServicesModule,
     HolidaysModule,
     SettingsModule,

@@ -48,6 +48,11 @@ model User {
   preparedQuotes     Quote[]           @relation("QuotePreparer")
   approvals          QuoteApproval[]   @relation("QuoteApprover")
 
+  coordinatedRfqs     Rfq[] @relation("RfqCoordinator")
+  technicalRfqs       Rfq[] @relation("RfqTechContributor")
+  financialReviewRfqs Rfq[] @relation("RfqFinancialReviewer")
+  originatedRfqs      Rfq[] @relation("RfqOriginalSalesRep")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -366,6 +371,7 @@ model Client {
   pipelineEntries PipelineEntry[]
   fieldVisits     FieldVisit[]
   quotes          Quote[]
+  rfqs            Rfq[]
   purchaseOrders  PurchaseOrder[]
 
   createdAt         DateTime  @default(now())
@@ -540,6 +546,10 @@ model PipelineEntry {
   postponedUntil  DateTime?
 
   transitions StageTransition[]
+  rfq         Rfq?
+
+  nextStep      String?
+  readyForRfqAt DateTime?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -557,6 +567,7 @@ enum PipelineStage {
   NEW_LEAD
   INITIAL_CONTACT
   QUALIFICATION
+  READY_FOR_RFQ
   RFQ_RECEIVED
   QUOTE_SENT
   NEGOTIATION
@@ -699,6 +710,7 @@ model Quote {
   paymentMilestones PaymentMilestone[]
   approvals         QuoteApproval[]
   purchaseOrder     PurchaseOrder?
+  rfq               Rfq?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -857,4 +869,114 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ============================================
+// Module 3 — RFQ (Request For Quotation)  (M3-004)
+// ============================================
+
+model Rfq {
+  id        String @id @default(cuid())
+  rfqNumber String @unique
+
+  opportunityId String        @unique
+  opportunity   PipelineEntry @relation(fields: [opportunityId], references: [id])
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id])
+
+  serviceType  String
+  projectScope String
+  priority     RfqPriority @default(NORMAL)
+
+  requestedByChannel RfqSource
+  brokerName         String?
+  brokerPhone        String?
+
+  coordinatorId         String?
+  coordinator           User?     @relation("RfqCoordinator", fields: [coordinatorId], references: [id])
+  coordinatorAssignedAt DateTime?
+
+  technicalContributorId String?
+  technicalContributor   User?   @relation("RfqTechContributor", fields: [technicalContributorId], references: [id])
+
+  financialReviewerId String?
+  financialReviewer   User?   @relation("RfqFinancialReviewer", fields: [financialReviewerId], references: [id])
+
+  originalSalesRepId String?
+  originalSalesRep   User?   @relation("RfqOriginalSalesRep", fields: [originalSalesRepId], references: [id])
+
+  status RfqStatus @default(RECEIVED)
+
+  quoteId       String?             @unique
+  quote         Quote?              @relation(fields: [quoteId], references: [id])
+  dispatchedAt  DateTime?
+  dispatchedVia RfqDispatchChannel?
+
+  confirmationType   ConfirmationType?
+  confirmationAt     DateTime?
+  confirmationValue  Float?
+  confirmationDocUrl String?
+
+  lostReason     String?
+  postponedUntil DateTime?
+
+  qualityScore  RfqQualityScore @default(PENDING)
+  revisionCount Int             @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([rfqNumber])
+  @@index([clientId])
+  @@index([coordinatorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("rfqs")
+}
+
+enum RfqStatus {
+  RECEIVED
+  ASSIGNED
+  IN_PREPARATION
+  PENDING_APPROVAL
+  APPROVED_READY_FOR_DISPATCH
+  SENT
+  WON
+  LOST
+  POSTPONED
+  CANCELLED
+}
+
+enum RfqSource {
+  SALES_MANAGER
+  INTERNAL_REP
+  BROKER
+  SOCIAL
+  EMAIL
+  WHATSAPP
+}
+
+enum RfqPriority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RfqDispatchChannel {
+  WHATSAPP
+  EMAIL
+}
+
+enum ConfirmationType {
+  PAYMENT
+  PO
+  CONTRACT
+}
+
+enum RfqQualityScore {
+  HIGH
+  MEDIUM
+  LOW
+  PENDING
 }

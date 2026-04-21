@@ -61,6 +61,14 @@ export class CreatePipelineEntryDto {
   @IsOptional()
   @IsDateString()
   expectedCloseAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Next action the owner will take on this opportunity.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  nextStep?: string;
 }
 
 export class UpdatePipelineEntryDto extends PartialType(

@@ -27,6 +27,7 @@ async function main() {
   await prisma.quoteApproval.deleteMany();
   await prisma.paymentMilestone.deleteMany();
   await prisma.quoteItem.deleteMany();
+  await prisma.rfq.deleteMany();
   await prisma.quote.deleteMany();
   await prisma.salesTarget.deleteMany();
   await prisma.fieldVisit.deleteMany();
@@ -40,6 +41,7 @@ async function main() {
   await prisma.refreshToken.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.publicHoliday.deleteMany();
+  await prisma.settingHistory.deleteMany();
   await prisma.systemSetting.deleteMany();
   await prisma.service.deleteMany();
   await prisma.serviceCategory.deleteMany();
@@ -823,6 +825,37 @@ async function main() {
     },
   });
   console.log('✅ Created 3 interactions, 2 follow-ups, 1 note');
+
+  console.log('Creating sample pipeline entry + RFQ...');
+  const pipelineEntry = await prisma.pipelineEntry.create({
+    data: {
+      stage: 'READY_FOR_RFQ',
+      clientId: vipClient.id,
+      ownerId: manager?.id ?? salesRep?.id,
+      estimatedValue: 750000,
+      probability: 60,
+      nextStep: 'Prepare technical + financial response for residential tower',
+      readyForRfqAt: new Date(),
+    },
+  });
+
+  await prisma.rfq.create({
+    data: {
+      rfqNumber: `RFQ-${year}-0001`,
+      opportunityId: pipelineEntry.id,
+      clientId: vipClient.id,
+      serviceType: 'Architectural Design + MEP',
+      projectScope:
+        'Full architectural and MEP design for a 12-floor residential tower in Riyadh, including detailed drawings, BOQ, and coordination with structural consultant.',
+      priority: 'HIGH',
+      requestedByChannel: 'SALES_MANAGER',
+      originalSalesRepId: salesRep?.id,
+      coordinatorId: salesRep?.id,
+      coordinatorAssignedAt: new Date(),
+      status: 'ASSIGNED',
+    },
+  });
+  console.log('✅ Created 1 pipeline entry + 1 RFQ');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

@@ -20,6 +20,7 @@ const OPEN_STAGES: PipelineStage[] = [
   PipelineStage.NEW_LEAD,
   PipelineStage.INITIAL_CONTACT,
   PipelineStage.QUALIFICATION,
+  PipelineStage.READY_FOR_RFQ,
   PipelineStage.RFQ_RECEIVED,
   PipelineStage.QUOTE_SENT,
   PipelineStage.NEGOTIATION,
@@ -35,6 +36,7 @@ const STAGE_ORDER: PipelineStage[] = [
   PipelineStage.NEW_LEAD,
   PipelineStage.INITIAL_CONTACT,
   PipelineStage.QUALIFICATION,
+  PipelineStage.READY_FOR_RFQ,
   PipelineStage.RFQ_RECEIVED,
   PipelineStage.QUOTE_SENT,
   PipelineStage.NEGOTIATION,
@@ -92,6 +94,7 @@ export class PipelineService {
         ownerId: dto.ownerId,
         estimatedValue: dto.estimatedValue,
         probability: dto.probability,
+        nextStep: dto.nextStep,
         expectedCloseAt: dto.expectedCloseAt
           ? new Date(dto.expectedCloseAt)
           : undefined,
@@ -223,6 +226,9 @@ export class PipelineService {
       }
       if (dto.stage === PipelineStage.POSTPONED && dto.postponedUntil) {
         updateData.postponedUntil = new Date(dto.postponedUntil);
+      }
+      if (dto.stage === PipelineStage.READY_FOR_RFQ) {
+        updateData.readyForRfqAt = new Date();
       }
 
       const updated = await tx.pipelineEntry.update({

@@ -32,7 +32,8 @@
     "success": "تم بنجاح",
     "retry": "إعادة المحاولة",
     "openNavigation": "فتح القائمة",
-    "navigation": "التنقل"
+    "navigation": "التنقل",
+    "statusLabel": "الحالة"
   },
   "nav": {
     "admin": "الإدارة",
@@ -47,7 +48,86 @@
     "profile": "الملف الشخصي",
     "settings": "الإعدادات",
     "holidays": "العطلات الرسمية",
-    "adminSettings": "إعدادات النظام"
+    "adminSettings": "إعدادات النظام",
+    "rfqs": "طلبات عروض الأسعار"
+  },
+  "rfq": {
+    "title": "طلبات عروض الأسعار",
+    "subtitle": "متابعة طلبات عروض الأسعار من الاستقبال حتى الإرسال والتحصيل.",
+    "number": "رقم الطلب",
+    "client": "العميل",
+    "serviceType": "نوع الخدمة",
+    "scope": "نطاق المشروع",
+    "priority": "الأولوية",
+    "coordinator": "المنسق الرئيسي",
+    "technicalContributor": "المساهم الفني",
+    "financialReviewer": "المراجع المالي",
+    "originalRep": "المندوب الأصلي",
+    "source": "مصدر الطلب",
+    "broker": "اسم الوسيط",
+    "brokerPhone": "هاتف الوسيط",
+    "createNew": "طلب عرض جديد",
+    "assignCoordinator": "تعيين منسق",
+    "startPreparation": "بدء التحضير",
+    "submitForApproval": "إرسال للاعتماد",
+    "dispatch": "إرسال للعميل",
+    "recordOutcome": "تسجيل النتيجة",
+    "cancel": "إلغاء الطلب",
+    "status": {
+      "RECEIVED": "مستلم",
+      "ASSIGNED": "تم التعيين",
+      "IN_PREPARATION": "قيد التحضير",
+      "PENDING_APPROVAL": "بانتظار الاعتماد",
+      "APPROVED_READY_FOR_DISPATCH": "جاهز للإرسال",
+      "SENT": "تم الإرسال",
+      "WON": "فائز",
+      "LOST": "خاسر",
+      "POSTPONED": "مؤجل",
+      "CANCELLED": "ملغى"
+    },
+    "priorityLabel": {
+      "NORMAL": "عادي",
+      "HIGH": "مرتفع",
+      "URGENT": "عاجل"
+    },
+    "sourceLabel": {
+      "SALES_MANAGER": "مدير المبيعات",
+      "INTERNAL_REP": "مندوب داخلي",
+      "BROKER": "وسيط خارجي",
+      "SOCIAL": "وسائل التواصل",
+      "EMAIL": "البريد الإلكتروني",
+      "WHATSAPP": "واتساب"
+    },
+    "dispatchChannel": {
+      "WHATSAPP": "واتساب",
+      "EMAIL": "البريد الإلكتروني"
+    },
+    "confirmationType": {
+      "PAYMENT": "دفعة",
+      "PO": "أمر شراء",
+      "CONTRACT": "عقد"
+    },
+    "outcome": {
+      "WON": "فائز",
+      "LOST": "خاسر",
+      "POSTPONED": "مؤجل",
+      "confirmationType": "نوع التأكيد",
+      "confirmationAt": "تاريخ التأكيد",
+      "confirmationValue": "قيمة التأكيد",
+      "confirmationDoc": "رابط المستند",
+      "lostReason": "سبب الخسارة",
+      "postponedUntil": "مؤجل حتى"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "team": "الفريق",
+      "quote": "عرض السعر",
+      "outcome": "النتيجة"
+    },
+    "empty": "لا توجد طلبات حتى الآن.",
+    "createFromOpportunity": "إنشاء طلب عرض",
+    "readyForRfqHint": "جاهز للتحويل إلى طلب عرض",
+    "mustBeReadyForRfq": "يجب أن تكون الفرصة في حالة READY_FOR_RFQ أولاً."
   },
   "profile": {
     "title": "الإعدادات الشخصية",

@@ -32,7 +32,8 @@
     "success": "Success",
     "retry": "Retry",
     "openNavigation": "Open navigation",
-    "navigation": "Navigation"
+    "navigation": "Navigation",
+    "statusLabel": "Status"
   },
   "nav": {
     "admin": "Admin",
@@ -47,7 +48,86 @@
     "profile": "Profile",
     "settings": "Settings",
     "holidays": "Public holidays",
-    "adminSettings": "System settings"
+    "adminSettings": "System settings",
+    "rfqs": "RFQs"
+  },
+  "rfq": {
+    "title": "Requests for Quotation",
+    "subtitle": "Track RFQs from receipt through dispatch and outcome.",
+    "number": "RFQ number",
+    "client": "Client",
+    "serviceType": "Service type",
+    "scope": "Project scope",
+    "priority": "Priority",
+    "coordinator": "Primary coordinator",
+    "technicalContributor": "Technical contributor",
+    "financialReviewer": "Financial reviewer",
+    "originalRep": "Original sales rep",
+    "source": "Source",
+    "broker": "Broker name",
+    "brokerPhone": "Broker phone",
+    "createNew": "New RFQ",
+    "assignCoordinator": "Assign coordinator",
+    "startPreparation": "Start preparation",
+    "submitForApproval": "Submit for approval",
+    "dispatch": "Dispatch to client",
+    "recordOutcome": "Record outcome",
+    "cancel": "Cancel RFQ",
+    "status": {
+      "RECEIVED": "Received",
+      "ASSIGNED": "Assigned",
+      "IN_PREPARATION": "In preparation",
+      "PENDING_APPROVAL": "Pending approval",
+      "APPROVED_READY_FOR_DISPATCH": "Ready to dispatch",
+      "SENT": "Sent",
+      "WON": "Won",
+      "LOST": "Lost",
+      "POSTPONED": "Postponed",
+      "CANCELLED": "Cancelled"
+    },
+    "priorityLabel": {
+      "NORMAL": "Normal",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "sourceLabel": {
+      "SALES_MANAGER": "Sales manager",
+      "INTERNAL_REP": "Internal rep",
+      "BROKER": "External broker",
+      "SOCIAL": "Social",
+      "EMAIL": "Email",
+      "WHATSAPP": "WhatsApp"
+    },
+    "dispatchChannel": {
+      "WHATSAPP": "WhatsApp",
+      "EMAIL": "Email"
+    },
+    "confirmationType": {
+      "PAYMENT": "Payment",
+      "PO": "Purchase order",
+      "CONTRACT": "Contract"
+    },
+    "outcome": {
+      "WON": "Won",
+      "LOST": "Lost",
+      "POSTPONED": "Postponed",
+      "confirmationType": "Confirmation type",
+      "confirmationAt": "Confirmation date",
+      "confirmationValue": "Confirmation value",
+      "confirmationDoc": "Document URL",
+      "lostReason": "Lost reason",
+      "postponedUntil": "Postponed until"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "team": "Team",
+      "quote": "Quote",
+      "outcome": "Outcome"
+    },
+    "empty": "No RFQs yet.",
+    "createFromOpportunity": "Create RFQ",
+    "readyForRfqHint": "Ready to convert to RFQ",
+    "mustBeReadyForRfq": "Opportunity must be in READY_FOR_RFQ first."
   },
   "profile": {
     "title": "Personal settings",
