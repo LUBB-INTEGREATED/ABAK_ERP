@@ -77,11 +77,39 @@
       "CANCELLED": "Cancelled"
     },
     "empty": "No projects yet.",
+    "emptyCta": "Start by creating your first project from an active PO.",
     "createNew": "New project",
+    "kpi": {
+      "total": "Total projects",
+      "active": "Active",
+      "atRisk": "At risk",
+      "closing": "Closing",
+      "closed": "Closed"
+    },
+    "filterAll": "All",
     "tabs": {
       "overview": "Overview",
       "phases": "Phases",
       "closure": "Closure"
+    },
+    "dialog": {
+      "newTitle": "New project",
+      "newSubtitle": "Project is created from the selected purchase order with 7 default phases.",
+      "selectPo": "Select purchase order",
+      "noAvailablePos": "No active purchase orders without projects.",
+      "poHint": "Only ACTIVE purchase orders without an attached project are shown here.",
+      "projectTitle": "Project title",
+      "projectTitlePlaceholder": "e.g. Residential Tower — Riyadh",
+      "description": "Short description (optional)",
+      "pmLabel": "Project manager",
+      "pmPlaceholder": "Pick a project manager",
+      "startDate": "Start date",
+      "expectedEnd": "Expected end date",
+      "seedPhases": "Seed 7 default phases (Initiation → Closure)",
+      "seedPhasesHint": "When on, all seven canonical phases are pre-created with the PM as owner and rolling planned dates.",
+      "create": "Create project",
+      "phasePreview": "7 phase preview",
+      "contractValue": "Contract value"
     }
   },
   "phase": {
@@ -113,8 +141,54 @@
     "adjustProgress": "Adjust progress",
     "adjustReason": "Reason for adjustment (required)",
     "reassignOwner": "Reassign owner",
-    "reassignReason": "Reason for reassignment",
-    "nothingHere": "No phases."
+    "reassignReason": "Reason for reassignment (min 10 chars)",
+    "nothingHere": "No phases.",
+    "actions": "Actions",
+    "addPhase": "Add phase",
+    "addPhaseTitle": "Add phase",
+    "duration": "Duration",
+    "daysUnit": "days",
+    "tasksLabel": "Tasks",
+    "tasksOf": "{done} of {total}",
+    "noTasksYet": "No tasks in this phase.",
+    "addFirstTask": "Add the first task",
+    "adjustNote": "PM note: {note}",
+    "completedAlready": "Phase completed — fields are read-only.",
+    "countOverdue": "{days} days overdue",
+    "countDaysLeft": "{days} days left",
+    "countDueToday": "Due today",
+    "countDone": "✓ Done"
+  },
+  "dialogs": {
+    "addPhaseDescription": "Add a custom phase or any of the canonical phases.",
+    "addTaskTitle": "New task",
+    "addTaskSubtitle": "Task will be added to: {phase}",
+    "taskTitleLabel": "Task title",
+    "taskTitlePlaceholder": "e.g. Prepare facade elevations",
+    "taskDescription": "Description (optional)",
+    "taskAssignee": "Assignee",
+    "taskAssigneeHint": "Defaults to the phase owner when left blank.",
+    "taskPriority": "Priority",
+    "taskPlannedStart": "Planned start (optional)",
+    "taskPlannedEnd": "Planned end (optional)",
+    "taskEstimatedHours": "Estimated hours",
+    "addDependencyTitle": "Add dependency",
+    "addDependencySubtitle": "This task cannot start until the selected blocker is DONE.",
+    "addDependencyBlocker": "Blocker task",
+    "reassignOwnerTitle": "Reassign phase owner",
+    "reassignOwnerSubtitle": "Each phase has exactly one owner (BR-13).",
+    "reassignOwnerNewLabel": "New owner",
+    "reassignOwnerReasonLabel": "Reason",
+    "reassignOwnerReasonHint": "Minimum 10 characters — recorded on the phase history.",
+    "confirmComplete": "Mark phase complete?",
+    "confirmCompleteSubtitle": "Evidence required (BR-14): signed-off note (50+ chars) or client acknowledgement date.",
+    "cancelAction": "Cancel"
+  },
+  "closurePanel": {
+    "progressOf": "{passed} of {total} gates passed",
+    "roleHintPm": "This gate needs PM or Admin.",
+    "roleHintFinance": "This gate needs Finance or Admin.",
+    "completedBadge": "Closed"
   },
   "task": {
     "status": {

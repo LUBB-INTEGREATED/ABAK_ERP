@@ -620,6 +620,44 @@ export class ProjectsService {
     });
   }
 
+  async listAvailablePurchaseOrders() {
+    return this.prisma.purchaseOrder.findMany({
+      where: { project: null, status: { in: ['ACTIVE'] } },
+      orderBy: { poDate: 'desc' },
+      select: {
+        id: true,
+        poNumber: true,
+        contractValue: true,
+        poDate: true,
+        client: {
+          select: { id: true, contactName: true, companyName: true },
+        },
+        quote: {
+          select: { id: true, quoteNumber: true, title: true },
+        },
+      },
+    });
+  }
+
+  async listEligiblePms() {
+    return this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        role: {
+          in: ['SUPER_ADMIN', 'ADMIN', 'TECHNICAL_MANAGER', 'SALES_MANAGER'],
+        },
+      },
+      orderBy: [{ firstName: 'asc' }, { email: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
+    });
+  }
+
   async stats() {
     const [total, byStatus, atRisk] = await this.prisma.$transaction([
       this.prisma.project.count(),

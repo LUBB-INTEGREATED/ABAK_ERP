@@ -47,6 +47,23 @@ export class ProjectsController {
     return this.service.stats();
   }
 
+  @Get('projects/available-pos')
+  @ApiOperation({
+    summary: 'List ACTIVE purchase orders without a linked project',
+  })
+  availablePos() {
+    return this.service.listAvailablePurchaseOrders();
+  }
+
+  @Get('projects/eligible-pms')
+  @ApiOperation({
+    summary:
+      'List users eligible to be a Project Manager (Admin / Tech / Sales managers)',
+  })
+  eligiblePms() {
+    return this.service.listEligiblePms();
+  }
+
   @Get('projects')
   @ApiOperation({ summary: 'List projects' })
   list(@Query() query: ListProjectsDto) {

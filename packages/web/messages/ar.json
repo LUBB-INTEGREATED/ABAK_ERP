@@ -77,11 +77,39 @@
       "CANCELLED": "ملغى"
     },
     "empty": "لا توجد مشاريع حتى الآن.",
+    "emptyCta": "ابدأ بإنشاء أول مشروع من أمر شراء نشط.",
     "createNew": "مشروع جديد",
+    "kpi": {
+      "total": "إجمالي المشاريع",
+      "active": "نشطة",
+      "atRisk": "تحت الخطر",
+      "closing": "قيد الإغلاق",
+      "closed": "مغلقة"
+    },
+    "filterAll": "الكل",
     "tabs": {
       "overview": "نظرة عامة",
       "phases": "المراحل",
       "closure": "الإغلاق"
+    },
+    "dialog": {
+      "newTitle": "مشروع جديد",
+      "newSubtitle": "سيتم إنشاء المشروع من أمر الشراء المحدد مع 7 مراحل افتراضية.",
+      "selectPo": "اختر أمر الشراء",
+      "noAvailablePos": "لا توجد أوامر شراء نشطة بدون مشاريع.",
+      "poHint": "تظهر هنا أوامر الشراء النشطة التي لم تُنشأ لها مشاريع بعد.",
+      "projectTitle": "عنوان المشروع",
+      "projectTitlePlaceholder": "مثال: برج سكني — الرياض",
+      "description": "وصف موجز (اختياري)",
+      "pmLabel": "مدير المشروع",
+      "pmPlaceholder": "اختر مديرًا للمشروع",
+      "startDate": "تاريخ البدء",
+      "expectedEnd": "التاريخ المتوقع للانتهاء",
+      "seedPhases": "إنشاء 7 مراحل افتراضية (الانطلاق → الإغلاق)",
+      "seedPhasesHint": "عند التفعيل، يتم إنشاء كل المراحل السبع تلقائيًا بمُلّاك ومواعيد أولية.",
+      "create": "إنشاء المشروع",
+      "phasePreview": "معاينة المراحل السبع",
+      "contractValue": "قيمة العقد"
     }
   },
   "phase": {
@@ -113,8 +141,54 @@
     "adjustProgress": "تعديل يدوي للإنجاز",
     "adjustReason": "سبب التعديل (مطلوب)",
     "reassignOwner": "إعادة إسناد المسؤول",
-    "reassignReason": "سبب إعادة الإسناد",
-    "nothingHere": "لا توجد مراحل."
+    "reassignReason": "سبب إعادة الإسناد (عشرة حروف على الأقل)",
+    "nothingHere": "لا توجد مراحل.",
+    "actions": "إجراءات",
+    "addPhase": "إضافة مرحلة",
+    "addPhaseTitle": "مرحلة جديدة",
+    "duration": "المدة",
+    "daysUnit": "يومًا",
+    "tasksLabel": "المهام",
+    "tasksOf": "{done} من {total}",
+    "noTasksYet": "لا توجد مهام في هذه المرحلة.",
+    "addFirstTask": "إضافة أول مهمة",
+    "adjustNote": "ملاحظة PM: {note}",
+    "completedAlready": "تمت المرحلة — الحقول للقراءة فقط.",
+    "countOverdue": "متأخر بـ {days} يومًا",
+    "countDaysLeft": "{days} يومًا متبقية",
+    "countDueToday": "مستحقة اليوم",
+    "countDone": "✓ مكتملة"
+  },
+  "dialogs": {
+    "addPhaseDescription": "يمكنك إضافة مرحلة مخصصة أو أي من المراحل القياسية.",
+    "addTaskTitle": "مهمة جديدة",
+    "addTaskSubtitle": "المهمة ستُضاف إلى: {phase}",
+    "taskTitleLabel": "عنوان المهمة",
+    "taskTitlePlaceholder": "مثال: إعداد واجهات المبنى",
+    "taskDescription": "وصف (اختياري)",
+    "taskAssignee": "المسؤول",
+    "taskAssigneeHint": "سيتم افتراض مالك المرحلة إذا لم يتم التحديد.",
+    "taskPriority": "الأولوية",
+    "taskPlannedStart": "بداية مخططة (اختياري)",
+    "taskPlannedEnd": "نهاية مخططة (اختياري)",
+    "taskEstimatedHours": "الساعات المقدرة",
+    "addDependencyTitle": "إضافة اعتمادية",
+    "addDependencySubtitle": "لن تبدأ هذه المهمة حتى تنتهي المهمة المحددة.",
+    "addDependencyBlocker": "المهمة السابقة (المُعِيق)",
+    "reassignOwnerTitle": "إعادة إسناد مالك المرحلة",
+    "reassignOwnerSubtitle": "كل مرحلة لها مالك واحد حصريًا (قاعدة BR-13).",
+    "reassignOwnerNewLabel": "المالك الجديد",
+    "reassignOwnerReasonLabel": "سبب إعادة الإسناد",
+    "reassignOwnerReasonHint": "عشرة حروف على الأقل — سيُسجَّل في سجل المرحلة.",
+    "confirmComplete": "تعليم المرحلة كمكتملة؟",
+    "confirmCompleteSubtitle": "يجب توفير دليل (BR-14): ملاحظة موقعة (50+ حرف) أو تاريخ إقرار العميل.",
+    "cancelAction": "إلغاء"
+  },
+  "closurePanel": {
+    "progressOf": "{passed} من {total} مراحل مكتملة",
+    "roleHintPm": "هذا الإجراء يتطلب مدير المشروع أو المشرف الإداري.",
+    "roleHintFinance": "هذا الإجراء يتطلب المالية أو المشرف الإداري.",
+    "completedBadge": "تم الإغلاق"
   },
   "task": {
     "status": {
