@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   ApprovalStatus,
   DiscountType,
+  LossReason,
   POStatus,
   QuoteStatus,
 } from '@prisma/client';
@@ -236,6 +237,11 @@ export class DecideApprovalDto {
 }
 
 export class AcceptRejectQuoteDto {
+  @ApiPropertyOptional({ enum: LossReason })
+  @IsOptional()
+  @IsEnum(LossReason)
+  reasonCode?: LossReason;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -38,14 +38,17 @@ const STATUS_BADGE: Record<QuoteStatus, string> = {
   DRAFT: 'bg-zinc-100 text-zinc-600',
   PENDING_REVIEW: 'bg-sky-100 text-sky-700',
   PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
+  IN_REVISION: 'bg-amber-100 text-amber-800',
   APPROVED: 'bg-abak-blue/10 text-abak-blue',
   SENT: 'bg-indigo-100 text-indigo-700',
-  VIEWED: 'bg-indigo-200 text-indigo-700',
-  UNDER_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
+  IN_DISCUSSION: 'bg-indigo-200 text-indigo-700',
+  IN_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
   REVISED: 'bg-sky-200 text-sky-700',
-  ACCEPTED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-rose-100 text-rose-700',
+  WON: 'bg-emerald-100 text-emerald-700',
+  LOST: 'bg-rose-100 text-rose-700',
+  POSTPONED: 'bg-zinc-300 text-zinc-800',
   EXPIRED: 'bg-zinc-200 text-zinc-700',
+  CANCELLED: 'bg-zinc-400 text-white',
 };
 
 function kpi(label: string, value: string | number) {

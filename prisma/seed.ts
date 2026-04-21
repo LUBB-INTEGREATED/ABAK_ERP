@@ -332,17 +332,32 @@ async function main() {
         minValue: 1,
         editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
       },
-      // Approval thresholds
+      // Approval thresholds (BR-07 — L1 + L2 are always required; these flag
+      // when to ADD additional approvers, not whether approvals happen at all.)
       {
         key: 'approval_quote_level2_threshold',
         value: '500000',
         defaultValue: '500000',
         type: SettingType.NUMBER,
         category: 'approval',
-        labelAr: 'حد موافقة المستوى 2 (ريال)',
-        labelEn: 'Level 2 approval threshold (SAR)',
+        labelAr:
+          'حد تصعيد المستوى 2 (ريال) — عرض يتجاوز هذه القيمة يتطلب المدير التنفيذي',
+        labelEn:
+          'Level 2 escalation threshold (SAR) — quotes above this figure require Executive Director',
         minValue: 0,
         editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'approval_quote_level3_threshold',
+        value: '1000000',
+        defaultValue: '1000000',
+        type: SettingType.NUMBER,
+        category: 'approval',
+        labelAr: 'حد تصعيد المستوى 3 (ريال) — إضافة الرئيس التنفيذي كمعتمد',
+        labelEn:
+          'Level 3 escalation threshold (SAR) — adds CEO as additional approver',
+        minValue: 0,
+        editableByRoles: ['SUPER_ADMIN'],
       },
       // Commission
       {
@@ -483,7 +498,7 @@ async function main() {
       },
     ],
   });
-  console.log('✅ Created 22 system settings');
+  console.log('✅ Created 23 system settings');
 
   console.log('Seeding Saudi public holidays (2026-2027)...');
   const d = (isoDate: string) => new Date(`${isoDate}T00:00:00.000Z`);

@@ -26,8 +26,10 @@ import type {
   UpdateQuoteDto,
 } from './dto';
 
-const TIER_1_THRESHOLD_KEY = 'approval_threshold_tier1';
-const TIER_2_THRESHOLD_KEY = 'approval_threshold_tier2';
+// BR-07: Level 1 (Technical Head / Dept Manager) AND Level 2 (Executive Director)
+// approvals are ALWAYS mandatory regardless of quote value.
+// Level 3 (CEO) is an optional additional approver above this threshold.
+const LEVEL3_THRESHOLD_KEY = 'approval_quote_level3_threshold';
 
 const QUOTE_INCLUDE = {
   client: {
@@ -293,28 +295,31 @@ export class QuotesService {
     }
 
     const tiers = await this.requiredApprovalTiers(quote.totalAmount);
-    if (tiers.length === 0) {
-      return this.prisma.quote.update({
-        where: { id },
-        data: { status: QuoteStatus.APPROVED },
-        include: QUOTE_INCLUDE,
-      });
-    }
+    // BR-07: tiers always contains at least [1, 2]; never skip approvals.
 
-    const approverId =
-      dto.approverId ?? (await this.pickApprover(tiers[0]))?.id;
-    if (!approverId) {
-      throw new BadRequestException(
-        `No eligible approver for tier ${tiers[0]} — supply approverId explicitly`,
-      );
+    const approverIdByTier = new Map<number, string>();
+    // Optional override — caller may pin one tier's approver via dto.approverId.
+    // When multiple tiers are in play, only assign the override to tier 1 and
+    // auto-pick the remaining tiers by role.
+    for (const tier of tiers) {
+      const picked =
+        tier === tiers[0] && dto.approverId
+          ? { id: dto.approverId }
+          : await this.pickApprover(tier);
+      if (!picked) {
+        throw new BadRequestException(
+          `No eligible approver for tier ${tier} — seed a user with the required role or supply approverId`,
+        );
+      }
+      approverIdByTier.set(tier, picked.id);
     }
 
     return this.prisma.$transaction(async (tx) => {
       await tx.quoteApproval.createMany({
-        data: tiers.map((tier, index) => ({
+        data: tiers.map((tier) => ({
           quoteId: id,
           tier,
-          approverId: index === 0 ? approverId : approverId,
+          approverId: approverIdByTier.get(tier)!,
         })),
       });
       return tx.quote.update({
@@ -392,11 +397,11 @@ export class QuotesService {
     const quote = await this.findOne(id);
     if (
       quote.status !== QuoteStatus.SENT &&
-      quote.status !== QuoteStatus.VIEWED &&
-      quote.status !== QuoteStatus.UNDER_NEGOTIATION
+      quote.status !== QuoteStatus.IN_DISCUSSION &&
+      quote.status !== QuoteStatus.IN_NEGOTIATION
     ) {
       throw new BadRequestException(
-        'Only SENT / VIEWED / UNDER_NEGOTIATION quotes can be accepted',
+        'Only SENT / IN_DISCUSSION / IN_NEGOTIATION quotes can be won',
       );
     }
 
@@ -405,7 +410,7 @@ export class QuotesService {
     await this.prisma.$transaction(async (tx) => {
       await tx.quote.update({
         where: { id },
-        data: { status: QuoteStatus.ACCEPTED, acceptedAt: new Date() },
+        data: { status: QuoteStatus.WON, wonAt: new Date() },
       });
 
       await tx.purchaseOrder.create({
@@ -431,19 +436,25 @@ export class QuotesService {
     const quote = await this.findOne(id);
     if (
       quote.status !== QuoteStatus.SENT &&
-      quote.status !== QuoteStatus.VIEWED &&
-      quote.status !== QuoteStatus.UNDER_NEGOTIATION
+      quote.status !== QuoteStatus.IN_DISCUSSION &&
+      quote.status !== QuoteStatus.IN_NEGOTIATION
     ) {
       throw new BadRequestException(
-        'Only SENT / VIEWED / UNDER_NEGOTIATION quotes can be rejected',
+        'Only SENT / IN_DISCUSSION / IN_NEGOTIATION quotes can be lost',
+      );
+    }
+    if (!dto.reasonCode) {
+      throw new BadRequestException(
+        'reasonCode is required when marking a quote LOST (BR-11)',
       );
     }
     return this.prisma.quote.update({
       where: { id },
       data: {
-        status: QuoteStatus.REJECTED,
-        rejectedAt: new Date(),
-        rejectedReason: dto.reason,
+        status: QuoteStatus.LOST,
+        lostAt: new Date(),
+        lostReasonCode: dto.reasonCode,
+        lostReason: dto.reason,
       },
       include: QUOTE_INCLUDE,
     });
@@ -471,7 +482,7 @@ export class QuotesService {
         _sum: { totalAmount: true },
       }),
       this.prisma.quote.aggregate({
-        where: { ...where, status: QuoteStatus.ACCEPTED },
+        where: { ...where, status: QuoteStatus.WON },
         _sum: { totalAmount: true },
         _count: { _all: true },
       }),
@@ -560,13 +571,16 @@ export class QuotesService {
   }
 
   private async requiredApprovalTiers(total: number): Promise<number[]> {
-    const [tier1, tier2] = await Promise.all([
-      this.readNumericSetting(TIER_1_THRESHOLD_KEY, 50_000),
-      this.readNumericSetting(TIER_2_THRESHOLD_KEY, 200_000),
-    ]);
-    const tiers: number[] = [];
-    if (total >= tier1) tiers.push(1);
-    if (total >= tier2) tiers.push(2);
+    // BR-07: both Level 1 (Dept Manager) and Level 2 (Executive Director)
+    // are mandatory for every quote, regardless of amount.
+    const tiers: number[] = [1, 2];
+    const level3Threshold = await this.readNumericSetting(
+      LEVEL3_THRESHOLD_KEY,
+      1_000_000,
+    );
+    if (total >= level3Threshold) {
+      tiers.push(3);
+    }
     return tiers;
   }
 
@@ -580,12 +594,22 @@ export class QuotesService {
   }
 
   private async pickApprover(tier: number) {
-    const role = tier === 1 ? UserRole.SALES_MANAGER : UserRole.SUPER_ADMIN;
-    const approver = await this.prisma.user.findFirst({
-      where: { role, status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
-    });
-    return approver;
+    // Tier 1 — Technical/Dept Manager; tier 2 — Executive Director (ADMIN);
+    // tier 3 — CEO (SUPER_ADMIN). Fall back gracefully when not present.
+    const order: Record<number, UserRole[]> = {
+      1: [UserRole.TECHNICAL_MANAGER, UserRole.SALES_MANAGER, UserRole.ADMIN],
+      2: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+      3: [UserRole.SUPER_ADMIN, UserRole.ADMIN],
+    };
+    const candidates = order[tier] ?? [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+    for (const role of candidates) {
+      const approver = await this.prisma.user.findFirst({
+        where: { role, status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (approver) return approver;
+    }
+    return null;
   }
 
   private async nextQuoteNumber() {

@@ -45,20 +45,28 @@ import {
   useSubmitQuote,
 } from '@/lib/hooks/use-quotes';
 import { useAuthStore } from '@/lib/auth';
-import { QUOTE_STATUS_LABELS, type QuoteStatus } from '@/lib/types/quote';
+import {
+  LOSS_REASONS,
+  QUOTE_STATUS_LABELS,
+  type LossReason,
+  type QuoteStatus,
+} from '@/lib/types/quote';
 
 const STATUS_BADGE: Record<QuoteStatus, string> = {
   DRAFT: 'bg-zinc-100 text-zinc-600',
   PENDING_REVIEW: 'bg-sky-100 text-sky-700',
   PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
+  IN_REVISION: 'bg-amber-100 text-amber-800',
   APPROVED: 'bg-abak-blue/10 text-abak-blue',
   SENT: 'bg-indigo-100 text-indigo-700',
-  VIEWED: 'bg-indigo-200 text-indigo-700',
-  UNDER_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
+  IN_DISCUSSION: 'bg-indigo-200 text-indigo-700',
+  IN_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
   REVISED: 'bg-sky-200 text-sky-700',
-  ACCEPTED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-rose-100 text-rose-700',
+  WON: 'bg-emerald-100 text-emerald-700',
+  LOST: 'bg-rose-100 text-rose-700',
+  POSTPONED: 'bg-zinc-300 text-zinc-800',
   EXPIRED: 'bg-zinc-200 text-zinc-700',
+  CANCELLED: 'bg-zinc-400 text-white',
 };
 
 export default function QuoteDetailPage() {
@@ -73,6 +81,7 @@ export default function QuoteDetailPage() {
   const decideMutation = useDecideApproval(id);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectReasonCode, setRejectReasonCode] = useState<LossReason>('OTHER');
 
   if (isLoading) {
     return (
@@ -174,9 +183,9 @@ export default function QuoteDetailPage() {
             <Send className="mr-2 h-4 w-4" /> Send to client
           </Button>
         )}
-        {(['SENT', 'VIEWED', 'UNDER_NEGOTIATION'] as QuoteStatus[]).includes(
-          quote.status,
-        ) && (
+        {(
+          ['SENT', 'IN_DISCUSSION', 'IN_NEGOTIATION'] as QuoteStatus[]
+        ).includes(quote.status) && (
           <>
             <Button
               size="sm"
@@ -419,15 +428,11 @@ export default function QuoteDetailPage() {
               }
             />
             <Row
-              label="Accepted at"
-              value={
-                quote.acceptedAt
-                  ? format(new Date(quote.acceptedAt), 'PPp')
-                  : null
-              }
+              label="Won at"
+              value={quote.wonAt ? format(new Date(quote.wonAt), 'PPp') : null}
             />
-            {quote.rejectedReason && (
-              <Row label="Rejected reason" value={quote.rejectedReason} />
+            {quote.lostReason && (
+              <Row label="Lost reason" value={quote.lostReason} />
             )}
           </CardContent>
         </Card>
@@ -441,14 +446,33 @@ export default function QuoteDetailPage() {
               Optionally record why the client rejected this quote.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason</Label>
-            <Textarea
-              id="reason"
-              rows={3}
-              value={rejectReason}
-              onChange={(event) => setRejectReason(event.target.value)}
-            />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="reasonCode">Reason code</Label>
+              <select
+                id="reasonCode"
+                value={rejectReasonCode}
+                onChange={(e) =>
+                  setRejectReasonCode(e.target.value as LossReason)
+                }
+                className="input-base"
+              >
+                {LOSS_REASONS.map((code) => (
+                  <option key={code} value={code}>
+                    {code.replace(/_/g, ' ').toLowerCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reason">Notes (optional)</Label>
+              <Textarea
+                id="reason"
+                rows={3}
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectOpen(false)}>
@@ -457,14 +481,16 @@ export default function QuoteDetailPage() {
             <Button
               variant="destructive"
               onClick={async () => {
-                const result = await callMutation('Rejected', () =>
+                const result = await callMutation('Marked lost', () =>
                   rejectMutation.mutateAsync({
+                    reasonCode: rejectReasonCode,
                     reason: rejectReason.trim() || undefined,
                   }),
                 );
                 if (result) {
                   setRejectOpen(false);
                   setRejectReason('');
+                  setRejectReasonCode('OTHER');
                 }
               }}
               disabled={rejectMutation.isPending}

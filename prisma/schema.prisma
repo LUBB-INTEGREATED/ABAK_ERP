@@ -702,9 +702,16 @@ model Quote {
 
   sentAt         DateTime?
   viewedAt       DateTime?
-  acceptedAt     DateTime?
-  rejectedAt     DateTime?
-  rejectedReason String?
+  wonAt          DateTime?
+  lostAt         DateTime?
+  lostReasonCode LossReason?
+  lostReason     String?
+  postponedUntil DateTime?
+  cancelledAt    DateTime?
+
+  parentQuoteId String?
+  parentQuote   Quote?  @relation("QuoteRevisions", fields: [parentQuoteId], references: [id])
+  revisions     Quote[] @relation("QuoteRevisions")
 
   items             QuoteItem[]
   paymentMilestones PaymentMilestone[]
@@ -729,14 +736,30 @@ enum QuoteStatus {
   DRAFT
   PENDING_REVIEW
   PENDING_APPROVAL
+  IN_REVISION
   APPROVED
   SENT
-  VIEWED
-  UNDER_NEGOTIATION
+  IN_DISCUSSION
+  IN_NEGOTIATION
   REVISED
-  ACCEPTED
-  REJECTED
+  WON
+  LOST
+  POSTPONED
   EXPIRED
+  CANCELLED
+}
+
+// BR-11 — loss reasons come from a controlled vocabulary (doc PART 3.4)
+enum LossReason {
+  PRICE
+  COMPETITOR
+  SCOPE_MISMATCH
+  BUDGET_UNAVAILABLE
+  POSTPONED
+  NO_RESPONSE
+  QUALITY_CONCERN
+  INTERNAL
+  OTHER
 }
 
 enum DiscountType {

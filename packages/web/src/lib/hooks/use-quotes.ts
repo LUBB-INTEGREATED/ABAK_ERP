@@ -119,7 +119,7 @@ export function useAcceptQuote(id: string) {
 export function useRejectQuote(id: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { reason?: string }) => {
+    mutationFn: async (body: { reasonCode: string; reason?: string }) => {
       const { data } = await apiClient.patch<ApiEnvelope<Quote>>(
         `/quotes/${id}/reject`,
         body,

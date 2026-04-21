@@ -2,14 +2,17 @@ export const QUOTE_STATUSES = [
   'DRAFT',
   'PENDING_REVIEW',
   'PENDING_APPROVAL',
+  'IN_REVISION',
   'APPROVED',
   'SENT',
-  'VIEWED',
-  'UNDER_NEGOTIATION',
+  'IN_DISCUSSION',
+  'IN_NEGOTIATION',
   'REVISED',
-  'ACCEPTED',
-  'REJECTED',
+  'WON',
+  'LOST',
+  'POSTPONED',
   'EXPIRED',
+  'CANCELLED',
 ] as const;
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
 
@@ -17,15 +20,31 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   DRAFT: 'Draft',
   PENDING_REVIEW: 'Pending review',
   PENDING_APPROVAL: 'Pending approval',
+  IN_REVISION: 'In revision',
   APPROVED: 'Approved',
   SENT: 'Sent',
-  VIEWED: 'Viewed',
-  UNDER_NEGOTIATION: 'Under negotiation',
+  IN_DISCUSSION: 'In discussion',
+  IN_NEGOTIATION: 'In negotiation',
   REVISED: 'Revised',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Rejected',
+  WON: 'Won',
+  LOST: 'Lost',
+  POSTPONED: 'Postponed',
   EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
 };
+
+export const LOSS_REASONS = [
+  'PRICE',
+  'COMPETITOR',
+  'SCOPE_MISMATCH',
+  'BUDGET_UNAVAILABLE',
+  'POSTPONED',
+  'NO_RESPONSE',
+  'QUALITY_CONCERN',
+  'INTERNAL',
+  'OTHER',
+] as const;
+export type LossReason = (typeof LOSS_REASONS)[number];
 
 export type QuoteItem = {
   id: string;
@@ -95,9 +114,13 @@ export type Quote = {
   totalAmount: number;
   sentAt: string | null;
   viewedAt: string | null;
-  acceptedAt: string | null;
-  rejectedAt: string | null;
-  rejectedReason: string | null;
+  wonAt: string | null;
+  lostAt: string | null;
+  lostReasonCode: LossReason | null;
+  lostReason: string | null;
+  postponedUntil: string | null;
+  cancelledAt: string | null;
+  parentQuoteId: string | null;
   createdAt: string;
   client: {
     id: string;
