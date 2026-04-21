@@ -1557,3 +1557,26 @@ enum NotificationPriority {
   HIGH
   URGENT
 }
+
+// ============================================
+// Sprint 11 — File Assets (M11-002)
+// ============================================
+//
+// Minimum viable: assets are registered by URL (S3/CDN/etc). Direct upload
+// + presign + virus scan deferred. Feature flag-free by design.
+
+model FileAsset {
+  id              String  @id @default(cuid())
+  url             String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  uploadedById    String?
+  ownerResource   String?
+  ownerResourceId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ownerResource, ownerResourceId])
+  @@map("file_assets")
+}
