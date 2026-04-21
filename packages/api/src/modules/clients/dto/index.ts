@@ -274,6 +274,51 @@ export class CreateInteractionDto {
   @IsOptional()
   @IsString()
   nextAction?: string;
+
+  @ApiPropertyOptional({
+    description: 'When true, followUpAt + followUpTitle are required (BR-04).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  needsFollowUp?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  followUpAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  followUpTitle?: string;
+
+  @ApiPropertyOptional({ enum: FollowUpType })
+  @IsOptional()
+  @IsEnum(FollowUpType)
+  followUpType?: FollowUpType;
+}
+
+export class UpdateInteractionDto extends PartialType(CreateInteractionDto) {
+  @ApiPropertyOptional({
+    description:
+      'Required when editing after the 24h window (BR-18 manager override).',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  overrideReason?: string;
+}
+
+export class ReassignClientDto {
+  @ApiProperty()
+  @IsString()
+  newAccountManagerId!: string;
+
+  @ApiProperty({ description: 'Mandatory reason for the reassignment.' })
+  @IsString()
+  @MinLength(10)
+  reason!: string;
 }
 
 export class InteractionFilterDto {

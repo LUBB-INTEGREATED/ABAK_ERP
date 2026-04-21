@@ -19,9 +19,11 @@ import {
   CreateInteractionDto,
   CreateNoteDto,
   InteractionFilterDto,
+  ReassignClientDto,
   UpdateClassificationDto,
   UpdateClientDto,
   UpdateFollowUpDto,
+  UpdateInteractionDto,
 } from './dto';
 
 @ApiTags('clients')
@@ -107,6 +109,44 @@ export class ClientsController {
     @CurrentUser('id') actorId: string,
   ) {
     return this.clients.addInteraction(id, dto, actorId);
+  }
+
+  @Patch(':id/interactions/:interactionId')
+  @ApiOperation({
+    summary: 'Edit an interaction (locked after 24h — manager override only)',
+  })
+  updateInteraction(
+    @Param('id') id: string,
+    @Param('interactionId') interactionId: string,
+    @Body() dto: UpdateInteractionDto,
+    @CurrentUser() actor: { id: string; role: string },
+  ) {
+    return this.clients.updateInteraction(id, interactionId, dto, actor);
+  }
+
+  @Delete(':id/interactions/:interactionId')
+  @ApiOperation({
+    summary:
+      'Delete an interaction (locked after 24h — managers + admins only)',
+  })
+  deleteInteraction(
+    @Param('id') id: string,
+    @Param('interactionId') interactionId: string,
+    @CurrentUser() actor: { id: string; role: string },
+  ) {
+    return this.clients.deleteInteraction(id, interactionId, actor);
+  }
+
+  @Post(':id/reassign')
+  @ApiOperation({
+    summary: 'Reassign client account manager (BR-19 — reason required)',
+  })
+  reassign(
+    @Param('id') id: string,
+    @Body() dto: ReassignClientDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.clients.reassign(id, dto, actorId);
   }
 
   // Follow-ups -----------------------------------------------------

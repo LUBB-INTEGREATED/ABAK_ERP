@@ -1,11 +1,14 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import {
   ClientClassification,
   FollowUpStatus,
+  FollowUpType,
   LeadStatus,
   Prisma,
 } from '@prisma/client';
@@ -18,10 +21,15 @@ import type {
   CreateInteractionDto,
   CreateNoteDto,
   InteractionFilterDto,
+  ReassignClientDto,
   UpdateClassificationDto,
   UpdateClientDto,
   UpdateFollowUpDto,
+  UpdateInteractionDto,
 } from './dto';
+
+const INTERACTION_LOCK_HOURS = 24;
+const OVERRIDE_ROLES = new Set(['SALES_MANAGER', 'ADMIN', 'SUPER_ADMIN']);
 
 @Injectable()
 export class ClientsService {
@@ -311,19 +319,111 @@ export class ClientsService {
   ) {
     await this.findOne(clientId);
 
-    const interaction = await this.prisma.interaction.create({
+    // BR-04: when needsFollowUp is true, a follow-up date is mandatory.
+    if (dto.needsFollowUp) {
+      if (!dto.followUpAt) {
+        throw new BadRequestException(
+          'followUpAt is required when needsFollowUp is true (BR-04).',
+        );
+      }
+      const due = new Date(dto.followUpAt);
+      if (due.getTime() < Date.now()) {
+        throw new BadRequestException(
+          'followUpAt must be a future date (BR-04).',
+        );
+      }
+    }
+
+    const interaction = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.interaction.create({
+        data: {
+          clientId,
+          type: dto.type,
+          direction: dto.direction,
+          subject: dto.subject,
+          summary: dto.summary,
+          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+          durationMinutes: dto.durationMinutes,
+          location: dto.location,
+          outcome: dto.outcome,
+          nextAction: dto.nextAction,
+          authorId: actorId,
+        },
+        include: {
+          author: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+
+      await tx.client.update({
+        where: { id: clientId },
+        data: { lastInteractionAt: created.occurredAt },
+      });
+
+      // BR-04: auto-create a FollowUp row linked to the interaction's subject
+      if (dto.needsFollowUp && dto.followUpAt) {
+        await tx.followUp.create({
+          data: {
+            clientId,
+            title: dto.followUpTitle ?? `Follow-up: ${dto.subject}`,
+            description: dto.nextAction ?? dto.summary,
+            type: dto.followUpType ?? FollowUpType.GENERAL,
+            dueAt: new Date(dto.followUpAt),
+            status: FollowUpStatus.PENDING,
+            assignedToId: actorId,
+            createdBy: actorId,
+          },
+        });
+      }
+
+      return created;
+    });
+
+    return interaction;
+  }
+
+  // BR-18 — interactions are immutable after 24h; managers may override with a reason.
+  async updateInteraction(
+    clientId: string,
+    interactionId: string,
+    dto: UpdateInteractionDto,
+    actor: { id: string; role: string },
+  ) {
+    const interaction = await this.prisma.interaction.findFirst({
+      where: { id: interactionId, clientId },
+    });
+    if (!interaction) throw new NotFoundException('Interaction not found');
+
+    const ageMs = Date.now() - interaction.createdAt.getTime();
+    const locked = ageMs > INTERACTION_LOCK_HOURS * 60 * 60 * 1000;
+
+    if (locked) {
+      if (!OVERRIDE_ROLES.has(actor.role)) {
+        throw new ForbiddenException(
+          `Interactions are read-only after ${INTERACTION_LOCK_HOURS}h (BR-18).`,
+        );
+      }
+      if (!dto.overrideReason) {
+        throw new BadRequestException(
+          'overrideReason is required to edit a locked interaction (BR-18).',
+        );
+      }
+    }
+
+    const { overrideReason: _or, ...patch } = dto;
+    const updated = await this.prisma.interaction.update({
+      where: { id: interactionId },
       data: {
-        clientId,
-        type: dto.type,
-        direction: dto.direction,
-        subject: dto.subject,
-        summary: dto.summary,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
-        durationMinutes: dto.durationMinutes,
-        location: dto.location,
-        outcome: dto.outcome,
-        nextAction: dto.nextAction,
-        authorId: actorId,
+        type: patch.type,
+        direction: patch.direction,
+        subject: patch.subject,
+        summary: patch.summary,
+        durationMinutes: patch.durationMinutes,
+        location: patch.location,
+        outcome: patch.outcome,
+        nextAction: patch.nextAction,
+        occurredAt: patch.occurredAt ? new Date(patch.occurredAt) : undefined,
       },
       include: {
         author: {
@@ -332,12 +432,74 @@ export class ClientsService {
       },
     });
 
-    await this.prisma.client.update({
-      where: { id: clientId },
-      data: { lastInteractionAt: interaction.occurredAt },
-    });
+    return updated;
+  }
 
-    return interaction;
+  async deleteInteraction(
+    clientId: string,
+    interactionId: string,
+    actor: { id: string; role: string },
+  ) {
+    const interaction = await this.prisma.interaction.findFirst({
+      where: { id: interactionId, clientId },
+    });
+    if (!interaction) throw new NotFoundException('Interaction not found');
+
+    const ageMs = Date.now() - interaction.createdAt.getTime();
+    const locked = ageMs > INTERACTION_LOCK_HOURS * 60 * 60 * 1000;
+
+    if (locked && !OVERRIDE_ROLES.has(actor.role)) {
+      throw new ForbiddenException(
+        `Interactions cannot be deleted after ${INTERACTION_LOCK_HOURS}h (BR-18).`,
+      );
+    }
+
+    await this.prisma.interaction.delete({ where: { id: interactionId } });
+    return { ok: true };
+  }
+
+  // BR-19 — reassigning a client requires a reason and is persisted to history.
+  async reassign(clientId: string, dto: ReassignClientDto, actorId?: string) {
+    const client = await this.findOne(clientId);
+    const nextManager = await this.prisma.user.findUnique({
+      where: { id: dto.newAccountManagerId },
+    });
+    if (!nextManager) {
+      throw new NotFoundException('New account manager not found');
+    }
+    if (client.accountManagerId === dto.newAccountManagerId) {
+      throw new BadRequestException('Client is already managed by this user');
+    }
+
+    const previousManagerId = client.accountManagerId;
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.client.update({
+        where: { id: clientId },
+        data: { accountManagerId: dto.newAccountManagerId },
+        include: {
+          accountManager: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      await tx.clientNote.create({
+        data: {
+          clientId,
+          body: `Reassigned from ${previousManagerId ?? 'unassigned'} to ${dto.newAccountManagerId}. Reason: ${dto.reason}`,
+          tag: 'IMPORTANT',
+          authorId: actorId,
+        },
+      });
+
+      return updated;
+    });
   }
 
   // Follow-ups ---------------------------------------------------
