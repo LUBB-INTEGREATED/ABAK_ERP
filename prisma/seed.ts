@@ -23,6 +23,15 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.quoteApproval.deleteMany();
+  await prisma.paymentMilestone.deleteMany();
+  await prisma.quoteItem.deleteMany();
+  await prisma.quote.deleteMany();
+  await prisma.salesTarget.deleteMany();
+  await prisma.fieldVisit.deleteMany();
+  await prisma.stageTransition.deleteMany();
+  await prisma.pipelineEntry.deleteMany();
   await prisma.clientNote.deleteMany();
   await prisma.followUp.deleteMany();
   await prisma.interaction.deleteMany();
