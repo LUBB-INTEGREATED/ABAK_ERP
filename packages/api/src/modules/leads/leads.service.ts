@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { LeadStatus, Prisma, SLAStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AssignmentService } from './assignment.service';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
 import type { CreateLeadDto } from './dto/create-lead.dto';
 import type { LeadFilterDto } from './dto/lead-filter.dto';
@@ -46,6 +47,7 @@ export class LeadsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly assignment: AssignmentService,
   ) {}
 
   async create(dto: CreateLeadDto, actorId?: string) {
@@ -58,6 +60,11 @@ export class LeadsService {
     const slaResponseDue = new Date(Date.now() + slaHours * 60 * 60 * 1000);
 
     const isReturning = await this.detectReturningClient(dto.email, dto.phone);
+
+    // When the caller didn't pick an assignee, fall back to the configured
+    // auto-assign strategy.
+    const effectiveAssigneeId =
+      dto.assignedToId ?? (await this.assignment.pickAssignee()) ?? undefined;
 
     const data: Prisma.LeadCreateInput = {
       leadNumber,
@@ -91,18 +98,37 @@ export class LeadsService {
       slaStatus: SLAStatus.ON_TIME,
       isReturningClient: isReturning,
       createdBy: actorId,
-      status: dto.assignedToId ? LeadStatus.ASSIGNED : LeadStatus.NEW,
+      status: effectiveAssigneeId ? LeadStatus.ASSIGNED : LeadStatus.NEW,
     };
 
     if (dto.serviceId) {
       data.service = { connect: { id: dto.serviceId } };
     }
-    if (dto.assignedToId) {
-      data.assignedTo = { connect: { id: dto.assignedToId } };
+    if (effectiveAssigneeId) {
+      data.assignedTo = { connect: { id: effectiveAssigneeId } };
       data.assignedAt = new Date();
     }
 
     return this.prisma.lead.create({ data });
+  }
+
+  async autoAssign(id: string) {
+    const lead = await this.findOne(id);
+    const pickedId = await this.assignment.pickAssignee();
+    if (!pickedId) {
+      throw new BadRequestException(
+        'Auto-assign is disabled or no eligible rep is available',
+      );
+    }
+    return this.prisma.lead.update({
+      where: { id: lead.id },
+      data: {
+        assignedTo: { connect: { id: pickedId } },
+        assignedAt: new Date(),
+        status:
+          lead.status === LeadStatus.NEW ? LeadStatus.ASSIGNED : lead.status,
+      },
+    });
   }
 
   async findAll(filter: LeadFilterDto) {

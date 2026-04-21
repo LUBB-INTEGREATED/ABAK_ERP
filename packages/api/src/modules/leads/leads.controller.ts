@@ -67,6 +67,15 @@ export class LeadsController {
     return this.leads.assign(id, dto);
   }
 
+  @Patch(':id/auto-assign')
+  @ApiOperation({
+    summary:
+      'Pick an assignee using the configured auto-assign strategy and apply it',
+  })
+  autoAssign(@Param('id') id: string) {
+    return this.leads.autoAssign(id);
+  }
+
   @Patch(':id/status')
   @ApiOperation({ summary: 'Transition lead status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
