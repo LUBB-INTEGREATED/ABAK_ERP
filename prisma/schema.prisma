@@ -315,6 +315,7 @@ enum LeadChannel {
   SOCIAL_MEDIA
   WEBSITE
   GOOGLE_MAPS
+  AI_CHATBOT
 }
 
 enum LeadStatus {

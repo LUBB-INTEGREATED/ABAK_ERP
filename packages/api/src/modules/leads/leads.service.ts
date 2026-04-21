@@ -373,6 +373,57 @@ export class LeadsService {
     };
   }
 
+  // M1-016 — duplicate detection (non-blocking, 30-day window).
+  async findDuplicates(params: { email?: string; phone?: string }) {
+    if (!params.email && !params.phone) return [];
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return this.prisma.lead.findMany({
+      where: {
+        deletedAt: null,
+        createdAt: { gte: since },
+        OR: [
+          ...(params.email ? [{ email: params.email }] : []),
+          ...(params.phone ? [{ phone: params.phone }] : []),
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        leadNumber: true,
+        contactName: true,
+        companyName: true,
+        channel: true,
+        status: true,
+        createdAt: true,
+      },
+      take: 10,
+    });
+  }
+
+  // M1-017 — AI chatbot intake. Accepts a minimal payload from the chatbot
+  // and creates a lead with channel=AI_CHATBOT. No auth required on the
+  // public route; controller enforces a shared-secret header.
+  async createFromChatbot(dto: {
+    contactName: string;
+    phone: string;
+    email?: string;
+    companyName?: string;
+    serviceDetails?: string;
+    projectLocation?: string;
+    conversationId?: string;
+  }) {
+    return this.create({
+      channel: 'AI_CHATBOT' as never,
+      source: `chatbot${dto.conversationId ? `:${dto.conversationId}` : ''}`,
+      contactName: dto.contactName,
+      phone: dto.phone,
+      email: dto.email,
+      companyName: dto.companyName,
+      serviceDetails: dto.serviceDetails,
+      projectLocation: dto.projectLocation,
+    } as CreateLeadDto);
+  }
+
   private async generateLeadNumber(): Promise<string> {
     // Order by leadNumber desc so LEAD-YYYY-9999 beats LEAD-YYYY-0001 even if
     // seeded rows share the same createdAt millisecond.

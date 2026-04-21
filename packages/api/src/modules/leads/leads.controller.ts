@@ -8,8 +8,11 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Headers, UnauthorizedException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import {
   AssignLeadDto,
   CreateLeadDto,
@@ -27,6 +30,7 @@ export class LeadsController {
   constructor(
     private readonly leads: LeadsService,
     private readonly sla: SlaService,
+    private readonly config: ConfigService,
   ) {}
 
   @Post('recompute-sla')
@@ -54,6 +58,47 @@ export class LeadsController {
   @ApiOperation({ summary: 'Aggregate counts by status, channel, and SLA' })
   stats() {
     return this.leads.stats();
+  }
+
+  @Get('find-duplicates')
+  @ApiOperation({
+    summary:
+      'Check for duplicate leads in the last 30 days by email or phone (M1-016).',
+  })
+  findDuplicates(
+    @Query('email') email?: string,
+    @Query('phone') phone?: string,
+  ) {
+    return this.leads.findDuplicates({ email, phone });
+  }
+
+  @Public()
+  @Post('chatbot')
+  @ApiOperation({
+    summary:
+      'AI chatbot lead intake (CH-AI). Public but guarded by shared secret header X-Chatbot-Token.',
+  })
+  async createFromChatbot(
+    @Body()
+    dto: {
+      contactName: string;
+      phone: string;
+      email?: string;
+      companyName?: string;
+      serviceDetails?: string;
+      projectLocation?: string;
+      conversationId?: string;
+    },
+    @Headers('x-chatbot-token') token: string,
+  ) {
+    const expected =
+      this.config.get<string>('app.chatbotToken') ??
+      process.env.CHATBOT_TOKEN ??
+      null;
+    if (!expected || token !== expected) {
+      throw new UnauthorizedException('Invalid chatbot token');
+    }
+    return this.leads.createFromChatbot(dto);
   }
 
   @Get('number/:leadNumber')
