@@ -1,0 +1,28 @@
+{
+  "name": "ABAK ERP - Engineering Consultancy Management",
+  "short_name": "ABAK ERP",
+  "description": "Complete ERP system for engineering consultancy firms",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F9F7F5",
+  "theme_color": "#236382",
+  "lang": "en",
+  "dir": "auto",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/images/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
