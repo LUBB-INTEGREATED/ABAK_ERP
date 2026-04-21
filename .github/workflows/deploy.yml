@@ -1,0 +1,17 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+
+jobs:
+  placeholder:
+    name: Deployment placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notice
+        run: |
+          echo "Deploy workflow is a placeholder."
+          echo "Wire up provider-specific steps (Vercel, Fly, Render, etc.) when infra is ready."
