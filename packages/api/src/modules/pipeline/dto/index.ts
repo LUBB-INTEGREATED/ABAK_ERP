@@ -69,6 +69,28 @@ export class CreatePipelineEntryDto {
   @IsString()
   @MaxLength(500)
   nextStep?: string;
+
+  @ApiPropertyOptional({ description: 'Due date for the next step' })
+  @IsOptional()
+  @IsDateString()
+  nextStepDueDate?: string;
+
+  @ApiPropertyOptional({ description: 'Name of the key decision maker' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  decisionMakerName?: string;
+
+  @ApiPropertyOptional({ description: 'Phone/email of the decision maker' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  decisionMakerContact?: string;
+
+  @ApiPropertyOptional({ description: 'Expected date for client decision' })
+  @IsOptional()
+  @IsDateString()
+  expectedDecisionDate?: string;
 }
 
 export class UpdatePipelineEntryDto extends PartialType(
@@ -93,6 +115,34 @@ export class MoveStageDto {
   @IsOptional()
   @IsDateString()
   postponedUntil?: string;
+
+  @ApiPropertyOptional({ description: 'Next action after the stage move' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  nextStep?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  nextStepDueDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  decisionMakerName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  decisionMakerContact?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedDecisionDate?: string;
 }
 
 export class PipelineFilterDto {

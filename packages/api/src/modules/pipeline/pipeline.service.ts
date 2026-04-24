@@ -4,8 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PipelineStage, Prisma, LeadStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type {
   CreateFieldVisitDto,
   CreatePipelineEntryDto,
@@ -68,9 +70,15 @@ const ENTRY_INCLUDE = {
   },
 } satisfies Prisma.PipelineEntryInclude;
 
+// Stages that are considered "stuck" after this many days without movement
+const STUCK_DAYS_THRESHOLD = 14;
+
 @Injectable()
 export class PipelineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async createEntry(dto: CreatePipelineEntryDto) {
     if (!dto.leadId && !dto.clientId) {
@@ -95,6 +103,14 @@ export class PipelineService {
         estimatedValue: dto.estimatedValue,
         probability: dto.probability,
         nextStep: dto.nextStep,
+        nextStepDueDate: dto.nextStepDueDate
+          ? new Date(dto.nextStepDueDate)
+          : undefined,
+        decisionMakerName: dto.decisionMakerName,
+        decisionMakerContact: dto.decisionMakerContact,
+        expectedDecisionDate: dto.expectedDecisionDate
+          ? new Date(dto.expectedDecisionDate)
+          : undefined,
         expectedCloseAt: dto.expectedCloseAt
           ? new Date(dto.expectedCloseAt)
           : undefined,
@@ -198,6 +214,23 @@ export class PipelineService {
       throw new BadRequestException('postponedUntil is required for POSTPONED');
     }
 
+    // M3-008 — READY_FOR_RFQ qualification gate (5 criteria)
+    if (dto.stage === PipelineStage.READY_FOR_RFQ) {
+      const missing: string[] = [];
+      if (!entry.nextStep && !dto.nextStep) missing.push('nextStep');
+      if (!entry.decisionMakerName && !dto.decisionMakerName)
+        missing.push('decisionMakerName');
+      if (!entry.expectedDecisionDate && !dto.expectedDecisionDate)
+        missing.push('expectedDecisionDate');
+      if (!entry.estimatedValue) missing.push('estimatedValue');
+      if (!entry.expectedCloseAt) missing.push('expectedCloseAt');
+      if (missing.length > 0) {
+        throw new BadRequestException(
+          `Cannot qualify for RFQ — missing fields: ${missing.join(', ')}`,
+        );
+      }
+    }
+
     const duration = Math.floor(
       (Date.now() - entry.stageEnteredAt.getTime()) / 1000,
     );
@@ -217,6 +250,9 @@ export class PipelineService {
       const updateData: Prisma.PipelineEntryUpdateInput = {
         stage: dto.stage,
         stageEnteredAt: new Date(),
+        // Any stage move clears the stuck flag
+        isStuck: false,
+        stuckSince: null,
       };
       if (CLOSED_STAGES.includes(dto.stage)) {
         updateData.closedAt = new Date();
@@ -230,6 +266,15 @@ export class PipelineService {
       if (dto.stage === PipelineStage.READY_FOR_RFQ) {
         updateData.readyForRfqAt = new Date();
       }
+      if (dto.nextStep !== undefined) updateData.nextStep = dto.nextStep;
+      if (dto.nextStepDueDate !== undefined)
+        updateData.nextStepDueDate = new Date(dto.nextStepDueDate);
+      if (dto.decisionMakerName !== undefined)
+        updateData.decisionMakerName = dto.decisionMakerName;
+      if (dto.decisionMakerContact !== undefined)
+        updateData.decisionMakerContact = dto.decisionMakerContact;
+      if (dto.expectedDecisionDate !== undefined)
+        updateData.expectedDecisionDate = new Date(dto.expectedDecisionDate);
 
       const updated = await tx.pipelineEntry.update({
         where: { id: entry.id },
@@ -320,7 +365,7 @@ export class PipelineService {
   // Field visits -------------------------------------------------
 
   async createVisit(dto: CreateFieldVisitDto, actorId?: string) {
-    return this.prisma.fieldVisit.create({
+    const visit = await this.prisma.fieldVisit.create({
       data: {
         visitType: dto.visitType,
         purpose: dto.purpose,
@@ -333,6 +378,25 @@ export class PipelineService {
         authorId: actorId,
       },
     });
+
+    // M3-009 — field visit auto-creates a matching Interaction in CRM
+    if (dto.clientId && actorId) {
+      void this.prisma.interaction
+        .create({
+          data: {
+            clientId: dto.clientId,
+            type: 'MEETING',
+            subject: `زيارة ميدانية: ${dto.purpose}`,
+            outcome: 'متابعة مطلوبة',
+            nextAction: dto.purpose,
+            occurredAt: new Date(dto.scheduledAt),
+            authorId: actorId,
+          },
+        })
+        .catch(() => null);
+    }
+
+    return visit;
   }
 
   listVisits(ownerId?: string) {
@@ -400,6 +464,43 @@ export class PipelineService {
         },
       },
     });
+  }
+
+  // M3-007 — flag pipeline entries that haven't moved in STUCK_DAYS_THRESHOLD days.
+  @Cron('0 7 * * *')
+  async flagStuckLeads() {
+    const threshold = new Date(
+      Date.now() - STUCK_DAYS_THRESHOLD * 24 * 60 * 60 * 1000,
+    );
+
+    const stuck = await this.prisma.pipelineEntry.findMany({
+      where: {
+        stage: { in: OPEN_STAGES },
+        isStuck: false,
+        stageEnteredAt: { lt: threshold },
+      },
+      select: { id: true, ownerId: true, stage: true },
+    });
+
+    if (stuck.length === 0) return;
+
+    await this.prisma.pipelineEntry.updateMany({
+      where: { id: { in: stuck.map((e) => e.id) } },
+      data: { isStuck: true, stuckSince: new Date() },
+    });
+
+    // Notify each owner
+    for (const entry of stuck) {
+      if (!entry.ownerId) continue;
+      void this.notifications.send({
+        recipientId: entry.ownerId,
+        eventCode: 'pipeline.entry_stuck',
+        subject: `فرصة بيعية راكدة منذ ${STUCK_DAYS_THRESHOLD} يوماً`,
+        body: `المرحلة: ${entry.stage} — لم يحدث تحريك منذ أكثر من أسبوعين`,
+        deepLink: '/pipeline',
+        payload: { entryId: entry.id },
+      });
+    }
   }
 
   private mapStageToLeadStatus(stage: PipelineStage): LeadStatus | null {

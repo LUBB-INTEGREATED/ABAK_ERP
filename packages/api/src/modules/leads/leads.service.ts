@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { LeadStatus, Prisma, SLAStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AssignmentService } from './assignment.service';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
 import type { CreateLeadDto } from './dto/create-lead.dto';
@@ -48,6 +49,7 @@ export class LeadsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly assignment: AssignmentService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(dto: CreateLeadDto, actorId?: string) {
@@ -109,7 +111,42 @@ export class LeadsService {
       data.assignedAt = new Date();
     }
 
-    return this.prisma.lead.create({ data });
+    const lead = await this.prisma.lead.create({ data });
+
+    // Notify assignee of new lead
+    if (effectiveAssigneeId) {
+      void this.notifications.send({
+        recipientId: effectiveAssigneeId,
+        eventCode: 'lead.assigned',
+        subject: `تم تعيين عميل محتمل جديد لك: ${lead.leadNumber}`,
+        body: `العميل: ${lead.contactName ?? lead.companyName ?? lead.leadNumber}`,
+        deepLink: `/leads/${lead.id}`,
+        payload: { leadId: lead.id, leadNumber: lead.leadNumber },
+      });
+    }
+
+    // Notify managers when a returning/duplicate client submits a new lead
+    if (isReturning) {
+      const managers = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['SALES_MANAGER', 'ADMIN', 'SUPER_ADMIN'] },
+          status: 'ACTIVE',
+        },
+        select: { id: true },
+      });
+      void this.notifications.sendToMany(
+        managers.map((m) => m.id),
+        {
+          eventCode: 'lead.duplicate_detected',
+          subject: `عميل عائد — ${lead.leadNumber}`,
+          body: `تم استلام طلب جديد من عميل سبق التواصل معه: ${lead.contactName ?? lead.companyName}`,
+          deepLink: `/leads/${lead.id}`,
+          payload: { leadId: lead.id, leadNumber: lead.leadNumber },
+        },
+      );
+    }
+
+    return lead;
   }
 
   async autoAssign(id: string) {
@@ -272,7 +309,7 @@ export class LeadsService {
       throw new BadRequestException('Assignee must be an active user');
     }
 
-    return this.prisma.lead.update({
+    const updated = await this.prisma.lead.update({
       where: { id },
       data: {
         assignedTo: { connect: { id: dto.assignedToId } },
@@ -281,6 +318,17 @@ export class LeadsService {
           lead.status === LeadStatus.NEW ? LeadStatus.ASSIGNED : lead.status,
       },
     });
+
+    void this.notifications.send({
+      recipientId: dto.assignedToId,
+      eventCode: 'lead.assigned',
+      subject: `تم تعيين عميل محتمل لك: ${lead.leadNumber}`,
+      body: `العميل: ${lead.contactName ?? lead.companyName ?? lead.leadNumber}`,
+      deepLink: `/leads/${lead.id}`,
+      payload: { leadId: lead.id, leadNumber: lead.leadNumber },
+    });
+
+    return updated;
   }
 
   async updateStatus(id: string, dto: UpdateLeadStatusDto) {

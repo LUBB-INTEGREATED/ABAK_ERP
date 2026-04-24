@@ -161,3 +161,17 @@ export function useDecideApproval(quoteId: string) {
     onSuccess: () => invalidate(qc, quoteId),
   });
 }
+
+export function usePostponeQuote(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { followUpDate: string; notes?: string }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<Quote>>(
+        `/quotes/${id}/postpone`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, id),
+  });
+}

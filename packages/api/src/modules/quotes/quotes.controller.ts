@@ -106,6 +106,19 @@ export class QuotesController {
     return this.quotes.reject(id, dto);
   }
 
+  @Patch('quotes/:id/postpone')
+  @ApiOperation({
+    summary:
+      'Mark quote POSTPONED — BR-10: follow-up date required, max 30 days',
+  })
+  postpone(
+    @Param('id') id: string,
+    @Body() dto: { followUpDate: string; notes?: string },
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.quotes.postpone(id, dto, actorId);
+  }
+
   @Post('quotes/:id/revise')
   @ApiOperation({
     summary:

@@ -56,7 +56,8 @@
     "govTransactions": "المعاملات الحكومية",
     "pro": "لوحة المندوب الحكومي",
     "reports": "التقارير",
-    "executive": "لوحة التنفيذي"
+    "executive": "لوحة التنفيذي",
+    "targets": "أهداف الفريق"
   },
   "notifications": {
     "title": "الإشعارات",

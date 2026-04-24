@@ -568,8 +568,15 @@ model PipelineEntry {
   transitions StageTransition[]
   rfq         Rfq?
 
-  nextStep      String?
-  readyForRfqAt DateTime?
+  nextStep             String?
+  nextStepDueDate      DateTime?
+  decisionMakerName    String?
+  decisionMakerContact String?
+  expectedDecisionDate DateTime?
+  readyForRfqAt        DateTime?
+
+  isStuck    Boolean   @default(false)
+  stuckSince DateTime?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -580,6 +587,7 @@ model PipelineEntry {
   @@index([clientId])
   @@index([leadId])
   @@index([expectedCloseAt])
+  @@index([isStuck])
   @@map("pipeline_entries")
 }
 

@@ -16,6 +16,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type {
   AcceptRejectQuoteDto,
   CreateQuoteDto,
@@ -69,7 +70,10 @@ const QUOTE_INCLUDE = {
 
 @Injectable()
 export class QuotesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(dto: CreateQuoteDto, actorId?: string) {
     const client = await this.prisma.client.findFirst({
@@ -316,7 +320,7 @@ export class QuotesService {
       approverIdByTier.set(tier, picked.id);
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       await tx.quoteApproval.createMany({
         data: tiers.map((tier) => ({
           quoteId: id,
@@ -330,6 +334,21 @@ export class QuotesService {
         include: QUOTE_INCLUDE,
       });
     });
+
+    // Notify tier-1 approver first (sequential workflow)
+    const tier1ApproverId = approverIdByTier.get(1);
+    if (tier1ApproverId) {
+      void this.notifications.send({
+        recipientId: tier1ApproverId,
+        eventCode: 'quote.submitted_for_approval',
+        subject: `عرض سعر يحتاج موافقتك: ${quote.quoteNumber}`,
+        body: `بقيمة ${quote.totalAmount.toLocaleString('ar-SA')} ريال — المستوى 1`,
+        deepLink: `/quotes/${id}`,
+        payload: { quoteId: id, quoteNumber: quote.quoteNumber, tier: 1 },
+      });
+    }
+
+    return updated;
   }
 
   async decideApproval(
@@ -352,7 +371,8 @@ export class QuotesService {
       throw new BadRequestException('This approval was already decided');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    let allApproved = false;
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.quoteApproval.update({
         where: { id: approvalId },
         data: {
@@ -372,15 +392,67 @@ export class QuotesService {
           where: { quoteId, status: ApprovalStatus.PENDING },
         });
         if (remaining === 0) {
+          allApproved = true;
           await tx.quote.update({
             where: { id: quoteId },
             data: { status: QuoteStatus.APPROVED },
           });
+        } else {
+          // Notify next-tier approver
+          const nextApproval = await tx.quoteApproval.findFirst({
+            where: { quoteId, status: ApprovalStatus.PENDING },
+            orderBy: { tier: 'asc' },
+          });
+          if (nextApproval) {
+            void this.notifications.send({
+              recipientId: nextApproval.approverId,
+              eventCode: 'quote.submitted_for_approval',
+              subject: `عرض سعر يحتاج موافقتك: ${approval.quote.quoteNumber}`,
+              body: `المستوى ${nextApproval.tier} — بعد موافقة المستوى ${approval.tier}`,
+              deepLink: `/quotes/${quoteId}`,
+              payload: {
+                quoteId,
+                quoteNumber: approval.quote.quoteNumber,
+                tier: nextApproval.tier,
+              },
+            });
+          }
         }
       }
 
       return updated;
     });
+
+    // Notify preparer of final outcome
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      select: { preparedById: true, quoteNumber: true },
+    });
+    if (quote?.preparedById) {
+      if (dto.status === ApprovalStatus.REJECTED) {
+        void this.notifications.send({
+          recipientId: quote.preparedById,
+          eventCode: 'quote.rejected',
+          subject: `تم رفض عرض السعر: ${quote.quoteNumber}`,
+          body: dto.comments
+            ? `السبب: ${dto.comments}`
+            : 'تم رفض العرض من قِبل المعتمِد',
+          deepLink: `/quotes/${quoteId}`,
+          payload: { quoteId, quoteNumber: quote.quoteNumber },
+        });
+      } else if (allApproved) {
+        void this.notifications.send({
+          recipientId: quote.preparedById,
+          eventCode: 'quote.all_approved',
+          subject: `تمت الموافقة على عرض السعر: ${quote.quoteNumber}`,
+          body: 'تمت الموافقة على جميع المستويات — يمكنك إرسال العرض للعميل',
+          deepLink: `/quotes/${quoteId}`,
+          payload: { quoteId, quoteNumber: quote.quoteNumber },
+        });
+      }
+    }
+
+    return result;
   }
 
   async send(id: string) {
@@ -436,6 +508,27 @@ export class QuotesService {
       });
     });
 
+    // Notify finance/managers about the won quote requiring PO validation
+    const recipients = await this.prisma.user.findMany({
+      where: {
+        role: {
+          in: [UserRole.FINANCE_MANAGER, UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        },
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+    void this.notifications.sendToMany(
+      recipients.map((r) => r.id),
+      {
+        eventCode: 'quote.won',
+        subject: `تم رسو العرض: ${quote.quoteNumber}`,
+        body: `قيمة العقد: ${quote.totalAmount.toLocaleString('ar-SA')} ريال — بانتظار التحقق المالي`,
+        deepLink: `/quotes/${id}`,
+        payload: { quoteId: id, quoteNumber: quote.quoteNumber },
+      },
+    );
+
     return this.findOne(id);
   }
 
@@ -465,6 +558,62 @@ export class QuotesService {
       },
       include: QUOTE_INCLUDE,
     });
+  }
+
+  // BR-10 — postponing a quote requires a follow-up date (max 30 days from now).
+  async postpone(
+    id: string,
+    dto: { followUpDate: string; notes?: string },
+    actorId?: string,
+  ) {
+    const quote = await this.findOne(id);
+    if (
+      quote.status !== QuoteStatus.SENT &&
+      quote.status !== QuoteStatus.IN_DISCUSSION &&
+      quote.status !== QuoteStatus.IN_NEGOTIATION
+    ) {
+      throw new BadRequestException(
+        'Only SENT / IN_DISCUSSION / IN_NEGOTIATION quotes can be postponed',
+      );
+    }
+
+    const followUpAt = new Date(dto.followUpDate);
+    const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    if (isNaN(followUpAt.getTime())) {
+      throw new BadRequestException('followUpDate must be a valid date');
+    }
+    if (followUpAt < new Date()) {
+      throw new BadRequestException('followUpDate must be in the future');
+    }
+    if (followUpAt > maxDate) {
+      throw new BadRequestException(
+        'BR-10: follow-up date must be within 30 days',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.quote.update({
+        where: { id },
+        data: { status: QuoteStatus.POSTPONED },
+      });
+
+      // Create a follow-up in CRM linked to the client (BR-10)
+      if (quote.clientId) {
+        await tx.followUp.create({
+          data: {
+            clientId: quote.clientId,
+            title: `متابعة عرض سعر مؤجل: ${quote.quoteNumber}`,
+            description: dto.notes,
+            type: 'QUOTE',
+            dueAt: followUpAt,
+            assignedToId: quote.preparedById ?? actorId,
+            createdBy: actorId,
+          },
+        });
+      }
+    });
+
+    return this.findOne(id);
   }
 
   async softDelete(id: string) {
@@ -602,7 +751,7 @@ export class QuotesService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const revised = await this.prisma.$transaction(async (tx) => {
       await tx.quoteApproval.update({
         where: { id: approvalId },
         data: {
@@ -617,6 +766,19 @@ export class QuotesService {
         include: QUOTE_INCLUDE,
       });
     });
+
+    if (revised.preparedById) {
+      void this.notifications.send({
+        recipientId: revised.preparedById,
+        eventCode: 'quote.revision_requested',
+        subject: `طلب مراجعة عرض السعر: ${revised.quoteNumber}`,
+        body: `ملاحظات المعتمِد: ${dto.comments}`,
+        deepLink: `/quotes/${quoteId}`,
+        payload: { quoteId, quoteNumber: revised.quoteNumber },
+      });
+    }
+
+    return revised;
   }
 
   // M4-012 — daily cron marks SENT / IN_DISCUSSION / IN_NEGOTIATION quotes

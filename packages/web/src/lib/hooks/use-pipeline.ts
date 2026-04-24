@@ -80,3 +80,59 @@ export function useCreateEntry() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pipeline'] }),
   });
 }
+
+export type TargetType = 'REVENUE' | 'QUOTES_SENT' | 'CONVERSIONS' | 'VISITS';
+export type TargetPeriod = 'MONTHLY' | 'QUARTERLY';
+
+export interface SalesTarget {
+  id: string;
+  ownerId: string;
+  owner: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  type: TargetType;
+  period: TargetPeriod;
+  periodStart: string;
+  periodEnd: string;
+  targetValue: number;
+  achievedValue: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useTargets(ownerId?: string) {
+  return useQuery({
+    queryKey: ['targets', ownerId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<SalesTarget[]>>(
+        '/pipeline/team/targets',
+        { params: ownerId ? { ownerId } : undefined },
+      );
+      return data.data;
+    },
+  });
+}
+
+export function useUpsertTarget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      ownerId: string;
+      type: TargetType;
+      period: TargetPeriod;
+      periodStart: string;
+      periodEnd: string;
+      targetValue: number;
+    }) => {
+      const { data } = await apiClient.post<ApiEnvelope<SalesTarget>>(
+        '/pipeline/team/targets',
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['targets'] }),
+  });
+}

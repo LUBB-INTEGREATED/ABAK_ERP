@@ -56,7 +56,8 @@
     "govTransactions": "Gov Transactions",
     "pro": "PRO dashboard",
     "reports": "Reports",
-    "executive": "Executive Dashboard"
+    "executive": "Executive Dashboard",
+    "targets": "Team Targets"
   },
   "notifications": {
     "title": "Notifications",

@@ -14,6 +14,7 @@ import {
 } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type {
   ClientFilterDto,
   CreateClientDto,
@@ -33,7 +34,10 @@ const OVERRIDE_ROLES = new Set(['SALES_MANAGER', 'ADMIN', 'SUPER_ADMIN']);
 
 @Injectable()
 export class ClientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // Clients ------------------------------------------------------
 
@@ -473,7 +477,7 @@ export class ClientsService {
 
     const previousManagerId = client.accountManagerId;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.client.update({
         where: { id: clientId },
         data: { accountManagerId: dto.newAccountManagerId },
@@ -500,6 +504,32 @@ export class ClientsService {
 
       return updated;
     });
+
+    const clientLabel =
+      `${client.contactName ?? ''} ${client.companyName ? `(${client.companyName})` : ''}`.trim();
+
+    // Notify new and previous account managers (BR-19)
+    void this.notifications.send({
+      recipientId: dto.newAccountManagerId,
+      eventCode: 'client.reassigned',
+      subject: `تم تعيينك مسؤولاً عن العميل: ${clientLabel}`,
+      body: `السبب: ${dto.reason}`,
+      deepLink: `/clients/${clientId}`,
+      payload: { clientId, reason: dto.reason },
+    });
+
+    if (previousManagerId) {
+      void this.notifications.send({
+        recipientId: previousManagerId,
+        eventCode: 'client.reassigned',
+        subject: `تم نقل مسؤولية العميل: ${clientLabel}`,
+        body: `السبب: ${dto.reason}`,
+        deepLink: `/clients/${clientId}`,
+        payload: { clientId, reason: dto.reason },
+      });
+    }
+
+    return result;
   }
 
   // Follow-ups ---------------------------------------------------

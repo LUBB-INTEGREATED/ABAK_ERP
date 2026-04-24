@@ -7,6 +7,7 @@ import {
 import { PhaseStatus, Prisma, ProjectStatus, TaskStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   AdjustPhaseProgressDto,
   ClosureGateDto,
@@ -88,7 +89,10 @@ const FINANCE_GATES = new Set<ClosureGateDto['gate']>([
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // Projects ------------------------------------------------------
 
@@ -261,7 +265,7 @@ export class ProjectsService {
       );
     }
 
-    return this.prisma.project.update({
+    const updated = await this.prisma.project.update({
       where: { id },
       data: {
         status: next,
@@ -272,6 +276,19 @@ export class ProjectsService {
       },
       include: PROJECT_DETAIL_INCLUDE,
     });
+
+    if (next === ProjectStatus.AT_RISK && project.pmId) {
+      void this.notifications.send({
+        recipientId: project.pmId,
+        eventCode: 'project.at_risk',
+        subject: `تنبيه: مشروع في خطر — ${project.projectNumber}`,
+        body: `المشروع "${project.title}" تم تصنيفه كمشروع معرَّض للخطر`,
+        deepLink: `/projects/${id}`,
+        payload: { projectId: id, projectNumber: project.projectNumber },
+      });
+    }
+
+    return updated;
   }
 
   // Phases --------------------------------------------------------
