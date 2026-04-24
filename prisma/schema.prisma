@@ -66,6 +66,7 @@ model User {
   respondedGovComments              GovComment[]     @relation("GovCommentResponder")
 
   notifications Notification[] @relation("NotificationRecipient")
+  savedReports  SavedReport[]  @relation("ReportOwner")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1610,6 +1611,28 @@ model EscalationRule {
   instances EscalationInstance[]
 
   @@map("escalation_rules")
+}
+
+// ============================================
+// Sprint 10 — Reports & KPIs (M10-001)
+// ============================================
+
+model SavedReport {
+  id            String   @id @default(cuid())
+  ownerId       String
+  owner         User     @relation("ReportOwner", fields: [ownerId], references: [id])
+  reportCode    String
+  name          String
+  filters       Json
+  scheduledCron String?
+  recipients    String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([reportCode])
+  @@map("saved_reports")
 }
 
 model EscalationInstance {

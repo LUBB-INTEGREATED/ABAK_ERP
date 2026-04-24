@@ -22,6 +22,8 @@ import {
   User,
   X,
   LogOut,
+  BarChart2,
+  Crown,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -60,6 +62,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: '/pro', labelKey: 'nav.pro', icon: BadgeCheck },
   { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
+  { href: '/reports', labelKey: 'nav.reports', icon: BarChart2 },
+  { href: '/executive', labelKey: 'nav.executive', icon: Crown },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [

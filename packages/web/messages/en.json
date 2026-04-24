@@ -54,7 +54,9 @@
     "projects": "Projects",
     "finance": "Finance",
     "govTransactions": "Gov Transactions",
-    "pro": "PRO dashboard"
+    "pro": "PRO dashboard",
+    "reports": "Reports",
+    "executive": "Executive Dashboard"
   },
   "notifications": {
     "title": "Notifications",
@@ -647,5 +649,28 @@
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "network": "Failed to reach the server."
+  },
+  "reports": {
+    "catalog": "Report Catalog",
+    "catalogDescription": "Browse and run all system reports",
+    "filters": "Filters",
+    "runReport": "Run Report",
+    "results": "Results",
+    "noData": "No data for these filters",
+    "executiveDashboard": "Executive Dashboard",
+    "lastUpdated": "Last updated",
+    "export": "Export",
+    "savedReports": "Saved Reports",
+    "saveReport": "Save Report",
+    "reportName": "Report Name",
+    "categories": {
+      "sales": "Sales",
+      "rfq": "RFQs & Quotes",
+      "project": "Projects",
+      "finance": "Finance",
+      "gov": "Government",
+      "sla": "SLA",
+      "executive": "Executive"
+    }
   }
 }

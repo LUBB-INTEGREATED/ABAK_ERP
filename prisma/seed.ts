@@ -23,6 +23,7 @@ const DEFAULT_PASSWORD = 'Password123!';
 async function main() {
   console.log('🌱 Seeding database...');
 
+  await prisma.savedReport.deleteMany();
   await prisma.escalationInstance.deleteMany();
   await prisma.escalationRule.deleteMany();
   await prisma.notification.deleteMany();
