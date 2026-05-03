@@ -70,12 +70,14 @@ function KpiCard({
 
 const STAGE_LABELS: Record<string, string> = {
   NEW_LEAD: 'عميل جديد',
-  INITIAL_CONTACT: 'تواصل أولي',
-  QUALIFICATION: 'تأهيل',
+  FIRST_CONTACT_MADE: 'التواصل الأول',
+  MEETING_SCHEDULED: 'اجتماع مجدول',
+  MEETING_DONE: 'اجتماع منتهٍ',
   READY_FOR_RFQ: 'جاهز للطلب',
-  RFQ_RECEIVED: 'طلب مستلم',
-  QUOTE_SENT: 'عرض مُرسَل',
-  NEGOTIATION: 'تفاوض',
+  RFQ_SUBMITTED: 'طلب تسعير مُرسَل',
+  QUOTE_IN_PREPARATION: 'عرض في الإعداد',
+  QUOTE_SENT_TO_CLIENT: 'عرض مُرسَل للعميل',
+  NEGOTIATION_REVISION: 'تفاوض / مراجعة',
   WON: 'ربح',
   LOST: 'خسارة',
   POSTPONED: 'تأجيل',
@@ -143,7 +145,7 @@ export default function ExecutiveDashboardPage() {
             value={sarFmt(kpis?.monthlyRevenue.actual ?? 0)}
             sub={`الهدف: ${sarFmt(kpis?.monthlyRevenue.target ?? 0)}`}
             icon={Banknote}
-            trend={attainment}
+            trend={attainment ?? undefined}
           />
           <KpiCard
             title="معدل الربح (90 يوماً)"
@@ -207,10 +209,10 @@ export default function ExecutiveDashboardPage() {
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(value: number, name: string) =>
+                    formatter={(value, name) =>
                       name === 'count'
                         ? [value, 'العدد']
-                        : [sarFmt(value), 'القيمة']
+                        : [sarFmt(Number(value)), 'القيمة']
                     }
                   />
                   <Bar dataKey="count" name="العدد" radius={[4, 4, 0, 0]}>

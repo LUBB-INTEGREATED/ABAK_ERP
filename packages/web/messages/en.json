@@ -57,7 +57,8 @@
     "pro": "PRO dashboard",
     "reports": "Reports",
     "executive": "Executive Dashboard",
-    "targets": "Team Targets"
+    "targets": "Team Targets",
+    "resources": "Resource Workload"
   },
   "notifications": {
     "title": "Notifications",
@@ -155,7 +156,8 @@
     },
     "weeklyStatus": {
       "markUpdated": "Mark weekly status updated",
-      "lastUpdated": "Last weekly update"
+      "lastUpdated": "Last weekly update",
+      "overdueWarning": "Transaction status has not been updated this week"
     }
   },
   "proDashboard": {
@@ -279,6 +281,7 @@
       "closed": "Closed"
     },
     "filterAll": "All",
+    "riskFlaggedAt": "Risk flagged at",
     "tabs": {
       "overview": "Overview",
       "phases": "Phases",
@@ -302,6 +305,19 @@
       "create": "Create project",
       "phasePreview": "7 phase preview",
       "contractValue": "Contract value"
+    }
+  },
+  "resources": {
+    "title": "Resource Workload",
+    "subtitle": "Current workload per employee across active projects.",
+    "activeTasks": "Active tasks",
+    "plannedHours": "Planned hours",
+    "taskLoad": "Task load",
+    "empty": "No resource data available.",
+    "status": {
+      "available": "Available",
+      "busy": "Busy",
+      "overloaded": "Overloaded"
     }
   },
   "phase": {

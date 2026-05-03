@@ -40,14 +40,16 @@ const CLASSIFICATION_COLORS: Record<ClientClassification, string> = {
 };
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
-  NEW: '#0ea5e9',
+  INCOMING: '#0ea5e9',
   ASSIGNED: '#236382',
-  CONTACTED: '#6366f1',
+  IN_PROGRESS: '#6366f1',
   QUALIFIED: '#A78B42',
-  UNQUALIFIED: '#a1a1aa',
-  CONVERTED: '#10b981',
-  LOST: '#ef4444',
-  DUPLICATE: '#f59e0b',
+  DISQUALIFIED: '#a1a1aa',
+  TENDER_PENDING: '#a855f7',
+  TENDER_ACTIVE: '#3b82f6',
+  TENDER_SUBMITTED: '#06b6d4',
+  TENDER_WON: '#10b981',
+  TENDER_LOST: '#ef4444',
 };
 
 const SLA_COLORS: Record<SLAStatus, string> = {
@@ -91,10 +93,13 @@ export default function DashboardPage() {
   const today = stats.data?.todayCount ?? 0;
   const overdue =
     stats.data?.bySla.find((row) => row.slaStatus === 'OVERDUE')?.count ?? 0;
-  const converted =
-    stats.data?.byStatus.find((row) => row.status === 'CONVERTED')?.count ?? 0;
+  const qualified =
+    (stats.data?.byStatus.find((row) => row.status === 'QUALIFIED')?.count ??
+      0) +
+    (stats.data?.byStatus.find((row) => row.status === 'TENDER_WON')?.count ??
+      0);
   const conversionRate =
-    total > 0 ? `${((converted / total) * 100).toFixed(1)}%` : '—';
+    total > 0 ? `${((qualified / total) * 100).toFixed(1)}%` : '—';
 
   return (
     <div className="space-y-6">

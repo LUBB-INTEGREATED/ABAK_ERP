@@ -175,3 +175,29 @@ export function usePostponeQuote(id: string) {
     onSuccess: () => invalidate(qc, id),
   });
 }
+
+export function useSetInDiscussion(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.patch<ApiEnvelope<Quote>>(
+        `/quotes/${id}/in-discussion`,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, id),
+  });
+}
+
+export function useSetInNegotiation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.patch<ApiEnvelope<Quote>>(
+        `/quotes/${id}/in-negotiation`,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, id),
+  });
+}

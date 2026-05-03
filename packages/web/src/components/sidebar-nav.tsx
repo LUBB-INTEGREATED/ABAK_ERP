@@ -20,6 +20,7 @@ import {
   Sliders,
   CalendarCheck,
   User,
+  Users,
   X,
   LogOut,
   BarChart2,
@@ -55,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
   { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
   { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+  { href: '/projects/resources', labelKey: 'nav.resources', icon: Users },
   { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
   {
     href: '/gov-transactions',

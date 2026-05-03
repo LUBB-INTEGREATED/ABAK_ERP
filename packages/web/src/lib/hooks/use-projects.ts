@@ -111,6 +111,30 @@ export function useEligiblePms(enabled = true) {
   });
 }
 
+export type UtilizationStatus = 'AVAILABLE' | 'BUSY' | 'OVERLOADED';
+
+export interface ResourceWorkload {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  activeTasks: number;
+  totalPlannedHours: number;
+  utilizationStatus: UtilizationStatus;
+}
+
+export function useResourceWorkload() {
+  return useQuery<ResourceWorkload[]>({
+    queryKey: ['projects', 'resources', 'workload'],
+    queryFn: async () => {
+      const res = await apiClient.get<ApiEnvelope<ResourceWorkload[]>>(
+        '/projects/resources/workload',
+      );
+      return res.data.data;
+    },
+  });
+}
+
 function invalidateOne(qc: ReturnType<typeof useQueryClient>, id: string) {
   qc.invalidateQueries({ queryKey: LIST_QK });
   qc.invalidateQueries({ queryKey: ['projects', 'detail', id] });

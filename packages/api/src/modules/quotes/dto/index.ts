@@ -178,6 +178,34 @@ export class CreateQuoteDto {
   @ValidateNested({ each: true })
   @Type(() => MilestoneInputDto)
   milestones?: MilestoneInputDto[];
+
+  // Technical Scope fields (BPD M4)
+  @ApiPropertyOptional({ description: 'Technical scope of work' })
+  @IsOptional()
+  @IsString()
+  scopeOfWork?: string;
+
+  @ApiPropertyOptional({ description: 'Project deliverables' })
+  @IsOptional()
+  @IsString()
+  deliverables?: string;
+
+  @ApiPropertyOptional({ description: 'Items excluded from scope' })
+  @IsOptional()
+  @IsString()
+  exclusions?: string;
+
+  @ApiPropertyOptional({ description: 'Assumptions underlying the quote' })
+  @IsOptional()
+  @IsString()
+  assumptions?: string;
+
+  @ApiPropertyOptional({ description: 'Number of revision rounds included' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  numberOfRevisions?: number;
 }
 
 export class UpdateQuoteDto extends PartialType(CreateQuoteDto) {}

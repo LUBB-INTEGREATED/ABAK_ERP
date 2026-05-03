@@ -9,14 +9,16 @@ export const LEAD_CHANNELS = [
 export type LeadChannel = (typeof LEAD_CHANNELS)[number];
 
 export const LEAD_STATUSES = [
-  'NEW',
+  'INCOMING',
   'ASSIGNED',
-  'CONTACTED',
+  'IN_PROGRESS',
   'QUALIFIED',
-  'UNQUALIFIED',
-  'CONVERTED',
-  'LOST',
-  'DUPLICATE',
+  'DISQUALIFIED',
+  'TENDER_PENDING',
+  'TENDER_ACTIVE',
+  'TENDER_SUBMITTED',
+  'TENDER_WON',
+  'TENDER_LOST',
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
@@ -123,14 +125,16 @@ export const CHANNEL_LABELS: Record<LeadChannel, string> = {
 };
 
 export const STATUS_LABELS: Record<LeadStatus, string> = {
-  NEW: 'New',
-  ASSIGNED: 'Assigned',
-  CONTACTED: 'Contacted',
-  QUALIFIED: 'Qualified',
-  UNQUALIFIED: 'Unqualified',
-  CONVERTED: 'Converted',
-  LOST: 'Lost',
-  DUPLICATE: 'Duplicate',
+  INCOMING: 'وارد جديد',
+  ASSIGNED: 'مُعيَّن',
+  IN_PROGRESS: 'قيد المتابعة',
+  QUALIFIED: 'مؤهَّل',
+  DISQUALIFIED: 'غير مؤهل',
+  TENDER_PENDING: 'مناقصة - انتظار',
+  TENDER_ACTIVE: 'مناقصة نشطة',
+  TENDER_SUBMITTED: 'مناقصة مُقدَّمة',
+  TENDER_WON: 'مناقصة رابحة',
+  TENDER_LOST: 'مناقصة خاسرة',
 };
 
 export const PRIORITY_LABELS: Record<LeadPriority, string> = {

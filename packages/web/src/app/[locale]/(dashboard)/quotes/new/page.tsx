@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useClientsList } from '@/lib/hooks/use-clients';
 import { useCreateQuote } from '@/lib/hooks/use-quotes';
@@ -107,6 +106,13 @@ export default function NewQuotePage() {
   const [termsAndConditions, setTermsAndConditions] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
 
+  // Step 1 — Technical scope (optional)
+  const [scopeOfWork, setScopeOfWork] = useState('');
+  const [deliverables, setDeliverables] = useState('');
+  const [exclusions, setExclusions] = useState('');
+  const [assumptions, setAssumptions] = useState('');
+  const [numberOfRevisions, setNumberOfRevisions] = useState('');
+
   // Step 2 — Line items
   const [items, setItems] = useState<LineItem[]>([{ ...DEFAULT_ITEM }]);
   const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENTAGE'>(
@@ -117,6 +123,7 @@ export default function NewQuotePage() {
 
   // Step 3 — Milestones
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [milestoneTemplate, setMilestoneTemplate] = useState('');
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
@@ -186,6 +193,38 @@ export default function NewQuotePage() {
     );
   }
 
+  function applyMilestoneTemplate(template: string) {
+    setMilestoneTemplate(template);
+    switch (template) {
+      case 'TWO':
+        setMilestones([
+          { description: 'دفعة مقدمة', percentage: 50, daysFromStart: 0 },
+          { description: 'دفعة التسليم', percentage: 50 },
+        ]);
+        break;
+      case 'THREE':
+        setMilestones([
+          { description: 'دفعة أولى', percentage: 30, daysFromStart: 0 },
+          { description: 'دفعة ثانية', percentage: 40 },
+          { description: 'دفعة ثالثة', percentage: 30 },
+        ]);
+        break;
+      case 'FOUR':
+        setMilestones([
+          { description: 'الدفعة الأولى', percentage: 25, daysFromStart: 0 },
+          { description: 'الدفعة الثانية', percentage: 25 },
+          { description: 'الدفعة الثالثة', percentage: 25 },
+          { description: 'الدفعة الرابعة', percentage: 25 },
+        ]);
+        break;
+      case 'CUSTOM':
+        setMilestones([{ ...DEFAULT_MILESTONE }]);
+        break;
+      default:
+        break;
+    }
+  }
+
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit() {
     const payload: Record<string, unknown> = {
@@ -197,6 +236,13 @@ export default function NewQuotePage() {
       paymentTerms: paymentTerms || undefined,
       termsAndConditions: termsAndConditions || undefined,
       internalNotes: internalNotes || undefined,
+      scopeOfWork: scopeOfWork || undefined,
+      deliverables: deliverables || undefined,
+      exclusions: exclusions || undefined,
+      assumptions: assumptions || undefined,
+      numberOfRevisions: numberOfRevisions
+        ? Number(numberOfRevisions)
+        : undefined,
       discountType,
       discountValue,
       taxRate,
@@ -320,6 +366,77 @@ export default function NewQuotePage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="وصف العمل المطلوب..."
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="scopeOfWork">نطاق العمل</Label>
+                <Textarea
+                  id="scopeOfWork"
+                  rows={3}
+                  value={scopeOfWork}
+                  onChange={(e) => setScopeOfWork(e.target.value)}
+                  placeholder="صف نطاق العمل المشمول في هذا العرض..."
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="deliverables">المخرجات والتسليمات</Label>
+                <Textarea
+                  id="deliverables"
+                  rows={3}
+                  value={deliverables}
+                  onChange={(e) => setDeliverables(e.target.value)}
+                  placeholder="اذكر المخرجات والتسليمات المتوقعة..."
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="exclusions">
+                  المستثنيات{' '}
+                  <span className="text-muted-foreground text-xs">
+                    (اختياري)
+                  </span>
+                </Label>
+                <Textarea
+                  id="exclusions"
+                  rows={2}
+                  value={exclusions}
+                  onChange={(e) => setExclusions(e.target.value)}
+                  placeholder="ما الذي لا يشمله العرض..."
+                />
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="assumptions">
+                  الافتراضات والشروط{' '}
+                  <span className="text-muted-foreground text-xs">
+                    (اختياري)
+                  </span>
+                </Label>
+                <Textarea
+                  id="assumptions"
+                  rows={2}
+                  value={assumptions}
+                  onChange={(e) => setAssumptions(e.target.value)}
+                  placeholder="الافتراضات التي يقوم عليها العرض..."
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="numberOfRevisions">
+                  عدد جولات المراجعة{' '}
+                  <span className="text-muted-foreground text-xs">
+                    (اختياري)
+                  </span>
+                </Label>
+                <Input
+                  id="numberOfRevisions"
+                  type="number"
+                  min={0}
+                  value={numberOfRevisions}
+                  onChange={(e) => setNumberOfRevisions(e.target.value)}
+                  placeholder="مثال: 2"
                 />
               </div>
 
@@ -527,7 +644,7 @@ export default function NewQuotePage() {
               إضافة بند
             </Button>
 
-            <Separator />
+            <hr className="border-border" />
 
             {/* Discount + Tax */}
             <div className="grid gap-4 sm:grid-cols-3">
@@ -589,7 +706,7 @@ export default function NewQuotePage() {
                 <span>ضريبة القيمة المضافة ({taxRate}%)</span>
                 <span>{sar(totals.taxAmount)}</span>
               </div>
-              <Separator />
+              <hr className="border-border" />
               <div className="flex justify-between text-base font-bold">
                 <span>الإجمالي</span>
                 <span>{sar(totals.total)}</span>
@@ -619,6 +736,31 @@ export default function NewQuotePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Payment schedule template selector */}
+            <div className="space-y-1.5">
+              <Label>قالب جدول السداد</Label>
+              <Select
+                value={milestoneTemplate}
+                onValueChange={applyMilestoneTemplate}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر قالباً أو أضف الدفعات يدوياً..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TWO">
+                    50% مقدم + 50% عند التسليم (قسطان)
+                  </SelectItem>
+                  <SelectItem value="THREE">
+                    30% + 40% + 30% (ثلاثة أقساط)
+                  </SelectItem>
+                  <SelectItem value="FOUR">
+                    25% × 4 (أربعة أقساط متساوية)
+                  </SelectItem>
+                  <SelectItem value="CUSTOM">مخصص</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {milestones.length > 0 && (
               <div className="space-y-2">
                 {milestones.map((m, i) => (

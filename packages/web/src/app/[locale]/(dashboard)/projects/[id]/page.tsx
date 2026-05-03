@@ -125,6 +125,26 @@ export default function ProjectDetailPage({
 
   return (
     <div className="space-y-6">
+      {project.financialRiskFlagged && (
+        <div className="flex items-start gap-3 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-rose-800">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">
+              تحذير: تقدم المشروع يتجاوز المبالغ المحصلة — يُرجى مراجعة جدول
+              الدفعات
+            </p>
+            {project.financialRiskFlaggedAt && (
+              <p className="mt-0.5 text-sm text-rose-700">
+                {t('project.riskFlaggedAt')}:{' '}
+                {new Date(project.financialRiskFlaggedAt).toLocaleDateString(
+                  'ar-SA-u-ca-islamic',
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <ProjectHero project={project} />
 
       <Tabs defaultValue="overview" className="space-y-4">

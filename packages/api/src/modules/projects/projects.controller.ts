@@ -64,6 +64,14 @@ export class ProjectsController {
     return this.service.listEligiblePms();
   }
 
+  @Get('projects/resources/workload')
+  @ApiOperation({
+    summary: 'Get resource workload per employee across active projects',
+  })
+  resourceWorkload() {
+    return this.service.getResourceWorkload();
+  }
+
   @Get('projects')
   @ApiOperation({ summary: 'List projects' })
   list(@Query() query: ListProjectsDto) {

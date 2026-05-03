@@ -229,6 +229,24 @@ model PublicHoliday {
 }
 
 // ============================================
+// Saudi Arabia Regions (lookup table)
+// ============================================
+
+model Region {
+  id       String  @id @default(cuid())
+  code     String  @unique // e.g. "RYD", "MKH"
+  nameAr   String
+  nameEn   String
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("regions")
+}
+
+// ============================================
 // Module 1: Lead Capture & Reception
 // ============================================
 
@@ -262,13 +280,26 @@ model Lead {
   referrerPhone   String?
   referrerCompany String?
 
-  socialPlatform String?
-  socialProfile  String?
+  socialPlatform  String?
+  socialProfile   String?
+  socialUsername  String?
+  relatedCampaign String?
 
-  mapsLink   String?
-  mapsReview Boolean?
+  webSource String?
 
-  status       LeadStatus   @default(NEW)
+  mapsLink         String?
+  mapsReview       Boolean?
+  mapContactMethod String?
+  mapHowFoundUs    String?
+
+  city     String?
+  district String?
+
+  referralSourceType  String?
+  expectedBudgetRange String?
+  clientUrgency       String?
+
+  status       LeadStatus   @default(INCOMING)
   priority     LeadPriority @default(MEDIUM)
   assignedToId String?
   assignedTo   User?        @relation("LeadAssignee", fields: [assignedToId], references: [id])
@@ -320,14 +351,16 @@ enum LeadChannel {
 }
 
 enum LeadStatus {
-  NEW
+  INCOMING
   ASSIGNED
-  CONTACTED
+  IN_PROGRESS
   QUALIFIED
-  UNQUALIFIED
-  CONVERTED
-  LOST
-  DUPLICATE
+  DISQUALIFIED
+  TENDER_PENDING
+  TENDER_ACTIVE
+  TENDER_SUBMITTED
+  TENDER_WON
+  TENDER_LOST
 }
 
 enum LeadPriority {
@@ -367,6 +400,8 @@ model Client {
 
   commercialRegistration String?
   taxId                  String?
+
+  clientType String?
 
   classification       ClientClassification @default(NEW)
   classificationManual Boolean              @default(false)
@@ -432,6 +467,7 @@ model Interaction {
 
   type            InteractionType
   direction       InteractionDirection?
+  visibility      InteractionVisibility @default(TEAM)
   subject         String
   summary         String?
   occurredAt      DateTime              @default(now())
@@ -455,21 +491,27 @@ model Interaction {
 }
 
 enum InteractionType {
-  PHONE_CALL
+  CALL
   MEETING
   EMAIL
   WHATSAPP
   COMPLAINT
   SITE_VISIT
-  NEGOTIATION
-  TECHNICAL_CONSULTATION
-  PROPOSAL_SUBMISSION
-  INTERNAL_NOTE
+  OFFICE_VISIT
+  QUOTE_SENT_EVENT
+  CONTRACT_SIGNED
+  NOTE
 }
 
 enum InteractionDirection {
   INBOUND
   OUTBOUND
+}
+
+enum InteractionVisibility {
+  TEAM
+  MANAGER_ONLY
+  PRIVATE
 }
 
 model FollowUp {
@@ -511,10 +553,18 @@ enum FollowUpType {
 
 enum FollowUpStatus {
   PENDING
-  IN_PROGRESS
+  DUE_TODAY
+  OVERDUE
   COMPLETED
   CANCELLED
-  OVERDUE
+}
+
+enum ClientSentiment {
+  VERY_INTERESTED
+  INTERESTED
+  NEUTRAL
+  HESITANT
+  NOT_INTERESTED
 }
 
 model ClientNote {
@@ -593,12 +643,14 @@ model PipelineEntry {
 
 enum PipelineStage {
   NEW_LEAD
-  INITIAL_CONTACT
-  QUALIFICATION
+  FIRST_CONTACT_MADE
+  MEETING_SCHEDULED
+  MEETING_DONE
   READY_FOR_RFQ
-  RFQ_RECEIVED
-  QUOTE_SENT
-  NEGOTIATION
+  RFQ_SUBMITTED
+  QUOTE_IN_PREPARATION
+  QUOTE_SENT_TO_CLIENT
+  NEGOTIATION_REVISION
   WON
   LOST
   POSTPONED
@@ -629,17 +681,20 @@ model FieldVisit {
   clientId String?
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  visitType  VisitType
-  purpose    String
-  findings   String?
-  nextAction String?
+  visitType       VisitType
+  purpose         String
+  keyOutcomes     String?
+  findings        String?
+  nextAction      String?
+  clientSentiment ClientSentiment?
 
-  scheduledAt   DateTime
-  completedAt   DateTime?
-  locationLabel String?
-  latitude      Float?
-  longitude     Float?
-  attendees     String?
+  scheduledAt    DateTime
+  completedAt    DateTime?
+  locationLabel  String?
+  latitude       Float?
+  longitude      Float?
+  attendees      String?
+  attachmentUrls String[]  @default([])
 
   authorId String?
   author   User?   @relation("VisitAuthor", fields: [authorId], references: [id])
@@ -654,11 +709,11 @@ model FieldVisit {
 }
 
 enum VisitType {
-  INITIAL
-  FOLLOW_UP
-  TECHNICAL
-  PRESENTATION
-  CLOSING
+  CLIENT_OFFICE
+  SITE
+  ABAK_OFFICE
+  VIRTUAL
+  EVENT
 }
 
 model SalesTarget {
@@ -710,6 +765,11 @@ model Quote {
 
   title              String
   description        String?
+  scopeOfWork        String?
+  deliverables       String?
+  exclusions         String?
+  assumptions        String?
+  numberOfRevisions  Int?
   validUntil         DateTime?
   deliveryTimeline   String?
   paymentTerms       String?

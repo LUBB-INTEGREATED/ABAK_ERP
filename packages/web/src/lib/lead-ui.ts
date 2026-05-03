@@ -11,14 +11,16 @@ import {
 } from './types/lead';
 
 export const STATUS_BADGE: Record<LeadStatus, string> = {
-  NEW: 'bg-sky-100 text-sky-700',
+  INCOMING: 'bg-sky-100 text-sky-700',
   ASSIGNED: 'bg-abak-blue/10 text-abak-blue',
-  CONTACTED: 'bg-indigo-100 text-indigo-700',
+  IN_PROGRESS: 'bg-indigo-100 text-indigo-700',
   QUALIFIED: 'bg-abak-gold/15 text-abak-gold',
-  UNQUALIFIED: 'bg-zinc-100 text-zinc-600',
-  CONVERTED: 'bg-emerald-100 text-emerald-700',
-  LOST: 'bg-rose-100 text-rose-700',
-  DUPLICATE: 'bg-amber-100 text-amber-700',
+  DISQUALIFIED: 'bg-zinc-100 text-zinc-600',
+  TENDER_PENDING: 'bg-purple-100 text-purple-700',
+  TENDER_ACTIVE: 'bg-blue-100 text-blue-700',
+  TENDER_SUBMITTED: 'bg-cyan-100 text-cyan-700',
+  TENDER_WON: 'bg-emerald-100 text-emerald-700',
+  TENDER_LOST: 'bg-rose-100 text-rose-700',
 };
 
 export const SLA_BADGE: Record<SLAStatus, string> = {
@@ -35,30 +37,36 @@ export const PRIORITY_BADGE: Record<LeadPriority, string> = {
 };
 
 export const TERMINAL_STATUSES: LeadStatus[] = [
-  'CONVERTED',
-  'LOST',
-  'DUPLICATE',
+  'DISQUALIFIED',
+  'TENDER_WON',
+  'TENDER_LOST',
 ];
 
 export function getAllowedNextStatuses(from: LeadStatus): LeadStatus[] {
   switch (from) {
-    case 'NEW':
-      return ['ASSIGNED', 'CONTACTED', 'UNQUALIFIED', 'DUPLICATE'];
+    case 'INCOMING':
+      return ['ASSIGNED', 'IN_PROGRESS', 'DISQUALIFIED'];
     case 'ASSIGNED':
-      return ['CONTACTED', 'UNQUALIFIED', 'LOST', 'DUPLICATE'];
-    case 'CONTACTED':
-      return ['QUALIFIED', 'UNQUALIFIED', 'LOST', 'DUPLICATE'];
+      return ['IN_PROGRESS', 'DISQUALIFIED'];
+    case 'IN_PROGRESS':
+      return ['QUALIFIED', 'DISQUALIFIED'];
     case 'QUALIFIED':
-      return ['CONVERTED', 'LOST', 'UNQUALIFIED'];
-    case 'UNQUALIFIED':
+      return ['DISQUALIFIED'];
+    case 'DISQUALIFIED':
       return ['QUALIFIED'];
+    case 'TENDER_PENDING':
+      return ['TENDER_ACTIVE', 'TENDER_LOST'];
+    case 'TENDER_ACTIVE':
+      return ['TENDER_SUBMITTED', 'TENDER_LOST'];
+    case 'TENDER_SUBMITTED':
+      return ['TENDER_WON', 'TENDER_LOST'];
     default:
       return [];
   }
 }
 
 export function statusRequiresReason(status: LeadStatus): boolean {
-  return status === 'LOST' || status === 'UNQUALIFIED';
+  return status === 'DISQUALIFIED' || status === 'TENDER_LOST';
 }
 
 export {

@@ -109,9 +109,9 @@ export function StatusDialog({
                   value={reason}
                   onChange={(event) => setReason(event.target.value)}
                   placeholder={
-                    status === 'LOST'
-                      ? 'Why was this opportunity lost?'
-                      : 'Why is this lead unqualified?'
+                    status === 'TENDER_LOST'
+                      ? 'لماذا خسرنا المناقصة؟'
+                      : 'لماذا تم رفض الفرصة؟'
                   }
                 />
               </div>

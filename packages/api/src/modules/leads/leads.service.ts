@@ -18,29 +18,20 @@ import type { UpdateLeadDto } from './dto/update-lead.dto';
 const DEFAULT_SLA_RESPONSE_HOURS = 24;
 
 const ALLOWED_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
-  NEW: [
+  INCOMING: [
     LeadStatus.ASSIGNED,
-    LeadStatus.CONTACTED,
-    LeadStatus.UNQUALIFIED,
-    LeadStatus.DUPLICATE,
+    LeadStatus.IN_PROGRESS,
+    LeadStatus.DISQUALIFIED,
   ],
-  ASSIGNED: [
-    LeadStatus.CONTACTED,
-    LeadStatus.UNQUALIFIED,
-    LeadStatus.LOST,
-    LeadStatus.DUPLICATE,
-  ],
-  CONTACTED: [
-    LeadStatus.QUALIFIED,
-    LeadStatus.UNQUALIFIED,
-    LeadStatus.LOST,
-    LeadStatus.DUPLICATE,
-  ],
-  QUALIFIED: [LeadStatus.CONVERTED, LeadStatus.LOST, LeadStatus.UNQUALIFIED],
-  UNQUALIFIED: [LeadStatus.QUALIFIED],
-  CONVERTED: [],
-  LOST: [],
-  DUPLICATE: [],
+  ASSIGNED: [LeadStatus.IN_PROGRESS, LeadStatus.DISQUALIFIED],
+  IN_PROGRESS: [LeadStatus.QUALIFIED, LeadStatus.DISQUALIFIED],
+  QUALIFIED: [LeadStatus.DISQUALIFIED],
+  DISQUALIFIED: [LeadStatus.QUALIFIED],
+  TENDER_PENDING: [LeadStatus.TENDER_ACTIVE, LeadStatus.DISQUALIFIED],
+  TENDER_ACTIVE: [LeadStatus.TENDER_SUBMITTED, LeadStatus.DISQUALIFIED],
+  TENDER_SUBMITTED: [LeadStatus.TENDER_WON, LeadStatus.TENDER_LOST],
+  TENDER_WON: [],
+  TENDER_LOST: [],
 };
 
 @Injectable()
@@ -96,11 +87,24 @@ export class LeadsService {
       mapsLink: dto.mapsLink,
       mapsReview: dto.mapsReview,
       initialNotes: dto.initialNotes,
+      qualificationNotes: dto.qualificationNotes,
+      lostReason: dto.lostReason,
+      // BPD channel-specific fields
+      city: dto.city,
+      district: dto.district,
+      referralSourceType: dto.referralSourceType,
+      expectedBudgetRange: dto.expectedBudgetRange,
+      clientUrgency: dto.clientUrgency,
+      socialUsername: dto.socialUsername,
+      relatedCampaign: dto.relatedCampaign,
+      webSource: dto.webSource,
+      mapContactMethod: dto.mapContactMethod,
+      mapHowFoundUs: dto.mapHowFoundUs,
       slaResponseDue,
       slaStatus: SLAStatus.ON_TIME,
       isReturningClient: isReturning,
       createdBy: actorId,
-      status: effectiveAssigneeId ? LeadStatus.ASSIGNED : LeadStatus.NEW,
+      status: effectiveAssigneeId ? LeadStatus.ASSIGNED : LeadStatus.INCOMING,
     };
 
     if (dto.serviceId) {
@@ -163,7 +167,9 @@ export class LeadsService {
         assignedTo: { connect: { id: pickedId } },
         assignedAt: new Date(),
         status:
-          lead.status === LeadStatus.NEW ? LeadStatus.ASSIGNED : lead.status,
+          lead.status === LeadStatus.INCOMING
+            ? LeadStatus.ASSIGNED
+            : lead.status,
       },
     });
   }
@@ -315,7 +321,9 @@ export class LeadsService {
         assignedTo: { connect: { id: dto.assignedToId } },
         assignedAt: new Date(),
         status:
-          lead.status === LeadStatus.NEW ? LeadStatus.ASSIGNED : lead.status,
+          lead.status === LeadStatus.INCOMING
+            ? LeadStatus.ASSIGNED
+            : lead.status,
       },
     });
 
@@ -340,8 +348,7 @@ export class LeadsService {
       );
     }
 
-    const requiresReason =
-      dto.status === LeadStatus.LOST || dto.status === LeadStatus.UNQUALIFIED;
+    const requiresReason = dto.status === LeadStatus.DISQUALIFIED;
     if (requiresReason && !dto.reason) {
       throw new BadRequestException(
         `A reason is required when moving to ${dto.status}`,
@@ -349,14 +356,14 @@ export class LeadsService {
     }
 
     const data: Prisma.LeadUpdateInput = { status: dto.status };
-    if (dto.status === LeadStatus.CONTACTED && !lead.firstResponseAt) {
+    if (dto.status === LeadStatus.IN_PROGRESS && !lead.firstResponseAt) {
       data.firstResponseAt = new Date();
     }
     if (
-      dto.status === LeadStatus.LOST ||
-      dto.status === LeadStatus.CONVERTED ||
-      dto.status === LeadStatus.UNQUALIFIED ||
-      dto.status === LeadStatus.DUPLICATE
+      dto.status === LeadStatus.DISQUALIFIED ||
+      dto.status === LeadStatus.QUALIFIED ||
+      dto.status === LeadStatus.TENDER_WON ||
+      dto.status === LeadStatus.TENDER_LOST
     ) {
       data.closedAt = new Date();
     }

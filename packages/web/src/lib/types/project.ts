@@ -128,6 +128,7 @@ export interface ProjectDetail extends Omit<ProjectListItem, '_count'> {
   actualEndDate: string | null;
   plannedProgress: number;
   financialRiskFlagged: boolean;
+  financialRiskFlaggedAt: string | null;
   po: { id: string; poNumber: string; contractValue: number; status: string };
   phases: Phase[];
   closureChecklist: ClosureChecklist | null;

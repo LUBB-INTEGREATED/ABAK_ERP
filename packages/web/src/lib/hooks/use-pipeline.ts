@@ -81,6 +81,107 @@ export function useCreateEntry() {
   });
 }
 
+// Visit types and sentiment aligned with BPD
+export type VisitType =
+  | 'CLIENT_OFFICE'
+  | 'SITE'
+  | 'ABAK_OFFICE'
+  | 'VIRTUAL'
+  | 'EVENT';
+
+export type ClientSentiment =
+  | 'VERY_INTERESTED'
+  | 'INTERESTED'
+  | 'NEUTRAL'
+  | 'HESITANT'
+  | 'NOT_INTERESTED';
+
+export interface FieldVisit {
+  id: string;
+  visitType: VisitType;
+  purpose: string;
+  keyOutcomes: string | null;
+  findings: string | null;
+  nextAction: string | null;
+  clientSentiment: ClientSentiment | null;
+  scheduledAt: string;
+  completedAt: string | null;
+  locationLabel: string | null;
+  attendees: string | null;
+  attachmentUrls: string[];
+  clientId: string | null;
+  client: { id: string; clientNumber: string; contactName: string } | null;
+  authorId: string | null;
+  author: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function useVisits(ownerId?: string) {
+  return useQuery({
+    queryKey: ['visits', ownerId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<FieldVisit[]>>(
+        '/pipeline/visits',
+        { params: ownerId ? { ownerId } : undefined },
+      );
+      return data.data;
+    },
+  });
+}
+
+export function useCreateVisit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      visitType: VisitType;
+      purpose: string;
+      scheduledAt: string;
+      clientId?: string;
+      locationLabel?: string;
+      latitude?: number;
+      longitude?: number;
+      attendees?: string;
+      keyOutcomes?: string;
+      clientSentiment?: ClientSentiment;
+      attachmentUrls?: string[];
+    }) => {
+      const { data } = await apiClient.post<ApiEnvelope<FieldVisit>>(
+        '/pipeline/visits',
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['visits'] }),
+  });
+}
+
+export function useUpdateVisit(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      completedAt?: string;
+      findings?: string;
+      nextAction?: string;
+      keyOutcomes?: string;
+      clientSentiment?: ClientSentiment;
+      attachmentUrls?: string[];
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<FieldVisit>>(
+        `/pipeline/visits/${id}`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['visits'] }),
+  });
+}
+
 export type TargetType = 'REVENUE' | 'QUOTES_SENT' | 'CONVERSIONS' | 'VISITS';
 export type TargetPeriod = 'MONTHLY' | 'QUARTERLY';
 

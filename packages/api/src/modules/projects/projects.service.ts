@@ -675,6 +675,64 @@ export class ProjectsService {
     });
   }
 
+  async getResourceWorkload() {
+    const tasks = await this.prisma.task.findMany({
+      where: {
+        status: { in: [TaskStatus.IN_PROGRESS, TaskStatus.NOT_STARTED] },
+        assigneeId: { not: null },
+        project: {
+          status: { in: [ProjectStatus.ACTIVE, ProjectStatus.AT_RISK] },
+        },
+      },
+      include: {
+        assignee: {
+          select: { id: true, firstName: true, lastName: true, role: true },
+        },
+      },
+    });
+
+    const map = new Map<
+      string,
+      {
+        userId: string;
+        firstName: string | null;
+        lastName: string | null;
+        role: string;
+        activeTasks: number;
+        totalPlannedHours: number;
+      }
+    >();
+
+    for (const task of tasks) {
+      if (!task.assignee) continue;
+      const key = task.assigneeId!;
+      if (!map.has(key)) {
+        map.set(key, {
+          userId: task.assignee.id,
+          firstName: task.assignee.firstName,
+          lastName: task.assignee.lastName,
+          role: task.assignee.role,
+          activeTasks: 0,
+          totalPlannedHours: 0,
+        });
+      }
+      const u = map.get(key)!;
+      u.activeTasks++;
+      u.totalPlannedHours +=
+        (task as { estimatedHours?: number | null }).estimatedHours ?? 0;
+    }
+
+    return Array.from(map.values()).map((u) => ({
+      ...u,
+      utilizationStatus:
+        u.activeTasks <= 3
+          ? 'AVAILABLE'
+          : u.activeTasks <= 7
+            ? 'BUSY'
+            : 'OVERLOADED',
+    }));
+  }
+
   async stats() {
     const [total, byStatus, atRisk] = await this.prisma.$transaction([
       this.prisma.project.count(),

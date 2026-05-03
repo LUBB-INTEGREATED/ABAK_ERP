@@ -71,6 +71,7 @@ export class ClientsService {
           postalCode: dto.postalCode,
           commercialRegistration: dto.commercialRegistration,
           taxId: dto.taxId,
+          clientType: dto.clientType,
           classification: dto.classification ?? ClientClassification.NEW,
           creditLimit: dto.creditLimit,
           paymentTerms: dto.paymentTerms,
@@ -91,7 +92,7 @@ export class ClientsService {
           where: { id: lead.id },
           data: {
             clientId: client.id,
-            status: LeadStatus.CONVERTED,
+            status: LeadStatus.QUALIFIED,
             closedAt: new Date(),
             isReturningClient: true,
           },
@@ -575,10 +576,109 @@ export class ClientsService {
     const existing = await this.prisma.followUp.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Follow-up ${id} not found`);
 
+    // BPD closure outcome handling
+    if (dto.closureOutcome === 'CLIENT_NOT_REACHABLE') {
+      // Mark completed and auto-create rescheduled follow-up
+      await this.prisma.followUp.update({
+        where: { id },
+        data: {
+          status: FollowUpStatus.COMPLETED,
+          completedAt: new Date(),
+          outcome: dto.outcome ?? 'لم يُتواصل معه',
+        },
+      });
+
+      const noResponseDays = await this.readSystemSettingInt(
+        'FOLLOW_UP_NO_RESPONSE_DAYS',
+        3,
+      );
+      const newDue = new Date();
+      newDue.setDate(newDue.getDate() + noResponseDays);
+
+      return this.prisma.followUp.create({
+        data: {
+          clientId: existing.clientId,
+          title: 'متابعة تلقائية - لم يُتواصل معه',
+          type: existing.type,
+          dueAt: newDue,
+          status: FollowUpStatus.PENDING,
+          assignedToId: existing.assignedToId,
+          createdBy: existing.createdBy,
+        },
+        include: {
+          assignedTo: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+    }
+
+    if (dto.closureOutcome === 'RESCHEDULED') {
+      if (!dto.newDueAt) {
+        throw new BadRequestException(
+          'newDueAt is required when closureOutcome is RESCHEDULED',
+        );
+      }
+      await this.prisma.followUp.update({
+        where: { id },
+        data: {
+          status: FollowUpStatus.COMPLETED,
+          completedAt: new Date(),
+          outcome: dto.outcome ?? 'تمت إعادة الجدولة',
+        },
+      });
+
+      return this.prisma.followUp.create({
+        data: {
+          clientId: existing.clientId,
+          title: existing.title,
+          description: existing.description,
+          type: existing.type,
+          dueAt: new Date(dto.newDueAt),
+          status: FollowUpStatus.PENDING,
+          assignedToId: existing.assignedToId,
+          createdBy: existing.createdBy,
+        },
+        include: {
+          assignedTo: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+    }
+
+    if (dto.closureOutcome === 'CANCELLED') {
+      if (!dto.reason) {
+        throw new BadRequestException(
+          'reason is required when closureOutcome is CANCELLED',
+        );
+      }
+      return this.prisma.followUp.update({
+        where: { id },
+        data: {
+          status: FollowUpStatus.CANCELLED,
+          completedAt: new Date(),
+          outcome: dto.reason,
+        },
+        include: {
+          assignedTo: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+    }
+
+    // Standard update path
     const data: Prisma.FollowUpUpdateInput = {};
+
     if (dto.status) {
       data.status = dto.status;
       if (dto.status === FollowUpStatus.COMPLETED) {
+        if (!dto.outcome || dto.outcome.trim().length < 10) {
+          throw new BadRequestException(
+            'outcome must be at least 10 characters when completing a follow-up',
+          );
+        }
         data.completedAt = new Date();
       }
     }
@@ -599,6 +699,18 @@ export class ClientsService {
         },
       },
     });
+  }
+
+  private async readSystemSettingInt(
+    key: string,
+    defaultValue: number,
+  ): Promise<number> {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key },
+    });
+    if (!setting) return defaultValue;
+    const value = Number(setting.value);
+    return Number.isFinite(value) ? value : defaultValue;
   }
 
   // Notes --------------------------------------------------------

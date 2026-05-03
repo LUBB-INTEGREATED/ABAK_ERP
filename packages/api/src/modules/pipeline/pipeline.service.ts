@@ -20,12 +20,14 @@ import type {
 
 const OPEN_STAGES: PipelineStage[] = [
   PipelineStage.NEW_LEAD,
-  PipelineStage.INITIAL_CONTACT,
-  PipelineStage.QUALIFICATION,
+  PipelineStage.FIRST_CONTACT_MADE,
+  PipelineStage.MEETING_SCHEDULED,
+  PipelineStage.MEETING_DONE,
   PipelineStage.READY_FOR_RFQ,
-  PipelineStage.RFQ_RECEIVED,
-  PipelineStage.QUOTE_SENT,
-  PipelineStage.NEGOTIATION,
+  PipelineStage.RFQ_SUBMITTED,
+  PipelineStage.QUOTE_IN_PREPARATION,
+  PipelineStage.QUOTE_SENT_TO_CLIENT,
+  PipelineStage.NEGOTIATION_REVISION,
 ];
 
 const CLOSED_STAGES: PipelineStage[] = [
@@ -36,12 +38,14 @@ const CLOSED_STAGES: PipelineStage[] = [
 
 const STAGE_ORDER: PipelineStage[] = [
   PipelineStage.NEW_LEAD,
-  PipelineStage.INITIAL_CONTACT,
-  PipelineStage.QUALIFICATION,
+  PipelineStage.FIRST_CONTACT_MADE,
+  PipelineStage.MEETING_SCHEDULED,
+  PipelineStage.MEETING_DONE,
   PipelineStage.READY_FOR_RFQ,
-  PipelineStage.RFQ_RECEIVED,
-  PipelineStage.QUOTE_SENT,
-  PipelineStage.NEGOTIATION,
+  PipelineStage.RFQ_SUBMITTED,
+  PipelineStage.QUOTE_IN_PREPARATION,
+  PipelineStage.QUOTE_SENT_TO_CLIENT,
+  PipelineStage.NEGOTIATION_REVISION,
   PipelineStage.WON,
   PipelineStage.LOST,
   PipelineStage.POSTPONED,
@@ -376,6 +380,9 @@ export class PipelineService {
         longitude: dto.longitude,
         attendees: dto.attendees,
         authorId: actorId,
+        keyOutcomes: dto.keyOutcomes,
+        clientSentiment: dto.clientSentiment,
+        attachmentUrls: dto.attachmentUrls ?? [],
       },
     });
 
@@ -423,6 +430,9 @@ export class PipelineService {
         completedAt: dto.completedAt ? new Date(dto.completedAt) : undefined,
         findings: dto.findings,
         nextAction: dto.nextAction,
+        keyOutcomes: dto.keyOutcomes,
+        clientSentiment: dto.clientSentiment,
+        attachmentUrls: dto.attachmentUrls,
       },
     });
   }
@@ -505,17 +515,19 @@ export class PipelineService {
 
   private mapStageToLeadStatus(stage: PipelineStage): LeadStatus | null {
     switch (stage) {
-      case PipelineStage.INITIAL_CONTACT:
-      case PipelineStage.QUALIFICATION:
-        return LeadStatus.CONTACTED;
-      case PipelineStage.RFQ_RECEIVED:
-      case PipelineStage.QUOTE_SENT:
-      case PipelineStage.NEGOTIATION:
+      case PipelineStage.FIRST_CONTACT_MADE:
+      case PipelineStage.MEETING_SCHEDULED:
+      case PipelineStage.MEETING_DONE:
+        return LeadStatus.IN_PROGRESS;
+      case PipelineStage.RFQ_SUBMITTED:
+      case PipelineStage.QUOTE_IN_PREPARATION:
+      case PipelineStage.QUOTE_SENT_TO_CLIENT:
+      case PipelineStage.NEGOTIATION_REVISION:
         return LeadStatus.QUALIFIED;
       case PipelineStage.WON:
-        return LeadStatus.CONVERTED;
+        return LeadStatus.QUALIFIED;
       case PipelineStage.LOST:
-        return LeadStatus.LOST;
+        return LeadStatus.DISQUALIFIED;
       default:
         return null;
     }

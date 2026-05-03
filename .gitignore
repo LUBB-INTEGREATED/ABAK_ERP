@@ -14,6 +14,7 @@ build
 
 # Nest.js
 dist/
+out-tsc/
 
 # Production
 /build

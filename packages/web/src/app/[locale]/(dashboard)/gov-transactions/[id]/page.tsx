@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
+  AlertTriangle,
   CalendarClock,
   CheckCircle2,
   FileText,
@@ -75,8 +76,21 @@ export default function GovDetailPage({
     );
   }
 
+  const showWeeklyWarning =
+    (tx.status === 'SUBMITTED' || tx.status === 'UNDER_REVIEW') &&
+    (!tx.weeklyStatusLastAt ||
+      Date.now() - new Date(tx.weeklyStatusLastAt).getTime() >
+        7 * 24 * 60 * 60 * 1000);
+
   return (
     <div className="space-y-6">
+      {showWeeklyWarning && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+          <p className="font-medium">{t('gov.weeklyStatus.overdueWarning')}</p>
+        </div>
+      )}
+
       {/* Hero */}
       <Card>
         <CardContent className="space-y-4 p-5">

@@ -57,7 +57,8 @@
     "pro": "لوحة المندوب الحكومي",
     "reports": "التقارير",
     "executive": "لوحة التنفيذي",
-    "targets": "أهداف الفريق"
+    "targets": "أهداف الفريق",
+    "resources": "الموارد البشرية"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -99,8 +100,8 @@
       "DRAFT": "مسودة",
       "SUBMITTED": "مُقدَّمة",
       "UNDER_REVIEW": "قيد المراجعة",
-      "REVISION_REQUIRED": "تحتاج تعديلاً",
-      "APPROVED": "معتمدة",
+      "REVISION_REQUIRED": "تعديلات مطلوبة",
+      "APPROVED": "مُعتمدة",
       "REJECTED": "مرفوضة",
       "CANCELLED": "ملغاة"
     },
@@ -155,7 +156,8 @@
     },
     "weeklyStatus": {
       "markUpdated": "تسجيل التحديث الأسبوعي",
-      "lastUpdated": "آخر تحديث أسبوعي"
+      "lastUpdated": "آخر تحديث أسبوعي",
+      "overdueWarning": "لم يتم تحديث حالة المعاملة هذا الأسبوع"
     }
   },
   "proDashboard": {
@@ -279,6 +281,7 @@
       "closed": "مغلقة"
     },
     "filterAll": "الكل",
+    "riskFlaggedAt": "تاريخ الإشارة للخطر",
     "tabs": {
       "overview": "نظرة عامة",
       "phases": "المراحل",
@@ -302,6 +305,19 @@
       "create": "إنشاء المشروع",
       "phasePreview": "معاينة المراحل السبع",
       "contractValue": "قيمة العقد"
+    }
+  },
+  "resources": {
+    "title": "الموارد البشرية",
+    "subtitle": "عبء العمل الحالي لكل موظف عبر المشاريع النشطة.",
+    "activeTasks": "مهام نشطة",
+    "plannedHours": "ساعات مخططة",
+    "taskLoad": "نسبة التحميل",
+    "empty": "لا توجد بيانات موارد حالياً.",
+    "status": {
+      "available": "متاح",
+      "busy": "مشغول",
+      "overloaded": "زائد الحمل"
     }
   },
   "phase": {

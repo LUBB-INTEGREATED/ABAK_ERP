@@ -160,4 +160,65 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   assignedToId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  qualificationNotes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  lostReason?: string;
+
+  // BPD channel-specific fields
+  @ApiPropertyOptional({ example: 'Riyadh' })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Al-Malaz' })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ example: 'PERSONAL_CONTACT' })
+  @IsOptional()
+  @IsString()
+  referralSourceType?: string;
+
+  @ApiPropertyOptional({ example: '50K-200K' })
+  @IsOptional()
+  @IsString()
+  expectedBudgetRange?: string;
+
+  @ApiPropertyOptional({ example: 'URGENT' })
+  @IsOptional()
+  @IsString()
+  clientUrgency?: string;
+
+  @ApiPropertyOptional({ example: '@username' })
+  @IsOptional()
+  @IsString()
+  socialUsername?: string;
+
+  @ApiPropertyOptional({ example: 'CAM-2026-0001' })
+  @IsOptional()
+  @IsString()
+  relatedCampaign?: string;
+
+  @ApiPropertyOptional({ example: 'CONTACT_FORM' })
+  @IsOptional()
+  @IsString()
+  webSource?: string;
+
+  @ApiPropertyOptional({ example: 'GOOGLE_MAPS_MESSAGE' })
+  @IsOptional()
+  @IsString()
+  mapContactMethod?: string;
+
+  @ApiPropertyOptional({ example: 'GOOGLE_SEARCH' })
+  @IsOptional()
+  @IsString()
+  mapHowFoundUs?: string;
 }

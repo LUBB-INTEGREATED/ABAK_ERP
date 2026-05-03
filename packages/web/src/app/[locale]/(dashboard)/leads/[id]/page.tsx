@@ -139,13 +139,15 @@ export default function LeadDetailPage() {
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" /> Edit
         </Button>
-        {lead.status !== 'CONVERTED' && lead.status !== 'LOST' && (
+        {!['DISQUALIFIED', 'TENDER_WON', 'TENDER_LOST'].includes(
+          lead.status,
+        ) && (
           <Button
             size="sm"
             variant="secondary"
             onClick={() => setConvertOpen(true)}
           >
-            <Repeat2 className="mr-2 h-4 w-4" /> Convert to client
+            <Repeat2 className="mr-2 h-4 w-4" /> تحويل إلى عميل
           </Button>
         )}
         {lead.clientId && (

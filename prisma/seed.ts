@@ -62,6 +62,7 @@ async function main() {
   await prisma.systemSetting.deleteMany();
   await prisma.service.deleteMany();
   await prisma.serviceCategory.deleteMany();
+  await prisma.region.deleteMany();
   await prisma.user.deleteMany();
 
   console.log('Hashing default password...');
@@ -115,22 +116,23 @@ async function main() {
   console.log(`✅ Created 4 users (default password: ${DEFAULT_PASSWORD})`);
 
   console.log('Creating service categories...');
-  const design = await prisma.serviceCategory.create({
+  const consultancy = await prisma.serviceCategory.create({
     data: {
-      name: 'Design',
-      nameAr: 'التصميم',
-      description: 'Architectural, structural, MEP, interior, landscape design',
-      icon: 'blueprint',
+      name: 'Consultancy',
+      nameAr: 'الاستشارات',
+      description:
+        'Engineering consultancy, technical studies, environmental consultancy',
+      icon: 'lightbulb',
       order: 1,
     },
   });
 
-  const planning = await prisma.serviceCategory.create({
+  const design = await prisma.serviceCategory.create({
     data: {
-      name: 'Planning',
-      nameAr: 'التخطيط والدراسات',
-      description: 'Urban planning, feasibility, studies & consultations',
-      icon: 'map',
+      name: 'Design',
+      nameAr: 'التصميم',
+      description: 'Architectural, structural, MEP, HVAC, interior design',
+      icon: 'blueprint',
       order: 2,
     },
   });
@@ -139,19 +141,29 @@ async function main() {
     data: {
       name: 'Supervision & Management',
       nameAr: 'الإشراف والإدارة',
-      description: 'Project supervision, project management, permits',
+      description:
+        'Construction supervision, project management, survey & documentation',
       icon: 'hard-hat',
       order: 3,
     },
   });
   console.log('✅ Created 3 service categories');
 
-  console.log('Creating services (SRV-01..SRV-11)...');
+  // BPD-canonical service catalog — codes and Arabic names match the spec exactly
+  console.log('Creating services (SRV-01..SRV-11, BPD-canonical)...');
   const services = await prisma.service.createMany({
     data: [
       {
-        categoryId: design.id,
+        categoryId: consultancy.id,
         code: 'SRV-01',
+        name: 'Engineering Consultancy',
+        nameEn: 'Engineering Consultancy',
+        nameAr: 'الاستشارات الهندسية',
+        unit: 'per engagement',
+      },
+      {
+        categoryId: design.id,
+        code: 'SRV-02',
         name: 'Architectural Design',
         nameEn: 'Architectural Design',
         nameAr: 'التصميم المعماري',
@@ -159,7 +171,7 @@ async function main() {
       },
       {
         categoryId: design.id,
-        code: 'SRV-02',
+        code: 'SRV-03',
         name: 'Structural Design',
         nameEn: 'Structural Design',
         nameAr: 'التصميم الإنشائي',
@@ -167,79 +179,73 @@ async function main() {
       },
       {
         categoryId: design.id,
-        code: 'SRV-03',
-        name: 'MEP Design',
-        nameEn: 'MEP Design',
-        nameAr: 'تصميم MEP',
-        unit: 'per project',
-      },
-      {
-        categoryId: design.id,
         code: 'SRV-04',
-        name: 'Interior Design',
-        nameEn: 'Interior Design',
-        nameAr: 'التصميم الداخلي',
+        name: 'MEP Systems Design',
+        nameEn: 'MEP Systems Design',
+        nameAr: 'تصميم الأنظمة الكهروميكانيكية - MEP',
         unit: 'per project',
       },
       {
         categoryId: design.id,
         code: 'SRV-05',
-        name: 'Landscape Design',
-        nameEn: 'Landscape Design',
-        nameAr: 'تصميم المناظر الطبيعية',
+        name: 'HVAC Design',
+        nameEn: 'HVAC Design',
+        nameAr: 'تصميم التكييف والتهوية - HVAC',
         unit: 'per project',
       },
       {
-        categoryId: planning.id,
+        categoryId: supervision.id,
         code: 'SRV-06',
-        name: 'Urban Planning',
-        nameEn: 'Urban Planning',
-        nameAr: 'التخطيط العمراني',
+        name: 'Construction Supervision',
+        nameEn: 'Construction Supervision',
+        nameAr: 'الإشراف على التنفيذ',
         unit: 'per project',
       },
       {
         categoryId: supervision.id,
         code: 'SRV-07',
-        name: 'Project Supervision',
-        nameEn: 'Project Supervision',
-        nameAr: 'الإشراف على المشاريع',
-        unit: 'per project',
-      },
-      {
-        categoryId: supervision.id,
-        code: 'SRV-08',
         name: 'Project Management',
         nameEn: 'Project Management',
         nameAr: 'إدارة المشاريع',
         unit: 'per project',
       },
       {
-        categoryId: planning.id,
-        code: 'SRV-09',
-        name: 'Studies & Consultations',
-        nameEn: 'Studies & Consultations',
-        nameAr: 'الدراسات والاستشارات',
-        unit: 'per engagement',
-      },
-      {
         categoryId: supervision.id,
-        code: 'SRV-10',
-        name: 'Municipal & Gov Permits',
-        nameEn: 'Municipal & Gov Permits',
-        nameAr: 'التراخيص البلدية والحكومية',
-        unit: 'per permit',
+        code: 'SRV-08',
+        name: 'Survey & Documentation',
+        nameEn: 'Survey & Documentation',
+        nameAr: 'رفع المساحة والتوثيق',
+        unit: 'per project',
       },
       {
-        categoryId: planning.id,
-        code: 'SRV-11',
-        name: 'Feasibility Studies',
-        nameEn: 'Feasibility Studies',
-        nameAr: 'دراسات الجدوى',
+        categoryId: consultancy.id,
+        code: 'SRV-09',
+        name: 'Technical Studies & Reports',
+        nameEn: 'Technical Studies & Reports',
+        nameAr: 'الدراسات والتقارير الفنية',
         unit: 'per study',
+      },
+      {
+        categoryId: design.id,
+        code: 'SRV-10',
+        name: 'Interior Design',
+        nameEn: 'Interior Design',
+        nameAr: 'تصميم الديكور الداخلي',
+        unit: 'per project',
+      },
+      {
+        categoryId: consultancy.id,
+        code: 'SRV-11',
+        name: 'Environmental Consultancy',
+        nameEn: 'Environmental Consultancy',
+        nameAr: 'الاستشارات البيئية',
+        unit: 'per engagement',
       },
     ],
   });
-  console.log(`✅ Created ${services.count} services (SRV-01..SRV-11)`);
+  console.log(
+    `✅ Created ${services.count} services (SRV-01..SRV-11, BPD-canonical)`,
+  );
 
   console.log('Creating system settings...');
   await prisma.systemSetting.createMany({
@@ -513,9 +519,156 @@ async function main() {
         descriptionEn: 'off | round_robin | load_based',
         editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
       },
+      // BPD-canonical keys (uppercase) — used as direct config lookups in app code
+      {
+        key: 'UNASSIGNED_LEAD_SLA_HOURS',
+        value: '4',
+        defaultValue: '4',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'مدة تخصيص العميل المحتمل (ساعة) — BPD',
+        labelEn: 'Unassigned lead SLA (hours)',
+        descriptionAr: 'تنبيه إذا لم يُخصَّص العميل المحتمل خلال هذه المدة.',
+        descriptionEn:
+          'Alert if a lead remains unassigned beyond this many hours.',
+        minValue: 1,
+        maxValue: 48,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'FIRST_CONTACT_SLA_HOURS',
+        value: '24',
+        defaultValue: '24',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'مدة أول تواصل (ساعة) — BPD',
+        labelEn: 'First contact SLA (hours)',
+        descriptionAr: 'تنبيه إذا لم يتم أول رد خلال هذه المدة.',
+        descriptionEn:
+          'Alert if no first response made within this many hours.',
+        minValue: 1,
+        maxValue: 168,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN'],
+      },
+      {
+        key: 'TENDER_DEADLINE_ALERT_DAYS_1',
+        value: '7',
+        defaultValue: '7',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'تنبيه مناقصة — 7 أيام',
+        labelEn: 'Tender deadline alert — first warning (days)',
+        descriptionAr:
+          'إرسال أول تنبيه قبل موعد تسليم المناقصة بهذا عدد الأيام.',
+        descriptionEn:
+          'Send first alert this many days before tender deadline.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'TENDER_DEADLINE_ALERT_DAYS_2',
+        value: '3',
+        defaultValue: '3',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'تنبيه مناقصة — 3 أيام',
+        labelEn: 'Tender deadline alert — second warning (days)',
+        descriptionAr:
+          'إرسال ثاني تنبيه قبل موعد تسليم المناقصة بهذا عدد الأيام.',
+        descriptionEn:
+          'Send second alert this many days before tender deadline.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'TENDER_DEADLINE_ALERT_DAYS_3',
+        value: '1',
+        defaultValue: '1',
+        type: SettingType.NUMBER,
+        category: 'sla',
+        labelAr: 'تنبيه مناقصة — يوم واحد',
+        labelEn: 'Tender deadline alert — final warning (days)',
+        descriptionAr: 'إرسال تنبيه نهائي قبل موعد تسليم المناقصة بيوم.',
+        descriptionEn:
+          'Send final alert this many days before tender deadline.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'STALE_QUOTE_DAYS',
+        value: '7',
+        defaultValue: '7',
+        type: SettingType.NUMBER,
+        category: 'pipeline',
+        labelAr: 'أيام ركود عرض السعر',
+        labelEn: 'Stale quote threshold (days)',
+        descriptionAr: 'تنبيه إذا لم يُحدَّث عرض السعر خلال هذا عدد الأيام.',
+        descriptionEn:
+          'Alert if a quote has not been updated in this many days.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'FOLLOW_UP_NO_RESPONSE_DAYS',
+        value: '3',
+        defaultValue: '3',
+        type: SettingType.NUMBER,
+        category: 'crm',
+        labelAr: 'أيام عدم الرد قبل إعادة الجدولة',
+        labelEn: 'Follow-up no-response auto-reschedule (days)',
+        descriptionAr:
+          'عدد الأيام قبل إعادة جدولة المتابعة تلقائياً عند عدم رد العميل.',
+        descriptionEn:
+          'Days before auto-rescheduling a follow-up when the client is unreachable.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'STUCK_DAYS_THRESHOLD',
+        value: '14',
+        defaultValue: '14',
+        type: SettingType.NUMBER,
+        category: 'pipeline',
+        labelAr: 'أيام الفرصة المتوقفة',
+        labelEn: 'Stuck pipeline opportunity threshold (days)',
+        descriptionAr: 'عدد الأيام قبل اعتبار فرصة مبيعات متوقفة.',
+        descriptionEn:
+          'Days without movement before a pipeline opportunity is flagged as stuck.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'MONTHLY_REVENUE_TARGET',
+        value: '500000',
+        defaultValue: '500000',
+        type: SettingType.NUMBER,
+        category: 'targets',
+        labelAr: 'الهدف الشهري للإيرادات (ريال)',
+        labelEn: 'Monthly revenue target (SAR)',
+        descriptionAr: 'الهدف الافتراضي للإيرادات الشهرية على مستوى الفريق.',
+        descriptionEn: 'Default team-level monthly revenue target in SAR.',
+        minValue: 0,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
+      {
+        key: 'QUOTE_EXPIRY_DAYS',
+        value: '30',
+        defaultValue: '30',
+        type: SettingType.NUMBER,
+        category: 'pipeline',
+        labelAr: 'صلاحية عرض السعر الافتراضية (يوم)',
+        labelEn: 'Default quote validity (days)',
+        descriptionAr: 'عدد الأيام الافتراضي لصلاحية عرض السعر.',
+        descriptionEn:
+          'Default number of days a quote remains valid after sending.',
+        minValue: 1,
+        editableByRoles: ['SUPER_ADMIN', 'ADMIN', 'SALES_MANAGER'],
+      },
     ],
   });
-  console.log('✅ Created 23 system settings');
+  console.log(
+    '✅ Created 33 system settings (23 operational + 10 BPD-canonical)',
+  );
 
   console.log('Seeding Saudi public holidays (2026-2027)...');
   const d = (isoDate: string) => new Date(`${isoDate}T00:00:00.000Z`);
@@ -619,12 +772,32 @@ async function main() {
   });
   console.log('✅ Seeded 18 Saudi public holidays');
 
+  console.log('Seeding 13 Saudi Arabia administrative regions...');
+  await prisma.region.createMany({
+    data: [
+      { code: 'RYD', nameAr: 'الرياض', nameEn: 'Riyadh' },
+      { code: 'MKH', nameAr: 'مكة المكرمة', nameEn: 'Makkah' },
+      { code: 'MDN', nameAr: 'المدينة المنورة', nameEn: 'Madinah' },
+      { code: 'QSM', nameAr: 'القصيم', nameEn: 'Qassim' },
+      { code: 'SHR', nameAr: 'المنطقة الشرقية', nameEn: 'Eastern Region' },
+      { code: 'ASR', nameAr: 'عسير', nameEn: 'Asir' },
+      { code: 'TBK', nameAr: 'تبوك', nameEn: 'Tabuk' },
+      { code: 'HYL', nameAr: 'حائل', nameEn: 'Hail' },
+      { code: 'NHD', nameAr: 'الحدود الشمالية', nameEn: 'Northern Borders' },
+      { code: 'JZN', nameAr: 'جازان', nameEn: 'Jizan' },
+      { code: 'NJR', nameAr: 'نجران', nameEn: 'Najran' },
+      { code: 'BAH', nameAr: 'الباحة', nameEn: 'Bahah' },
+      { code: 'JWF', nameAr: 'الجوف', nameEn: 'Jawf' },
+    ],
+  });
+  console.log('✅ Seeded 13 Saudi Arabia administrative regions');
+
   console.log('Creating sample leads...');
   const salesRep = await prisma.user.findFirst({
     where: { role: UserRole.SALES_REPRESENTATIVE },
   });
   const structuralService = await prisma.service.findUnique({
-    where: { code: 'SRV-02' },
+    where: { code: 'SRV-03' }, // SRV-03 = Structural Design (BPD-canonical)
   });
   const year = new Date().getFullYear();
   const hour = 60 * 60 * 1000;
@@ -667,7 +840,7 @@ async function main() {
         serviceDetails: 'MEP design for commercial building',
         projectLocation: 'Jeddah',
         budget: 300000,
-        status: LeadStatus.NEW,
+        status: LeadStatus.INCOMING,
         priority: LeadPriority.MEDIUM,
         slaResponseDue: new Date(Date.now() + 20 * hour),
         slaStatus: SLAStatus.ON_TIME,
@@ -682,7 +855,7 @@ async function main() {
         phone: '+966556789012',
         serviceDetails: 'Architectural design for villa',
         projectLocation: 'Dammam',
-        status: LeadStatus.NEW,
+        status: LeadStatus.INCOMING,
         priority: LeadPriority.LOW,
         slaResponseDue: new Date(Date.now() + 24 * hour),
         slaStatus: SLAStatus.ON_TIME,
@@ -697,7 +870,7 @@ async function main() {
         email: 'k.salem@example.com',
         phone: '+966543210987',
         serviceDetails: 'Structural inspection for existing building',
-        status: LeadStatus.CONTACTED,
+        status: LeadStatus.IN_PROGRESS,
         priority: LeadPriority.MEDIUM,
         assignedToId: salesRep?.id,
         assignedAt: new Date(Date.now() - 2 * hour),
@@ -805,7 +978,7 @@ async function main() {
       },
       {
         clientId: vipClient.id,
-        type: InteractionType.PHONE_CALL,
+        type: InteractionType.CALL,
         direction: InteractionDirection.INBOUND,
         subject: 'Question about PO-2026-0045',
         summary: 'Clarified payment schedule; client asked for 45-day terms',

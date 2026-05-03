@@ -114,6 +114,12 @@ export class QuotesService {
         taxAmount: totals.taxAmount,
         totalAmount: totals.totalAmount,
         preparedById: actorId,
+        // Technical Scope (BPD M4)
+        scopeOfWork: dto.scopeOfWork,
+        deliverables: dto.deliverables,
+        exclusions: dto.exclusions,
+        assumptions: dto.assumptions,
+        numberOfRevisions: dto.numberOfRevisions,
         items: {
           create: items.map((item, index) => ({
             serviceId: item.serviceId,
@@ -227,6 +233,12 @@ export class QuotesService {
         discountType: dto.discountType,
         discountValue: dto.discountValue,
         taxRate: dto.taxRate,
+        // Technical Scope (BPD M4)
+        scopeOfWork: dto.scopeOfWork,
+        deliverables: dto.deliverables,
+        exclusions: dto.exclusions,
+        assumptions: dto.assumptions,
+        numberOfRevisions: dto.numberOfRevisions,
       };
 
       if (items !== undefined) {
@@ -455,16 +467,58 @@ export class QuotesService {
     return result;
   }
 
+  // BPD M4 — post-sending follow-up status transitions
+  async setFollowUpStatus(
+    id: string,
+    status: 'IN_DISCUSSION' | 'IN_NEGOTIATION',
+  ) {
+    const quote = await this.findOne(id);
+    const ELIGIBLE: QuoteStatus[] = [
+      QuoteStatus.SENT,
+      QuoteStatus.IN_DISCUSSION,
+      QuoteStatus.IN_NEGOTIATION,
+    ];
+    if (!ELIGIBLE.includes(quote.status)) {
+      throw new BadRequestException(
+        `Cannot set ${status} — quote must be SENT, IN_DISCUSSION, or IN_NEGOTIATION`,
+      );
+    }
+    return this.prisma.quote.update({
+      where: { id },
+      data: { status: QuoteStatus[status] },
+      include: QUOTE_INCLUDE,
+    });
+  }
+
   async send(id: string) {
     const quote = await this.findOne(id);
     if (quote.status !== QuoteStatus.APPROVED) {
       throw new BadRequestException('Only APPROVED quotes can be sent');
     }
-    return this.prisma.quote.update({
+    const updated = await this.prisma.quote.update({
       where: { id },
       data: { status: QuoteStatus.SENT, sentAt: new Date() },
       include: QUOTE_INCLUDE,
     });
+
+    // Auto-create a follow-up for the client 3 days from now (fire-and-forget)
+    if (updated.clientId) {
+      const dueAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      void this.prisma.followUp
+        .create({
+          data: {
+            clientId: updated.clientId,
+            title: `متابعة عرض السعر: ${updated.quoteNumber}`,
+            type: 'QUOTE',
+            dueAt,
+            assignedToId: updated.preparedById ?? undefined,
+            createdBy: updated.preparedById ?? undefined,
+          },
+        })
+        .catch(() => null);
+    }
+
+    return updated;
   }
 
   // BR-12 — quote WIN no longer auto-creates a PO. Instead a
@@ -524,6 +578,25 @@ export class QuotesService {
         eventCode: 'quote.won',
         subject: `تم رسو العرض: ${quote.quoteNumber}`,
         body: `قيمة العقد: ${quote.totalAmount.toLocaleString('ar-SA')} ريال — بانتظار التحقق المالي`,
+        deepLink: `/quotes/${id}`,
+        payload: { quoteId: id, quoteNumber: quote.quoteNumber },
+      },
+    );
+
+    // Notify Finance Manager + Sales Manager about PO generated
+    const poRecipients = await this.prisma.user.findMany({
+      where: {
+        role: { in: [UserRole.FINANCE_MANAGER, UserRole.SALES_MANAGER] },
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    });
+    void this.notifications.sendToMany(
+      poRecipients.map((r) => r.id),
+      {
+        eventCode: 'po.generated',
+        subject: `أمر شراء جديد بانتظار التحقق: ${quote.quoteNumber}`,
+        body: `قيمة العقد: ${quote.totalAmount.toLocaleString('ar-SA')} ريال`,
         deepLink: `/quotes/${id}`,
         payload: { quoteId: id, quoteNumber: quote.quoteNumber },
       },

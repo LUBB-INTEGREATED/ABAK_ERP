@@ -5,9 +5,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 export type AssignmentStrategy = 'round_robin' | 'load_based' | 'off';
 
 const ACTIVE_LEAD_STATUSES: LeadStatus[] = [
-  LeadStatus.NEW,
+  LeadStatus.INCOMING,
   LeadStatus.ASSIGNED,
-  LeadStatus.CONTACTED,
+  LeadStatus.IN_PROGRESS,
   LeadStatus.QUALIFIED,
 ];
 

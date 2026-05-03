@@ -30,6 +30,20 @@ import {
   type InteractionType,
 } from '@/lib/types/client';
 
+type InteractionVisibility = 'TEAM' | 'MANAGER_ONLY' | 'PRIVATE';
+
+const VISIBILITY_LABELS: Record<InteractionVisibility, string> = {
+  TEAM: 'الفريق',
+  MANAGER_ONLY: 'المدير فقط',
+  PRIVATE: 'خاص',
+};
+
+const VISIBILITY_OPTIONS: InteractionVisibility[] = [
+  'TEAM',
+  'MANAGER_ONLY',
+  'PRIVATE',
+];
+
 export function InteractionDialog({
   open,
   onOpenChange,
@@ -39,10 +53,11 @@ export function InteractionDialog({
   onOpenChange: (open: boolean) => void;
   clientId: string;
 }) {
-  const [type, setType] = useState<InteractionType>('PHONE_CALL');
+  const [type, setType] = useState<InteractionType>('CALL');
   const [direction, setDirection] = useState<InteractionDirection | undefined>(
     'OUTBOUND',
   );
+  const [visibility, setVisibility] = useState<InteractionVisibility>('TEAM');
   const [subject, setSubject] = useState('');
   const [summary, setSummary] = useState('');
   const [duration, setDuration] = useState('');
@@ -60,6 +75,7 @@ export function InteractionDialog({
       await mutation.mutateAsync({
         type,
         direction,
+        visibility,
         subject: subject.trim(),
         summary: summary.trim() || undefined,
         durationMinutes: duration ? Number(duration) : undefined,
@@ -75,6 +91,7 @@ export function InteractionDialog({
       setLocation('');
       setOutcome('');
       setNextAction('');
+      setVisibility('TEAM');
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
@@ -127,6 +144,26 @@ export function InteractionDialog({
                 {INTERACTION_DIRECTIONS.map((d) => (
                   <SelectItem key={d} value={d}>
                     {d === 'INBOUND' ? 'Inbound' : 'Outbound'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>الظهور</Label>
+            <Select
+              value={visibility}
+              onValueChange={(value) =>
+                setVisibility(value as InteractionVisibility)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VISIBILITY_OPTIONS.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {VISIBILITY_LABELS[v]}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -179,6 +179,7 @@ export function useAddInteraction(clientId: string) {
     mutationFn: async (body: {
       type: InteractionType;
       direction?: InteractionDirection;
+      visibility?: 'TEAM' | 'MANAGER_ONLY' | 'PRIVATE';
       subject: string;
       summary?: string;
       occurredAt?: string;
@@ -235,6 +236,36 @@ export function useUpdateFollowUp(clientId: string) {
       const { data } = await apiClient.patch<ApiEnvelope<FollowUp>>(
         `/clients/follow-ups/${id}`,
         body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateClient(qc, clientId),
+  });
+}
+
+export function useCloseFollowUp(clientId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      closureOutcome,
+      outcome,
+      newDueAt,
+      reason,
+    }: {
+      id: string;
+      closureOutcome:
+        | 'COMPLETED'
+        | 'RESCHEDULED'
+        | 'CLIENT_NOT_REACHABLE'
+        | 'CANCELLED';
+      outcome?: string;
+      newDueAt?: string;
+      reason?: string;
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<FollowUp>>(
+        `/clients/follow-ups/${id}`,
+        { closureOutcome, outcome, newDueAt, reason },
       );
       return data.data;
     },

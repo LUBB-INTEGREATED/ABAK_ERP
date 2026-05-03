@@ -122,6 +122,12 @@ export type Quote = {
   cancelledAt: string | null;
   parentQuoteId: string | null;
   createdAt: string;
+  // Technical Scope (BPD M4)
+  scopeOfWork: string | null;
+  deliverables: string | null;
+  exclusions: string | null;
+  assumptions: string | null;
+  numberOfRevisions: number | null;
   client: {
     id: string;
     clientNumber: string;

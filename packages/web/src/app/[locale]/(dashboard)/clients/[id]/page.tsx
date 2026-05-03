@@ -56,6 +56,7 @@ import { ClassifyDialog } from './classify-dialog';
 import { EditClientDialog } from './edit-dialog';
 import { InteractionDialog } from './interaction-dialog';
 import { FollowUpDialog } from './follow-up-dialog';
+import { CloseFollowUpDialog } from './close-follow-up-dialog';
 import { NoteDialog } from './note-dialog';
 
 const CLASSIFICATION_BADGE: Record<ClientClassification, string> = {
@@ -74,7 +75,7 @@ const STATUS_BADGE: Record<ClientStatus, string> = {
 
 const FOLLOW_UP_BADGE: Record<FollowUpStatus, string> = {
   PENDING: 'bg-sky-100 text-sky-700',
-  IN_PROGRESS: 'bg-abak-blue/10 text-abak-blue',
+  DUE_TODAY: 'bg-amber-100 text-amber-700',
   COMPLETED: 'bg-emerald-100 text-emerald-700',
   CANCELLED: 'bg-zinc-100 text-zinc-600',
   OVERDUE: 'bg-rose-100 text-rose-700',
@@ -491,6 +492,8 @@ function FollowUpsTab({
   onAdd: () => void;
 }) {
   const { data, isLoading } = useClientFollowUps(clientId);
+  const [closingId, setClosingId] = useState<string | null>(null);
+
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
@@ -505,55 +508,77 @@ function FollowUpsTab({
         </p>
       )}
       <ul className="space-y-2">
-        {data?.map((followUp) => (
-          <li key={followUp.id}>
-            <Card>
-              <CardContent className="flex flex-wrap items-center gap-3 py-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{followUp.title}</span>
-                    <Badge
-                      className={cn(
-                        'border-transparent',
-                        FOLLOW_UP_BADGE[followUp.status],
+        {data?.map((followUp) => {
+          const canClose =
+            followUp.status !== 'COMPLETED' && followUp.status !== 'CANCELLED';
+          return (
+            <li key={followUp.id}>
+              <Card>
+                <CardContent className="flex flex-wrap items-center gap-3 py-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{followUp.title}</span>
+                      <Badge
+                        className={cn(
+                          'border-transparent',
+                          FOLLOW_UP_BADGE[followUp.status],
+                        )}
+                      >
+                        {FOLLOW_UP_STATUS_LABELS[followUp.status]}
+                      </Badge>
+                      <Badge variant="outline">
+                        {FOLLOW_UP_TYPE_LABELS[followUp.type]}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Due {format(new Date(followUp.dueAt), 'PPp')}
+                      {followUp.assignedTo && (
+                        <>
+                          {' · '}
+                          {[
+                            followUp.assignedTo.firstName,
+                            followUp.assignedTo.lastName,
+                          ]
+                            .filter(Boolean)
+                            .join(' ') || followUp.assignedTo.email}
+                        </>
                       )}
-                    >
-                      {FOLLOW_UP_STATUS_LABELS[followUp.status]}
-                    </Badge>
-                    <Badge variant="outline">
-                      {FOLLOW_UP_TYPE_LABELS[followUp.type]}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    Due {format(new Date(followUp.dueAt), 'PPp')}
-                    {followUp.assignedTo && (
-                      <>
-                        {' · '}
-                        {[
-                          followUp.assignedTo.firstName,
-                          followUp.assignedTo.lastName,
-                        ]
-                          .filter(Boolean)
-                          .join(' ') || followUp.assignedTo.email}
-                      </>
+                    </div>
+                    {followUp.description && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {followUp.description}
+                      </p>
+                    )}
+                    {followUp.outcome && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Outcome: {followUp.outcome}
+                      </p>
                     )}
                   </div>
-                  {followUp.description && (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {followUp.description}
-                    </p>
+                  {canClose && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setClosingId(followUp.id)}
+                    >
+                      إغلاق
+                    </Button>
                   )}
-                  {followUp.outcome && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Outcome: {followUp.outcome}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+                </CardContent>
+              </Card>
+            </li>
+          );
+        })}
       </ul>
+
+      <CloseFollowUpDialog
+        open={closingId !== null}
+        onOpenChange={(open) => {
+          if (!open) setClosingId(null);
+        }}
+        followUpId={closingId ?? ''}
+        clientId={clientId}
+      />
     </div>
   );
 }

@@ -30,6 +30,13 @@ export class CreateClientDto {
   @MinLength(2)
   contactName!: string;
 
+  @ApiProperty({
+    description: 'Client type: INDIVIDUAL | COMPANY | GOVERNMENT | NGO | OTHER',
+    example: 'COMPANY',
+  })
+  @IsString()
+  clientType!: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -388,12 +395,36 @@ export class UpdateFollowUpDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MinLength(10)
   outcome?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   assignedToId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Closure outcome: CLIENT_NOT_REACHABLE | RESCHEDULED | CANCELLED | COMPLETED',
+  })
+  @IsOptional()
+  @IsString()
+  closureOutcome?: string;
+
+  @ApiPropertyOptional({
+    description: 'Required when closureOutcome is RESCHEDULED',
+  })
+  @IsOptional()
+  @IsDateString()
+  newDueAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'Required when closureOutcome is CANCELLED',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(5)
+  reason?: string;
 }
 
 export class CreateNoteDto {

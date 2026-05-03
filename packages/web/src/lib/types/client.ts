@@ -1,3 +1,43 @@
+export const CLIENT_TYPES = [
+  'COMPANY',
+  'INDIVIDUAL',
+  'GOVERNMENT',
+  'SEMI_GOVERNMENT',
+  'CONTRACTOR',
+  'DEVELOPER',
+  'NON_PROFIT',
+  'OTHER',
+] as const;
+export type ClientType = (typeof CLIENT_TYPES)[number];
+
+export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
+  COMPANY: 'شركة',
+  INDIVIDUAL: 'فرد',
+  GOVERNMENT: 'جهة حكومية',
+  SEMI_GOVERNMENT: 'جهة شبه حكومية',
+  CONTRACTOR: 'مقاول',
+  DEVELOPER: 'مطور عقاري',
+  NON_PROFIT: 'منظمة غير ربحية',
+  OTHER: 'أخرى',
+};
+
+export const VISIT_TYPES = [
+  'CLIENT_OFFICE',
+  'SITE',
+  'ABAK_OFFICE',
+  'VIRTUAL',
+  'EVENT',
+] as const;
+export type VisitType = (typeof VISIT_TYPES)[number];
+
+export const VISIT_TYPE_LABELS: Record<VisitType, string> = {
+  CLIENT_OFFICE: 'زيارة مكتب العميل',
+  SITE: 'زيارة الموقع',
+  ABAK_OFFICE: 'العميل في مكتبنا',
+  VIRTUAL: 'اجتماع افتراضي',
+  EVENT: 'فعالية / معرض',
+};
+
 export const CLIENT_CLASSIFICATIONS = [
   'NEW',
   'RETURNING',
@@ -11,16 +51,16 @@ export const CLIENT_STATUSES = ['ACTIVE', 'INACTIVE', 'BLACKLISTED'] as const;
 export type ClientStatus = (typeof CLIENT_STATUSES)[number];
 
 export const INTERACTION_TYPES = [
-  'PHONE_CALL',
+  'CALL',
   'MEETING',
   'EMAIL',
   'WHATSAPP',
   'COMPLAINT',
   'SITE_VISIT',
-  'NEGOTIATION',
-  'TECHNICAL_CONSULTATION',
-  'PROPOSAL_SUBMISSION',
-  'INTERNAL_NOTE',
+  'OFFICE_VISIT',
+  'QUOTE_SENT_EVENT',
+  'CONTRACT_SIGNED',
+  'NOTE',
 ] as const;
 export type InteractionType = (typeof INTERACTION_TYPES)[number];
 
@@ -39,7 +79,7 @@ export type FollowUpType = (typeof FOLLOW_UP_TYPES)[number];
 
 export const FOLLOW_UP_STATUSES = [
   'PENDING',
-  'IN_PROGRESS',
+  'DUE_TODAY',
   'COMPLETED',
   'CANCELLED',
   'OVERDUE',
@@ -69,16 +109,16 @@ export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
 };
 
 export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
-  PHONE_CALL: 'Phone call',
-  MEETING: 'Meeting',
-  EMAIL: 'Email',
-  WHATSAPP: 'WhatsApp',
-  COMPLAINT: 'Complaint',
-  SITE_VISIT: 'Site visit',
-  NEGOTIATION: 'Negotiation',
-  TECHNICAL_CONSULTATION: 'Technical consult',
-  PROPOSAL_SUBMISSION: 'Proposal',
-  INTERNAL_NOTE: 'Internal note',
+  CALL: 'مكالمة هاتفية',
+  MEETING: 'اجتماع',
+  EMAIL: 'بريد إلكتروني',
+  WHATSAPP: 'واتساب',
+  COMPLAINT: 'شكوى',
+  SITE_VISIT: 'زيارة موقع',
+  OFFICE_VISIT: 'زيارة مكتب',
+  QUOTE_SENT_EVENT: 'إرسال عرض',
+  CONTRACT_SIGNED: 'توقيع عقد',
+  NOTE: 'ملاحظة داخلية',
 };
 
 export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {
@@ -91,8 +131,8 @@ export const FOLLOW_UP_TYPE_LABELS: Record<FollowUpType, string> = {
 };
 
 export const FOLLOW_UP_STATUS_LABELS: Record<FollowUpStatus, string> = {
-  PENDING: 'Pending',
-  IN_PROGRESS: 'In progress',
+  PENDING: 'قيد الانتظار',
+  DUE_TODAY: 'مستحق اليوم',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
   OVERDUE: 'Overdue',
@@ -112,11 +152,27 @@ export type AccountManager = {
   email: string;
 };
 
+export const CLOSE_OUTCOMES = [
+  'COMPLETED',
+  'RESCHEDULED',
+  'CLIENT_NOT_REACHABLE',
+  'CANCELLED',
+] as const;
+export type CloseOutcome = (typeof CLOSE_OUTCOMES)[number];
+
+export const CLOSE_OUTCOME_LABELS: Record<CloseOutcome, string> = {
+  COMPLETED: 'مكتملة',
+  RESCHEDULED: 'إعادة جدولة',
+  CLIENT_NOT_REACHABLE: 'لم يُتواصل معه',
+  CANCELLED: 'إلغاء',
+};
+
 export type Client = {
   id: string;
   clientNumber: string;
   contactName: string;
   companyName: string | null;
+  clientType: string | null;
   email: string | null;
   phone: string;
   alternatePhone: string | null;

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
+  ClientSentiment,
   PipelineStage,
   TargetPeriod,
   TargetType,
@@ -7,6 +8,7 @@ import {
 } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
   IsInt,
@@ -178,7 +180,11 @@ export class PipelineFilterDto {
 }
 
 export class CreateFieldVisitDto {
-  @ApiProperty({ enum: VisitType })
+  @ApiProperty({
+    enum: VisitType,
+    enumName: 'VisitType',
+    description: 'CLIENT_OFFICE | SITE | ABAK_OFFICE | VIRTUAL | EVENT',
+  })
   @IsEnum(VisitType)
   visitType!: VisitType;
 
@@ -218,6 +224,27 @@ export class CreateFieldVisitDto {
   @IsOptional()
   @IsString()
   attendees?: string;
+
+  @ApiPropertyOptional({ description: 'Key outcomes / Discussion Summary' })
+  @IsOptional()
+  @IsString()
+  keyOutcomes?: string;
+
+  @ApiPropertyOptional({
+    enum: ClientSentiment,
+    enumName: 'ClientSentiment',
+    description:
+      'VERY_INTERESTED | INTERESTED | NEUTRAL | HESITANT | NOT_INTERESTED',
+  })
+  @IsOptional()
+  @IsEnum(ClientSentiment)
+  clientSentiment?: ClientSentiment;
+
+  @ApiPropertyOptional({ type: [String], description: 'Attachment URLs' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attachmentUrls?: string[];
 }
 
 export class UpdateFieldVisitDto {
@@ -235,6 +262,25 @@ export class UpdateFieldVisitDto {
   @IsOptional()
   @IsString()
   nextAction?: string;
+
+  @ApiPropertyOptional({ description: 'Key outcomes / Discussion Summary' })
+  @IsOptional()
+  @IsString()
+  keyOutcomes?: string;
+
+  @ApiPropertyOptional({
+    enum: ClientSentiment,
+    enumName: 'ClientSentiment',
+  })
+  @IsOptional()
+  @IsEnum(ClientSentiment)
+  clientSentiment?: ClientSentiment;
+
+  @ApiPropertyOptional({ type: [String], description: 'Attachment URLs' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attachmentUrls?: string[];
 }
 
 export class CreateTargetDto {

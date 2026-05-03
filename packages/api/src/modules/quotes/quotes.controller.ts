@@ -87,6 +87,22 @@ export class QuotesController {
     return this.quotes.send(id);
   }
 
+  @Patch('quotes/:id/in-discussion')
+  @ApiOperation({
+    summary: 'Mark a SENT quote as IN_DISCUSSION (client reviewing)',
+  })
+  setInDiscussion(@Param('id') id: string) {
+    return this.quotes.setFollowUpStatus(id, 'IN_DISCUSSION');
+  }
+
+  @Patch('quotes/:id/in-negotiation')
+  @ApiOperation({
+    summary: 'Mark a SENT/IN_DISCUSSION quote as IN_NEGOTIATION',
+  })
+  setInNegotiation(@Param('id') id: string) {
+    return this.quotes.setFollowUpStatus(id, 'IN_NEGOTIATION');
+  }
+
   @Patch('quotes/:id/accept')
   @ApiOperation({
     summary:

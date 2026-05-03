@@ -6,9 +6,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 const DUE_SOON_HOURS = 4;
 
 const NON_TERMINAL_STATUSES: LeadStatus[] = [
-  LeadStatus.NEW,
+  LeadStatus.INCOMING,
   LeadStatus.ASSIGNED,
-  LeadStatus.CONTACTED,
+  LeadStatus.IN_PROGRESS,
   LeadStatus.QUALIFIED,
 ];
 

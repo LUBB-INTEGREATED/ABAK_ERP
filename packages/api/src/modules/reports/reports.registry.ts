@@ -5,6 +5,7 @@ import { projectDefinitions } from './definitions/project.definitions';
 import { financeDefinitions } from './definitions/finance.definitions';
 import { govDefinitions } from './definitions/gov.definitions';
 import { slaDefinitions } from './definitions/sla.definitions';
+import { bpdDefinitions } from './definitions/bpd.definitions';
 
 const all: ReportDefinition[] = [
   ...salesDefinitions,
@@ -13,6 +14,7 @@ const all: ReportDefinition[] = [
   ...financeDefinitions,
   ...govDefinitions,
   ...slaDefinitions,
+  ...bpdDefinitions,
 ];
 
 export const REPORT_REGISTRY = new Map<string, ReportDefinition>(

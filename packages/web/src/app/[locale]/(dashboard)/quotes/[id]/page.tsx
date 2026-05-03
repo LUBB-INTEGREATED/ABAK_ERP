@@ -10,6 +10,8 @@ import {
   BadgeCheck,
   BadgeDollarSign,
   FileText,
+  MessageSquare,
+  Scale,
   Send,
   ThumbsDown,
   ThumbsUp,
@@ -42,6 +44,8 @@ import {
   useQuote,
   useRejectQuote,
   useSendQuote,
+  useSetInDiscussion,
+  useSetInNegotiation,
   useSubmitQuote,
 } from '@/lib/hooks/use-quotes';
 import { useAuthStore } from '@/lib/auth';
@@ -79,6 +83,8 @@ export default function QuoteDetailPage() {
   const acceptMutation = useAcceptQuote(id);
   const rejectMutation = useRejectQuote(id);
   const decideMutation = useDecideApproval(id);
+  const inDiscussionMutation = useSetInDiscussion(id);
+  const inNegotiationMutation = useSetInNegotiation(id);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectReasonCode, setRejectReasonCode] = useState<LossReason>('OTHER');
@@ -181,6 +187,34 @@ export default function QuoteDetailPage() {
             disabled={sendMutation.isPending}
           >
             <Send className="mr-2 h-4 w-4" /> Send to client
+          </Button>
+        )}
+        {quote.status === 'SENT' && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              callMutation('العميل يراجع', () =>
+                inDiscussionMutation.mutateAsync(),
+              )
+            }
+            disabled={inDiscussionMutation.isPending}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" /> العميل يراجع
+          </Button>
+        )}
+        {(['SENT', 'IN_DISCUSSION'] as QuoteStatus[]).includes(
+          quote.status,
+        ) && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              callMutation('تفاوض', () => inNegotiationMutation.mutateAsync())
+            }
+            disabled={inNegotiationMutation.isPending}
+          >
+            <Scale className="mr-2 h-4 w-4" /> تفاوض
           </Button>
         )}
         {(
@@ -307,6 +341,38 @@ export default function QuoteDetailPage() {
             ))}
           </CardContent>
         </Card>
+
+        {(quote.scopeOfWork ||
+          quote.deliverables ||
+          quote.exclusions ||
+          quote.assumptions ||
+          quote.numberOfRevisions !== null) && (
+          <Card className="md:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-base">النطاق التقني</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {quote.scopeOfWork && (
+                <ScopeRow label="نطاق العمل" value={quote.scopeOfWork} />
+              )}
+              {quote.deliverables && (
+                <ScopeRow label="المخرجات" value={quote.deliverables} />
+              )}
+              {quote.exclusions && (
+                <ScopeRow label="المستثنيات" value={quote.exclusions} />
+              )}
+              {quote.assumptions && (
+                <ScopeRow label="الافتراضات" value={quote.assumptions} />
+              )}
+              {quote.numberOfRevisions !== null && (
+                <ScopeRow
+                  label="جولات المراجعة"
+                  value={String(quote.numberOfRevisions)}
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="md:col-span-2">
           <CardHeader>
@@ -524,6 +590,15 @@ function Row({
       >
         {value && value !== '' ? value : '—'}
       </span>
+    </div>
+  );
+}
+
+function ScopeRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1" dir="rtl">
+      <div className="font-medium text-muted-foreground">{label}</div>
+      <div className="whitespace-pre-wrap text-sm">{value}</div>
     </div>
   );
 }

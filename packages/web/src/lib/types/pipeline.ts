@@ -1,10 +1,13 @@
 export const PIPELINE_STAGES = [
   'NEW_LEAD',
-  'INITIAL_CONTACT',
-  'QUALIFICATION',
-  'RFQ_RECEIVED',
-  'QUOTE_SENT',
-  'NEGOTIATION',
+  'FIRST_CONTACT_MADE',
+  'MEETING_SCHEDULED',
+  'MEETING_DONE',
+  'READY_FOR_RFQ',
+  'RFQ_SUBMITTED',
+  'QUOTE_IN_PREPARATION',
+  'QUOTE_SENT_TO_CLIENT',
+  'NEGOTIATION_REVISION',
   'WON',
   'LOST',
   'POSTPONED',
@@ -12,24 +15,30 @@ export const PIPELINE_STAGES = [
 export type PipelineStage = (typeof PIPELINE_STAGES)[number];
 
 export const STAGE_LABELS: Record<PipelineStage, string> = {
-  NEW_LEAD: 'New lead',
-  INITIAL_CONTACT: 'Initial contact',
-  QUALIFICATION: 'Qualification',
-  RFQ_RECEIVED: 'RFQ received',
-  QUOTE_SENT: 'Quote sent',
-  NEGOTIATION: 'Negotiation',
-  WON: 'Won',
-  LOST: 'Lost',
-  POSTPONED: 'Postponed',
+  NEW_LEAD: 'عميل جديد',
+  FIRST_CONTACT_MADE: 'التواصل الأول',
+  MEETING_SCHEDULED: 'اجتماع مجدول',
+  MEETING_DONE: 'اجتماع منتهٍ',
+  READY_FOR_RFQ: 'جاهز للطلب',
+  RFQ_SUBMITTED: 'طلب تسعير مُرسَل',
+  QUOTE_IN_PREPARATION: 'عرض في الإعداد',
+  QUOTE_SENT_TO_CLIENT: 'عرض مُرسَل للعميل',
+  NEGOTIATION_REVISION: 'تفاوض / مراجعة',
+  WON: 'ربح',
+  LOST: 'خسارة',
+  POSTPONED: 'تأجيل',
 };
 
 export const OPEN_STAGES: PipelineStage[] = [
   'NEW_LEAD',
-  'INITIAL_CONTACT',
-  'QUALIFICATION',
-  'RFQ_RECEIVED',
-  'QUOTE_SENT',
-  'NEGOTIATION',
+  'FIRST_CONTACT_MADE',
+  'MEETING_SCHEDULED',
+  'MEETING_DONE',
+  'READY_FOR_RFQ',
+  'RFQ_SUBMITTED',
+  'QUOTE_IN_PREPARATION',
+  'QUOTE_SENT_TO_CLIENT',
+  'NEGOTIATION_REVISION',
 ];
 
 export const CLOSED_STAGES: PipelineStage[] = ['WON', 'LOST', 'POSTPONED'];
