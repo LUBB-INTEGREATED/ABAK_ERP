@@ -16,6 +16,7 @@ import {
   Settings,
   Sliders,
   CalendarCheck,
+  Percent,
   User,
   X,
   LogOut,
@@ -87,6 +88,11 @@ const NAV_GROUPS: NavGroup[] = [
 const ADMIN_ITEMS: NavItem[] = [
   { href: '/admin/services', labelKey: 'nav.services', icon: Settings },
   { href: '/admin/settings', labelKey: 'nav.adminSettings', icon: Sliders },
+  {
+    href: '/admin/pricing-policy',
+    labelKey: 'nav.pricingPolicy',
+    icon: Percent,
+  },
   { href: '/admin/holidays', labelKey: 'nav.holidays', icon: CalendarCheck },
   { href: '/admin/audit', labelKey: 'nav.audit', icon: ShieldCheck },
 ];
