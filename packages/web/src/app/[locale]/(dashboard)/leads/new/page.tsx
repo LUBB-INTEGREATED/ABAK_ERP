@@ -362,9 +362,10 @@ export default function NewLeadPage() {
   async function onSubmit(values: FormValues, reopen?: boolean) {
     const channelReq = channelRequirements(channel);
     if (channelReq) {
-      const satisfied = channelReq.requireEither.some((field) =>
-        (values[field] ?? '').toString().trim(),
-      );
+      const satisfied = channelReq.requireEither.some((field) => {
+        const v = (values as Record<string, unknown>)[field];
+        return v != null && String(v).trim().length > 0;
+      });
       if (!satisfied) {
         toast.error(`${channelReq.label} is required for this channel`);
         return;
