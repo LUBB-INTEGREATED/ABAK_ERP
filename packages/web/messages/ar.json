@@ -33,10 +33,22 @@
     "retry": "إعادة المحاولة",
     "openNavigation": "فتح القائمة",
     "navigation": "التنقل",
-    "statusLabel": "الحالة"
+    "statusLabel": "الحالة",
+    "selectUserPlaceholder": "اختر مستخدمًا",
+    "noUsersAvailable": "لا يوجد مستخدمون نشطون",
+    "clearFilters": "مسح المرشحات",
+    "noResults": "لا توجد نتائج",
+    "noResultsHint": "جرّب توسيع البحث أو إزالة أحد المرشحات."
+  },
+  "dataState": {
+    "errorTitle": "تعذّر تحميل البيانات",
+    "errorDescription": "تحقّق من الاتصال وحاول مرة أخرى. إن استمرّت المشكلة، أبلغنا بها."
   },
   "nav": {
     "admin": "الإدارة",
+    "groupSales": "المبيعات",
+    "groupDelivery": "التنفيذ",
+    "groupInsight": "التحليلات",
     "overview": "نظرة عامة",
     "leads": "العملاء المحتملون",
     "clients": "العملاء",
@@ -285,7 +297,30 @@
     "tabs": {
       "overview": "نظرة عامة",
       "phases": "المراحل",
+      "gantt": "مخطط جانت",
       "closure": "الإغلاق"
+    },
+    "gantt": {
+      "title": "مخطط جانت للمشروع",
+      "subtitle": "الجدول المخطط مقابل الفعلي. الخط الأزرق يمثل اليوم.",
+      "empty": "لا توجد مراحل مجدولة بعد. أضف مرحلة من تبويب «المراحل» للبدء.",
+      "scopeProject": "المشروع",
+      "scopePhases": "المراحل فقط",
+      "scopeAll": "المراحل + المهام",
+      "today": "اليوم",
+      "planned": "مخطط",
+      "actual": "فعلي",
+      "slip": "متأخر",
+      "tip": {
+        "owner": "المسؤول",
+        "planned": "المخطط",
+        "actual": "الفعلي",
+        "progress": "التقدم",
+        "status": "الحالة",
+        "noActual": "لم يبدأ"
+      },
+      "expandAll": "توسيع الكل",
+      "collapseAll": "طي الكل"
     },
     "dialog": {
       "newTitle": "مشروع جديد",
@@ -593,14 +628,22 @@
   },
   "lead": {
     "status": {
-      "NEW": "جديد",
-      "ASSIGNED": "تم الإسناد",
-      "CONTACTED": "تم التواصل",
-      "QUALIFIED": "مؤهل",
-      "UNQUALIFIED": "غير مؤهل",
-      "CONVERTED": "تم التحويل",
-      "LOST": "خاسر",
-      "DUPLICATE": "مكرر"
+      "INCOMING": "وارد جديد",
+      "ASSIGNED": "مُعيَّن",
+      "IN_PROGRESS": "قيد المتابعة",
+      "QUALIFIED": "مؤهَّل",
+      "DISQUALIFIED": "غير مؤهل",
+      "TENDER_PENDING": "مناقصة — انتظار",
+      "TENDER_ACTIVE": "مناقصة نشطة",
+      "TENDER_SUBMITTED": "مناقصة مُقدَّمة",
+      "TENDER_WON": "مناقصة رابحة",
+      "TENDER_LOST": "مناقصة خاسرة"
+    },
+    "priority": {
+      "LOW": "منخفضة",
+      "MEDIUM": "متوسطة",
+      "HIGH": "عالية",
+      "URGENT": "عاجلة"
     },
     "channel": {
       "CH_GOV": "مناقصات حكومية",
@@ -618,6 +661,11 @@
     }
   },
   "client": {
+    "status": {
+      "ACTIVE": "نشط",
+      "INACTIVE": "غير نشط",
+      "BLACKLISTED": "في القائمة السوداء"
+    },
     "classification": {
       "NEW": "جديد",
       "RETURNING": "عائد",
@@ -626,8 +674,72 @@
       "ARCHIVED": "مؤرشف"
     }
   },
+  "followUp": {
+    "status": {
+      "PENDING": "معلّق",
+      "DUE_TODAY": "مستحق اليوم",
+      "COMPLETED": "مكتمل",
+      "CANCELLED": "ملغى",
+      "OVERDUE": "متأخر"
+    }
+  },
+  "quote": {
+    "status": {
+      "DRAFT": "مسودة",
+      "PENDING_REVIEW": "بانتظار المراجعة",
+      "PENDING_APPROVAL": "بانتظار الاعتماد",
+      "IN_REVISION": "قيد التعديل",
+      "APPROVED": "معتمد",
+      "SENT": "أُرسل",
+      "IN_DISCUSSION": "قيد المناقشة",
+      "IN_NEGOTIATION": "قيد التفاوض",
+      "REVISED": "تم تعديله",
+      "WON": "رابح",
+      "LOST": "خاسر",
+      "POSTPONED": "مؤجل",
+      "EXPIRED": "منتهي الصلاحية",
+      "CANCELLED": "ملغى"
+    }
+  },
   "units": {
     "sar": "ر.س"
+  },
+  "quotePdf": {
+    "previewButton": "معاينة وطباعة",
+    "backToQuote": "العودة إلى العرض",
+    "printOrSave": "طباعة / حفظ كـ PDF",
+    "printHint": "استخدم «حفظ كـ PDF» في مربع حوار الطباعة.",
+    "documentType": "عرض سعر",
+    "preparedFor": "موجّه إلى",
+    "preparedBy": "أعدّه",
+    "attn": "لعناية",
+    "dates": "التواريخ",
+    "issued": "تاريخ الإصدار",
+    "validUntil": "صالح حتى",
+    "scopeOfWork": "نطاق العمل",
+    "deliverables": "المخرجات",
+    "exclusions": "الاستثناءات",
+    "assumptions": "الافتراضات",
+    "lineItems": "البنود",
+    "itemDescription": "البيان",
+    "qty": "الكمية",
+    "unit": "الوحدة",
+    "unitPrice": "سعر الوحدة",
+    "amount": "المبلغ",
+    "subtotal": "الإجمالي الفرعي",
+    "discount": "الخصم",
+    "tax": "الضريبة",
+    "total": "الإجمالي",
+    "paymentSchedule": "جدول الدفعات",
+    "milestone": "الدفعة",
+    "daysFromStart": "أيام من البدء",
+    "deliveryTimeline": "جدول التسليم",
+    "paymentTerms": "شروط الدفع",
+    "termsAndConditions": "الشروط والأحكام",
+    "notes": "ملاحظات للعميل",
+    "noItems": "لا توجد بنود في هذا العرض.",
+    "footer": "{quoteNumber} — صادر عن نظام ABAK ERP",
+    "loadError": "تعذّر تحميل عرض السعر."
   },
   "adminSettings": {
     "title": "إعدادات النظام",

@@ -3,11 +3,13 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCcw } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { FileText, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { DataState } from '@/components/ui/data-state';
+import { QuoteStatusBadge } from '@/components/ui/entity-status-badges';
 import { Input } from '@/components/ui/input';
+import { TableSkeleton } from '@/components/ui/skeleton-layouts';
 import {
   Select,
   SelectContent,
@@ -34,23 +36,6 @@ import {
 
 const ALL = '__all__';
 
-const STATUS_BADGE: Record<QuoteStatus, string> = {
-  DRAFT: 'bg-zinc-100 text-zinc-600',
-  PENDING_REVIEW: 'bg-sky-100 text-sky-700',
-  PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
-  IN_REVISION: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-abak-blue/10 text-abak-blue',
-  SENT: 'bg-indigo-100 text-indigo-700',
-  IN_DISCUSSION: 'bg-indigo-200 text-indigo-700',
-  IN_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
-  REVISED: 'bg-sky-200 text-sky-700',
-  WON: 'bg-emerald-100 text-emerald-700',
-  LOST: 'bg-rose-100 text-rose-700',
-  POSTPONED: 'bg-zinc-300 text-zinc-800',
-  EXPIRED: 'bg-zinc-200 text-zinc-700',
-  CANCELLED: 'bg-zinc-400 text-white',
-};
-
 function kpi(label: string, value: string | number) {
   return (
     <Card>
@@ -76,8 +61,13 @@ export default function QuotesListPage() {
     }),
     [search, status],
   );
-  const { data, isLoading, refetch, isFetching } = useQuotes(filter);
+  const { data, isLoading, isError, refetch, isFetching } = useQuotes(filter);
   const stats = useQuoteStats();
+  const hasFilters = Boolean(search.trim() || status);
+  const clearFilters = () => {
+    setSearch('');
+    setStatus(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -156,49 +146,50 @@ export default function QuotesListPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Quote #</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Prepared by</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && (
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={!data || data.data.length === 0}
+        hasFilters={hasFilters}
+        onRetry={() => refetch()}
+        loading={<TableSkeleton rows={6} cols={7} />}
+        empty={{
+          icon: FileText,
+          title: 'No quotes yet',
+          description:
+            'Quotes are created from RFQs, or directly from a client card.',
+          action: { label: 'New quote', href: '/quotes/new' },
+        }}
+        emptyFiltered={{
+          icon: FileText,
+          title: 'No matches',
+          description: 'Try widening the search or clearing the status filter.',
+          action: { label: 'Clear filters', onClick: clearFilters },
+        }}
+      >
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    Loading…
-                  </TableCell>
+                  <TableHead>Quote #</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Prepared by</TableHead>
+                  <TableHead>Created</TableHead>
                 </TableRow>
-              )}
-              {!isLoading && data?.data.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-8 text-center text-muted-foreground"
-                  >
-                    No quotes match the current filters.
-                  </TableCell>
-                </TableRow>
-              )}
-              {!isLoading &&
-                data?.data.map((quote) => (
+              </TableHeader>
+              <TableBody>
+                {data?.data.map((quote) => (
                   <QuoteRow key={quote.id} quote={quote} />
                 ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </DataState>
     </div>
   );
 }
@@ -228,9 +219,7 @@ function QuoteRow({ quote }: { quote: Quote }) {
       <TableCell>{quote.title}</TableCell>
       <TableCell>{quote.totalAmount.toLocaleString()} SAR</TableCell>
       <TableCell>
-        <Badge className={cn('border-transparent', STATUS_BADGE[quote.status])}>
-          {QUOTE_STATUS_LABELS[quote.status]}
-        </Badge>
+        <QuoteStatusBadge status={quote.status} />
       </TableCell>
       <TableCell className="text-sm">{prep}</TableCell>
       <TableCell className="text-sm text-muted-foreground">

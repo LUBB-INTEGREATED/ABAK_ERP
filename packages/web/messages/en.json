@@ -33,10 +33,22 @@
     "retry": "Retry",
     "openNavigation": "Open navigation",
     "navigation": "Navigation",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "selectUserPlaceholder": "Select a user",
+    "noUsersAvailable": "No active users available",
+    "clearFilters": "Clear filters",
+    "noResults": "No matches",
+    "noResultsHint": "Try widening the search or clearing one of the filters."
+  },
+  "dataState": {
+    "errorTitle": "We couldn’t load this",
+    "errorDescription": "Check your connection and try again. If it keeps failing, let us know."
   },
   "nav": {
     "admin": "Admin",
+    "groupSales": "Sales",
+    "groupDelivery": "Delivery",
+    "groupInsight": "Insight",
     "overview": "Overview",
     "leads": "Leads",
     "clients": "Clients",
@@ -285,7 +297,30 @@
     "tabs": {
       "overview": "Overview",
       "phases": "Phases",
+      "gantt": "Gantt",
       "closure": "Closure"
+    },
+    "gantt": {
+      "title": "Project Gantt",
+      "subtitle": "Planned vs. actual timeline. Today line in blue.",
+      "empty": "No phases scheduled yet. Add a phase from the Phases tab to start planning.",
+      "scopeProject": "Project",
+      "scopePhases": "Phases only",
+      "scopeAll": "Phases + tasks",
+      "today": "Today",
+      "planned": "Planned",
+      "actual": "Actual",
+      "slip": "Slipping",
+      "tip": {
+        "owner": "Owner",
+        "planned": "Planned",
+        "actual": "Actual",
+        "progress": "Progress",
+        "status": "Status",
+        "noActual": "Not started"
+      },
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
     },
     "dialog": {
       "newTitle": "New project",
@@ -593,14 +628,22 @@
   },
   "lead": {
     "status": {
-      "NEW": "New",
+      "INCOMING": "Incoming",
       "ASSIGNED": "Assigned",
-      "CONTACTED": "Contacted",
+      "IN_PROGRESS": "In progress",
       "QUALIFIED": "Qualified",
-      "UNQUALIFIED": "Unqualified",
-      "CONVERTED": "Converted",
-      "LOST": "Lost",
-      "DUPLICATE": "Duplicate"
+      "DISQUALIFIED": "Disqualified",
+      "TENDER_PENDING": "Tender — pending",
+      "TENDER_ACTIVE": "Tender — active",
+      "TENDER_SUBMITTED": "Tender — submitted",
+      "TENDER_WON": "Tender — won",
+      "TENDER_LOST": "Tender — lost"
+    },
+    "priority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent"
     },
     "channel": {
       "CH_GOV": "Government",
@@ -618,6 +661,11 @@
     }
   },
   "client": {
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "BLACKLISTED": "Blacklisted"
+    },
     "classification": {
       "NEW": "New",
       "RETURNING": "Returning",
@@ -626,8 +674,72 @@
       "ARCHIVED": "Archived"
     }
   },
+  "followUp": {
+    "status": {
+      "PENDING": "Pending",
+      "DUE_TODAY": "Due today",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "OVERDUE": "Overdue"
+    }
+  },
+  "quote": {
+    "status": {
+      "DRAFT": "Draft",
+      "PENDING_REVIEW": "Pending review",
+      "PENDING_APPROVAL": "Pending approval",
+      "IN_REVISION": "In revision",
+      "APPROVED": "Approved",
+      "SENT": "Sent",
+      "IN_DISCUSSION": "In discussion",
+      "IN_NEGOTIATION": "In negotiation",
+      "REVISED": "Revised",
+      "WON": "Won",
+      "LOST": "Lost",
+      "POSTPONED": "Postponed",
+      "EXPIRED": "Expired",
+      "CANCELLED": "Cancelled"
+    }
+  },
   "units": {
     "sar": "SAR"
+  },
+  "quotePdf": {
+    "previewButton": "Preview & print",
+    "backToQuote": "Back to quote",
+    "printOrSave": "Print / Save as PDF",
+    "printHint": "Use \"Save as PDF\" in the print dialog.",
+    "documentType": "Quotation",
+    "preparedFor": "Prepared for",
+    "preparedBy": "Prepared by",
+    "attn": "Attn",
+    "dates": "Dates",
+    "issued": "Issued",
+    "validUntil": "Valid until",
+    "scopeOfWork": "Scope of work",
+    "deliverables": "Deliverables",
+    "exclusions": "Exclusions",
+    "assumptions": "Assumptions",
+    "lineItems": "Line items",
+    "itemDescription": "Description",
+    "qty": "Qty",
+    "unit": "Unit",
+    "unitPrice": "Unit price",
+    "amount": "Amount",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "tax": "Tax",
+    "total": "Total",
+    "paymentSchedule": "Payment schedule",
+    "milestone": "Milestone",
+    "daysFromStart": "Days from start",
+    "deliveryTimeline": "Delivery timeline",
+    "paymentTerms": "Payment terms",
+    "termsAndConditions": "Terms & conditions",
+    "notes": "Notes for the client",
+    "noItems": "No line items on this quote.",
+    "footer": "{quoteNumber} — generated from ABAK ERP",
+    "loadError": "Could not load the quote."
   },
   "adminSettings": {
     "title": "System settings",

@@ -1,3 +1,4 @@
+import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider, hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
@@ -6,6 +7,30 @@ import { Toaster } from '@/components/ui/sonner';
 import { PWARegister } from '@/components/pwa-register';
 import { InstallPrompt } from '@/components/install-prompt';
 import { routing, isRtlLocale } from '@/i18n/routing';
+import '../globals.css';
+
+export const metadata: Metadata = {
+  title: 'ABAK ERP - Engineering Consultancy Management',
+  description: 'Complete ERP system for engineering consultancy firms',
+  manifest: '/manifest.webmanifest',
+  applicationName: 'ABAK ERP',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ABAK ERP',
+  },
+  icons: {
+    icon: '/images/logo.jpg',
+    apple: '/images/logo.jpg',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#236382',
+};
 
 const cairo = Cairo({
   subsets: ['arabic', 'latin'],

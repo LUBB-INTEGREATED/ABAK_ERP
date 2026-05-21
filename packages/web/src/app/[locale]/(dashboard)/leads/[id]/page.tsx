@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -25,17 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import { useDeleteLead, useLead } from '@/lib/hooks/use-leads';
 import {
-  CHANNEL_LABELS,
-  PRIORITY_BADGE,
-  PRIORITY_LABELS,
-  SLA_BADGE,
-  SLA_LABELS,
-  STATUS_BADGE,
-  STATUS_LABELS,
-} from '@/lib/lead-ui';
+  LeadPriorityBadge,
+  LeadStatusBadge,
+  SlaStatusBadge,
+} from '@/components/ui/entity-status-badges';
+import { useDeleteLead, useLead } from '@/lib/hooks/use-leads';
+import { CHANNEL_LABELS } from '@/lib/lead-ui';
 import type { Lead } from '@/lib/types/lead';
 import { StatusDialog } from './status-dialog';
 import { AssignDialog } from './assign-dialog';
@@ -106,24 +101,9 @@ export default function LeadDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              className={cn('border-transparent', STATUS_BADGE[lead.status])}
-            >
-              {STATUS_LABELS[lead.status]}
-            </Badge>
-            <Badge
-              className={cn(
-                'border-transparent',
-                PRIORITY_BADGE[lead.priority],
-              )}
-            >
-              {PRIORITY_LABELS[lead.priority]} priority
-            </Badge>
-            <Badge
-              className={cn('border-transparent', SLA_BADGE[lead.slaStatus])}
-            >
-              SLA: {SLA_LABELS[lead.slaStatus]}
-            </Badge>
+            <LeadStatusBadge status={lead.status} size="md" />
+            <LeadPriorityBadge priority={lead.priority} dot size="md" />
+            <SlaStatusBadge status={lead.slaStatus} dot size="md" />
           </div>
         </CardContent>
       </Card>

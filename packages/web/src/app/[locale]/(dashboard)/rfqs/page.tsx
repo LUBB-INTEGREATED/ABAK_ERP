@@ -3,22 +3,13 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  RfqPriorityBadge,
+  RfqStatusBadge,
+} from '@/components/ui/entity-status-badges';
 import { useRfqsList } from '@/lib/hooks/use-rfqs';
 import type { RfqStatus } from '@/lib/types/rfq';
 import { Link } from '@/i18n/navigation';
-
-const STATUS_BADGE: Record<RfqStatus, string> = {
-  RECEIVED: 'bg-slate-200 text-slate-800',
-  ASSIGNED: 'bg-sky-100 text-sky-800',
-  IN_PREPARATION: 'bg-indigo-100 text-indigo-800',
-  PENDING_APPROVAL: 'bg-amber-100 text-amber-800',
-  APPROVED_READY_FOR_DISPATCH: 'bg-emerald-100 text-emerald-800',
-  SENT: 'bg-emerald-100 text-emerald-800',
-  WON: 'bg-emerald-600 text-white',
-  LOST: 'bg-rose-600 text-white',
-  POSTPONED: 'bg-zinc-300 text-zinc-800',
-  CANCELLED: 'bg-zinc-400 text-white',
-};
 
 export default function RfqsListPage() {
   const t = useTranslations();
@@ -132,14 +123,10 @@ export default function RfqsListPage() {
                           : '—'}
                       </td>
                       <td className="py-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[rfq.status]}`}
-                        >
-                          {t(`rfq.status.${rfq.status}`)}
-                        </span>
+                        <RfqStatusBadge status={rfq.status} />
                       </td>
                       <td className="py-2">
-                        {t(`rfq.priorityLabel.${rfq.priority}`)}
+                        <RfqPriorityBadge priority={rfq.priority} dot />
                       </td>
                       <td className="py-2">
                         {t(`rfq.sourceLabel.${rfq.requestedByChannel}`)}

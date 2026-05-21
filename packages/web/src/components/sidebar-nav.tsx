@@ -11,21 +11,16 @@ import {
   FolderKanban,
   Wallet,
   Landmark,
-  BadgeCheck,
   ShieldCheck,
-  Megaphone,
   Blocks,
   Menu,
   Settings,
   Sliders,
   CalendarCheck,
   User,
-  Users,
   X,
   LogOut,
   BarChart2,
-  Crown,
-  Target,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -48,26 +43,47 @@ type NavItem = {
   icon: ComponentType<{ className?: string }>;
 };
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', labelKey: 'nav.overview', icon: LayoutDashboard },
-  { href: '/leads', labelKey: 'nav.leads', icon: UsersRound },
-  { href: '/clients', labelKey: 'nav.clients', icon: Briefcase },
-  { href: '/pipeline', labelKey: 'nav.pipeline', icon: Blocks },
-  { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
-  { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
-  { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
-  { href: '/projects/resources', labelKey: 'nav.resources', icon: Users },
-  { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
+type NavGroup = {
+  labelKey?: string;
+  items: NavItem[];
+};
+
+// MVP scope — 4 contract modules organised as the lead-to-cash activity spine.
+// Out-of-scope routes (marketing, executive, pro, targets, projects/resources,
+// notifications-as-nav) remain reachable via direct URL for now but are hidden
+// from the sidebar until the addendum is signed. See MVP_SCOPE.md.
+const NAV_GROUPS: NavGroup[] = [
   {
-    href: '/gov-transactions',
-    labelKey: 'nav.govTransactions',
-    icon: Landmark,
+    items: [
+      { href: '/dashboard', labelKey: 'nav.overview', icon: LayoutDashboard },
+    ],
   },
-  { href: '/pro', labelKey: 'nav.pro', icon: BadgeCheck },
-  { href: '/marketing', labelKey: 'nav.marketing', icon: Megaphone },
-  { href: '/reports', labelKey: 'nav.reports', icon: BarChart2 },
-  { href: '/executive', labelKey: 'nav.executive', icon: Crown },
-  { href: '/targets', labelKey: 'nav.targets', icon: Target },
+  {
+    labelKey: 'nav.groupSales',
+    items: [
+      { href: '/leads', labelKey: 'nav.leads', icon: UsersRound },
+      { href: '/clients', labelKey: 'nav.clients', icon: Briefcase },
+      { href: '/pipeline', labelKey: 'nav.pipeline', icon: Blocks },
+      { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
+      { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
+    ],
+  },
+  {
+    labelKey: 'nav.groupDelivery',
+    items: [
+      { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+      { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
+      {
+        href: '/gov-transactions',
+        labelKey: 'nav.govTransactions',
+        icon: Landmark,
+      },
+    ],
+  },
+  {
+    labelKey: 'nav.groupInsight',
+    items: [{ href: '/reports', labelKey: 'nav.reports', icon: BarChart2 }],
+  },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
@@ -119,26 +135,38 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4"
         aria-label={t('common.navigation')}
       >
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                active
-                  ? 'bg-white/15 font-semibold'
-                  : 'text-white/85 hover:bg-white/10',
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{t(item.labelKey)}</span>
-            </Link>
-          );
-        })}
+        {NAV_GROUPS.map((group, idx) => (
+          <div
+            key={group.labelKey ?? `group-${idx}`}
+            className={idx > 0 ? 'pt-4' : undefined}
+          >
+            {group.labelKey && (
+              <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-white/50">
+                {t(group.labelKey)}
+              </div>
+            )}
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    active
+                      ? 'bg-white/15 font-semibold'
+                      : 'text-white/85 hover:bg-white/10',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{t(item.labelKey)}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
 
         {user && ADMIN_ROLES.has(user.role) && (
           <div className="pt-4">

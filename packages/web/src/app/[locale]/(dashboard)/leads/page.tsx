@@ -3,10 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCcw, Search, Sliders } from 'lucide-react';
+import { RefreshCcw, Search, Sliders, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
@@ -24,9 +23,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { DataState } from '@/components/ui/data-state';
+import {
+  LeadStatusBadge,
+  SlaStatusBadge,
+} from '@/components/ui/entity-status-badges';
+import { TableSkeleton } from '@/components/ui/skeleton-layouts';
 import { useLeadsList, useLeadStats, useServices } from '@/lib/hooks/use-leads';
 import { useAuthStore } from '@/lib/auth';
-import { SLA_BADGE, STATUS_BADGE } from '@/lib/lead-ui';
 import {
   CHANNEL_LABELS,
   LEAD_CHANNELS,
@@ -145,7 +149,7 @@ export default function LeadsListPage() {
   }
 
   const stats = useLeadStats();
-  const { data, isLoading, isError, error, refetch, isFetching } =
+  const { data, isLoading, isError, refetch, isFetching } =
     useLeadsList(filter);
 
   const total = data?.pagination.total ?? 0;
@@ -153,6 +157,21 @@ export default function LeadsListPage() {
 
   const overdueCount =
     stats.data?.bySla.find((row) => row.slaStatus === 'OVERDUE')?.count ?? 0;
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    channel ||
+    status ||
+    priority ||
+    slaStatus ||
+    assignedToId ||
+    serviceId ||
+    location.trim() ||
+    budgetMin ||
+    budgetMax ||
+    createdFrom ||
+    quick,
+  );
 
   function resetFilters() {
     setSearch('');
@@ -357,51 +376,51 @@ export default function LeadsListPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[140px]">Lead #</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Channel</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>SLA</TableHead>
-                <TableHead>Assignee</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <SkeletonRows rows={8} />}
-              {isError && (
+      <DataState
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={!data || data.data.length === 0}
+        hasFilters={hasActiveFilters}
+        onRetry={() => refetch()}
+        loading={<TableSkeleton rows={8} cols={7} />}
+        empty={{
+          icon: UsersRound,
+          title: 'No leads yet',
+          description:
+            'Leads land here automatically from the 6 intake channels. You can also log one manually.',
+          action: { label: 'New lead', href: '/leads/new' },
+        }}
+        emptyFiltered={{
+          icon: UsersRound,
+          title: 'No leads match these filters',
+          description:
+            'Try widening the search or clearing one filter at a time.',
+          action: { label: 'Clear filters', onClick: resetFilters },
+        }}
+      >
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-10 text-center text-destructive"
-                  >
-                    {error instanceof Error
-                      ? error.message
-                      : 'Failed to load leads.'}
-                  </TableCell>
+                  <TableHead className="w-[140px]">Lead #</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Channel</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>SLA</TableHead>
+                  <TableHead>Assignee</TableHead>
+                  <TableHead>Created</TableHead>
                 </TableRow>
-              )}
-              {!isLoading && !isError && data?.data.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-10 text-center text-muted-foreground"
-                  >
-                    No leads match the current filters.
-                  </TableCell>
-                </TableRow>
-              )}
-              {!isLoading &&
-                !isError &&
-                data?.data.map((lead) => <LeadRow key={lead.id} lead={lead} />)}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {data?.data.map((lead) => (
+                  <LeadRow key={lead.id} lead={lead} />
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </DataState>
 
       {data && data.data.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -499,20 +518,6 @@ function QuickChip({
   );
 }
 
-function SkeletonRows({ rows }: { rows: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }).map((_, idx) => (
-        <TableRow key={idx}>
-          <TableCell colSpan={7} className="py-3">
-            <div className="h-4 w-full animate-pulse rounded bg-muted" />
-          </TableCell>
-        </TableRow>
-      ))}
-    </>
-  );
-}
-
 function LeadRow({ lead }: { lead: Lead }) {
   const assigneeName = lead.assignedTo
     ? [lead.assignedTo.firstName, lead.assignedTo.lastName]
@@ -538,14 +543,10 @@ function LeadRow({ lead }: { lead: Lead }) {
       </TableCell>
       <TableCell>{CHANNEL_LABELS[lead.channel]}</TableCell>
       <TableCell>
-        <Badge className={cn('border-transparent', STATUS_BADGE[lead.status])}>
-          {STATUS_LABELS[lead.status]}
-        </Badge>
+        <LeadStatusBadge status={lead.status} />
       </TableCell>
       <TableCell>
-        <Badge className={cn('border-transparent', SLA_BADGE[lead.slaStatus])}>
-          {SLA_LABELS[lead.slaStatus]}
-        </Badge>
+        <SlaStatusBadge status={lead.slaStatus} dot />
       </TableCell>
       <TableCell className="text-sm">{assigneeName}</TableCell>
       <TableCell className="text-sm text-muted-foreground">

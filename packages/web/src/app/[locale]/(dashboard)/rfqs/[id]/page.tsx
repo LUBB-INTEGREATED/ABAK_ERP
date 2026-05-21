@@ -6,6 +6,11 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { UserPicker } from '@/components/ui/user-picker';
+import {
+  RfqPriorityBadge,
+  RfqStatusBadge,
+} from '@/components/ui/entity-status-badges';
 import {
   useAssignContributor,
   useAssignCoordinator,
@@ -16,24 +21,7 @@ import {
   useStartPreparation,
   useSubmitForApproval,
 } from '@/lib/hooks/use-rfqs';
-import type {
-  ConfirmationType,
-  RfqDispatchChannel,
-  RfqStatus,
-} from '@/lib/types/rfq';
-
-const STATUS_BADGE: Record<RfqStatus, string> = {
-  RECEIVED: 'bg-slate-200 text-slate-800',
-  ASSIGNED: 'bg-sky-100 text-sky-800',
-  IN_PREPARATION: 'bg-indigo-100 text-indigo-800',
-  PENDING_APPROVAL: 'bg-amber-100 text-amber-800',
-  APPROVED_READY_FOR_DISPATCH: 'bg-emerald-100 text-emerald-800',
-  SENT: 'bg-emerald-100 text-emerald-800',
-  WON: 'bg-emerald-600 text-white',
-  LOST: 'bg-rose-600 text-white',
-  POSTPONED: 'bg-zinc-300 text-zinc-800',
-  CANCELLED: 'bg-zinc-400 text-white',
-};
+import type { ConfirmationType, RfqDispatchChannel } from '@/lib/types/rfq';
 
 export default function RfqDetailPage({
   params,
@@ -99,14 +87,8 @@ export default function RfqDetailPage({
           <h1 className="font-mono text-2xl font-bold text-abak-blue">
             {rfq.rfqNumber}
           </h1>
-          <span
-            className={`rounded-full px-3 py-0.5 text-xs font-medium ${STATUS_BADGE[rfq.status]}`}
-          >
-            {t(`rfq.status.${rfq.status}`)}
-          </span>
-          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-            {t(`rfq.priorityLabel.${rfq.priority}`)}
-          </span>
+          <RfqStatusBadge status={rfq.status} size="md" />
+          <RfqPriorityBadge priority={rfq.priority} dot />
           <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
             {t(`rfq.sourceLabel.${rfq.requestedByChannel}`)}
           </span>
@@ -245,13 +227,12 @@ export default function RfqDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap items-end gap-2">
-                <input
-                  type="text"
-                  value={coordinatorId}
-                  onChange={(e) => setCoordinatorId(e.target.value)}
-                  placeholder="userId"
-                  className="input-base max-w-xs font-mono"
-                />
+                <div className="w-full max-w-xs">
+                  <UserPicker
+                    value={coordinatorId}
+                    onChange={setCoordinatorId}
+                  />
+                </div>
                 <Button
                   onClick={() =>
                     run(() => assignCoordinator.mutateAsync({ coordinatorId }))
@@ -290,13 +271,12 @@ export default function RfqDetailPage({
                     {t('rfq.financialReviewer')}
                   </option>
                 </select>
-                <input
-                  type="text"
-                  value={contributorUserId}
-                  onChange={(e) => setContributorUserId(e.target.value)}
-                  placeholder="userId"
-                  className="input-base max-w-xs font-mono"
-                />
+                <div className="w-full max-w-xs">
+                  <UserPicker
+                    value={contributorUserId}
+                    onChange={setContributorUserId}
+                  />
+                </div>
                 <Button
                   onClick={() =>
                     run(() =>

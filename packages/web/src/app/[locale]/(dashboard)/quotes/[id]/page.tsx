@@ -11,13 +11,16 @@ import {
   BadgeDollarSign,
   FileText,
   MessageSquare,
+  Printer,
   Scale,
   Send,
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { QuoteStatusBadge } from '@/components/ui/entity-status-badges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -51,31 +54,14 @@ import {
 import { useAuthStore } from '@/lib/auth';
 import {
   LOSS_REASONS,
-  QUOTE_STATUS_LABELS,
   type LossReason,
   type QuoteStatus,
 } from '@/lib/types/quote';
 
-const STATUS_BADGE: Record<QuoteStatus, string> = {
-  DRAFT: 'bg-zinc-100 text-zinc-600',
-  PENDING_REVIEW: 'bg-sky-100 text-sky-700',
-  PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
-  IN_REVISION: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-abak-blue/10 text-abak-blue',
-  SENT: 'bg-indigo-100 text-indigo-700',
-  IN_DISCUSSION: 'bg-indigo-200 text-indigo-700',
-  IN_NEGOTIATION: 'bg-abak-gold/20 text-abak-gold',
-  REVISED: 'bg-sky-200 text-sky-700',
-  WON: 'bg-emerald-100 text-emerald-700',
-  LOST: 'bg-rose-100 text-rose-700',
-  POSTPONED: 'bg-zinc-300 text-zinc-800',
-  EXPIRED: 'bg-zinc-200 text-zinc-700',
-  CANCELLED: 'bg-zinc-400 text-white',
-};
-
 export default function QuoteDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const t = useTranslations();
   const { data: quote, isLoading, isError, error } = useQuote(id);
   const user = useAuthStore((state) => state.user);
   const submitMutation = useSubmitQuote(id);
@@ -153,11 +139,7 @@ export default function QuoteDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              className={cn('border-transparent', STATUS_BADGE[quote.status])}
-            >
-              {QUOTE_STATUS_LABELS[quote.status]}
-            </Badge>
+            <QuoteStatusBadge status={quote.status} size="md" />
             <Badge variant="outline">
               <BadgeDollarSign className="mr-1 h-3.5 w-3.5" />
               {quote.totalAmount.toLocaleString()} SAR
@@ -167,6 +149,11 @@ export default function QuoteDetailPage() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/quotes/${id}/print`} target="_blank" rel="noopener">
+            <Printer className="mr-2 h-4 w-4" /> {t('quotePdf.previewButton')}
+          </Link>
+        </Button>
         {quote.status === 'DRAFT' && (
           <Button
             size="sm"

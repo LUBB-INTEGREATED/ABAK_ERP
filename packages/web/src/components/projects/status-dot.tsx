@@ -1,3 +1,13 @@
+/**
+ * @deprecated Prefer <StatusBadge> + the typed entity wrappers in
+ * '@/components/ui/entity-status-badges' (e.g. <ProjectStatusBadge>,
+ * <PhaseStatusBadge>, <TaskStatusBadge>). See DESIGN_SYSTEM_MASTER.md §2.
+ *
+ * StatusPill and the 8-tone (Tone) system here predate the 5-token semantic
+ * model. New code should not import from this file. Existing callers are
+ * migrated incrementally — when this file has no remaining importers,
+ * delete it along with the PROJECT_TONE / PHASE_TONE / TASK_TONE maps.
+ */
 import type {
   PhaseStatus,
   ProjectStatus,

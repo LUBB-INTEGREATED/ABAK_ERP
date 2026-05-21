@@ -31,6 +31,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  ClientClassificationBadge,
+  ClientStatusBadge,
+  FollowUpStatusBadge,
+} from '@/components/ui/entity-status-badges';
 import { cn } from '@/lib/utils';
 import {
   useArchiveClient,
@@ -40,16 +45,10 @@ import {
   useClientNotes,
 } from '@/lib/hooks/use-clients';
 import {
-  CLASSIFICATION_LABELS,
-  CLIENT_STATUS_LABELS,
-  FOLLOW_UP_STATUS_LABELS,
   FOLLOW_UP_TYPE_LABELS,
   INTERACTION_TYPE_LABELS,
   NOTE_TAG_LABELS,
   type Client,
-  type ClientClassification,
-  type ClientStatus,
-  type FollowUpStatus,
   type NoteTag,
 } from '@/lib/types/client';
 import { ClassifyDialog } from './classify-dialog';
@@ -58,28 +57,6 @@ import { InteractionDialog } from './interaction-dialog';
 import { FollowUpDialog } from './follow-up-dialog';
 import { CloseFollowUpDialog } from './close-follow-up-dialog';
 import { NoteDialog } from './note-dialog';
-
-const CLASSIFICATION_BADGE: Record<ClientClassification, string> = {
-  NEW: 'bg-sky-100 text-sky-700',
-  RETURNING: 'bg-abak-blue/10 text-abak-blue',
-  VIP: 'bg-abak-gold/20 text-abak-gold',
-  DORMANT: 'bg-zinc-100 text-zinc-600',
-  ARCHIVED: 'bg-rose-100 text-rose-700',
-};
-
-const STATUS_BADGE: Record<ClientStatus, string> = {
-  ACTIVE: 'bg-emerald-100 text-emerald-700',
-  INACTIVE: 'bg-zinc-100 text-zinc-600',
-  BLACKLISTED: 'bg-rose-100 text-rose-700',
-};
-
-const FOLLOW_UP_BADGE: Record<FollowUpStatus, string> = {
-  PENDING: 'bg-sky-100 text-sky-700',
-  DUE_TODAY: 'bg-amber-100 text-amber-700',
-  COMPLETED: 'bg-emerald-100 text-emerald-700',
-  CANCELLED: 'bg-zinc-100 text-zinc-600',
-  OVERDUE: 'bg-rose-100 text-rose-700',
-};
 
 const NOTE_BADGE: Record<NoteTag, string> = {
   GENERAL: 'bg-zinc-100 text-zinc-600',
@@ -169,19 +146,11 @@ export default function ClientDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              className={cn(
-                'border-transparent',
-                CLASSIFICATION_BADGE[client.classification],
-              )}
-            >
-              {CLASSIFICATION_LABELS[client.classification]}
-            </Badge>
-            <Badge
-              className={cn('border-transparent', STATUS_BADGE[client.status])}
-            >
-              {CLIENT_STATUS_LABELS[client.status]}
-            </Badge>
+            <ClientClassificationBadge
+              classification={client.classification}
+              size="md"
+            />
+            <ClientStatusBadge status={client.status} size="md" />
             {client.satisfactionScore !== null && (
               <Badge variant="outline">
                 Satisfaction {client.satisfactionScore}
@@ -518,14 +487,7 @@ function FollowUpsTab({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{followUp.title}</span>
-                      <Badge
-                        className={cn(
-                          'border-transparent',
-                          FOLLOW_UP_BADGE[followUp.status],
-                        )}
-                      >
-                        {FOLLOW_UP_STATUS_LABELS[followUp.status]}
-                      </Badge>
+                      <FollowUpStatusBadge status={followUp.status} />
                       <Badge variant="outline">
                         {FOLLOW_UP_TYPE_LABELS[followUp.type]}
                       </Badge>

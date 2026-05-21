@@ -4,9 +4,12 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { RefreshCcw, Search, Sliders } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  ClientClassificationBadge,
+  ClientStatusBadge,
+} from '@/components/ui/entity-status-badges';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -38,20 +41,6 @@ import {
 
 const PAGE_SIZE = 50;
 const ALL = '__all__';
-
-const CLASSIFICATION_BADGE: Record<ClientClassification, string> = {
-  NEW: 'bg-sky-100 text-sky-700',
-  RETURNING: 'bg-abak-blue/10 text-abak-blue',
-  VIP: 'bg-abak-gold/20 text-abak-gold',
-  DORMANT: 'bg-zinc-100 text-zinc-600',
-  ARCHIVED: 'bg-rose-100 text-rose-700',
-};
-
-const STATUS_BADGE: Record<ClientStatus, string> = {
-  ACTIVE: 'bg-emerald-100 text-emerald-700',
-  INACTIVE: 'bg-zinc-100 text-zinc-600',
-  BLACKLISTED: 'bg-rose-100 text-rose-700',
-};
 
 function KpiCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -369,21 +358,10 @@ function ClientRow({ client }: { client: Client }) {
         </div>
       </TableCell>
       <TableCell>
-        <Badge
-          className={cn(
-            'border-transparent',
-            CLASSIFICATION_BADGE[client.classification],
-          )}
-        >
-          {CLASSIFICATION_LABELS[client.classification]}
-        </Badge>
+        <ClientClassificationBadge classification={client.classification} />
       </TableCell>
       <TableCell>
-        <Badge
-          className={cn('border-transparent', STATUS_BADGE[client.status])}
-        >
-          {CLIENT_STATUS_LABELS[client.status]}
-        </Badge>
+        <ClientStatusBadge status={client.status} />
       </TableCell>
       <TableCell className="text-sm">{manager}</TableCell>
       <TableCell className="text-sm">

@@ -66,6 +66,7 @@ import {
   AddTaskDialog,
   ReassignOwnerDialog,
 } from '@/components/projects/phase-dialogs';
+import { ProjectGantt } from '@/components/projects/gantt';
 import { cn } from '@/lib/utils';
 
 const GATES: ClosureGate[] = [
@@ -155,6 +156,7 @@ export default function ProjectDetailPage({
           <TabsTrigger value="phases">
             {t('project.tabs.phases')} · {project.phases.length}
           </TabsTrigger>
+          <TabsTrigger value="gantt">{t('project.tabs.gantt')}</TabsTrigger>
           <TabsTrigger value="closure">
             {t('project.tabs.closure')}
             {project.closureChecklist?.closedAt && (
@@ -213,6 +215,11 @@ export default function ProjectDetailPage({
               </div>
             </>
           )}
+        </TabsContent>
+
+        {/* Gantt */}
+        <TabsContent value="gantt">
+          <ProjectGantt project={project} />
         </TabsContent>
 
         {/* Closure */}
