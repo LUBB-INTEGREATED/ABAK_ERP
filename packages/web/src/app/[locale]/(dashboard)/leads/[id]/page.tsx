@@ -36,6 +36,7 @@ import { StatusDialog } from './status-dialog';
 import { AssignDialog } from './assign-dialog';
 import { EditDialog } from './edit-dialog';
 import { ConvertLeadDialog } from './convert-dialog';
+import { CommunicationsLog } from '@/components/leads/communications-log';
 
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
@@ -144,6 +145,8 @@ export default function LeadDetailPage() {
           <Trash2 className="mr-2 h-4 w-4" /> Archive
         </Button>
       </div>
+
+      <CommunicationsLog leadId={lead.id} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <Section title="Contact">

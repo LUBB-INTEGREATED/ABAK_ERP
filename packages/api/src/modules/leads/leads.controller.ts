@@ -17,6 +17,7 @@ import {
   AssignLeadDto,
   CreateLeadDto,
   LeadFilterDto,
+  LogLeadInteractionDto,
   UpdateLeadDto,
   UpdateLeadStatusDto,
 } from './dto';
@@ -144,5 +145,30 @@ export class LeadsController {
   @ApiOperation({ summary: 'Soft delete (archive) the lead' })
   remove(@Param('id') id: string) {
     return this.leads.softDelete(id);
+  }
+
+  // Communications log (2026-05-21 process correction).
+  // See docs/CORRECTED_CLIENT_JOURNEY.md §A.
+
+  @Get(':id/interactions')
+  @ApiOperation({
+    summary:
+      'List communications-log entries for this lead (reverse chronological).',
+  })
+  listInteractions(@Param('id') id: string) {
+    return this.leads.listInteractions(id);
+  }
+
+  @Post(':id/interactions')
+  @ApiOperation({
+    summary:
+      'Log a communication entry (call / meeting / WhatsApp / etc.) on this lead.',
+  })
+  logInteraction(
+    @Param('id') id: string,
+    @Body() dto: LogLeadInteractionDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.leads.logInteraction(id, dto, actorId);
   }
 }

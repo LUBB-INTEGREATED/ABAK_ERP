@@ -12,6 +12,7 @@ import { AssignmentService } from './assignment.service';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
 import type { CreateLeadDto } from './dto/create-lead.dto';
 import type { LeadFilterDto } from './dto/lead-filter.dto';
+import type { LogLeadInteractionDto } from './dto/log-interaction.dto';
 import type { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import type { UpdateLeadDto } from './dto/update-lead.dto';
 
@@ -508,6 +509,62 @@ export class LeadsService {
     if (!setting) return null;
     const value = Number(setting.value);
     return Number.isFinite(value) ? value : null;
+  }
+
+  // ============================================================
+  // Communications log on a lead (2026-05-21 process correction).
+  // The Sales Person is the single thread-of-record for the client; this
+  // endpoint stores call/meeting/email/WhatsApp/site-visit log entries
+  // against the lead. CC list lets non-sales actors (e.g. a Department
+  // Engineer logging site-visit coordination directly with the client)
+  // route the entry into the Sales Person's queue without making them a
+  // bottleneck. See docs/CORRECTED_CLIENT_JOURNEY.md §A.
+  // ============================================================
+
+  async listInteractions(leadId: string) {
+    await this.findOne(leadId);
+    return this.prisma.interaction.findMany({
+      where: { leadId },
+      orderBy: { occurredAt: 'desc' },
+      include: {
+        author: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+  }
+
+  async logInteraction(
+    leadId: string,
+    dto: LogLeadInteractionDto,
+    actorId: string,
+  ) {
+    await this.findOne(leadId);
+    const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+    const followUpDate = dto.followUpDate ? new Date(dto.followUpDate) : null;
+
+    return this.prisma.interaction.create({
+      data: {
+        leadId,
+        authorId: actorId,
+        type: dto.type,
+        direction: dto.direction,
+        subject: dto.subject,
+        summary: dto.summary,
+        occurredAt,
+        durationMinutes: dto.durationMinutes,
+        location: dto.location,
+        outcome: dto.outcome,
+        nextAction: dto.nextAction,
+        ccAuthorIds: dto.ccAuthorIds ?? [],
+        followUpDate,
+      },
+      include: {
+        author: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
   }
 }
 

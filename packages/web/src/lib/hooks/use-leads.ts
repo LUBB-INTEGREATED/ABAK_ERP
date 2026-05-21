@@ -167,3 +167,90 @@ export function useDeleteLead(id: string) {
     onSuccess: () => invalidateLead(queryClient, id),
   });
 }
+
+// ============================================================
+// Communications log on a lead (2026-05-21 process correction).
+// See docs/CORRECTED_CLIENT_JOURNEY.md §A.
+// ============================================================
+
+export type InteractionType =
+  | 'CALL'
+  | 'MEETING'
+  | 'EMAIL'
+  | 'WHATSAPP'
+  | 'COMPLAINT'
+  | 'SITE_VISIT'
+  | 'OFFICE_VISIT'
+  | 'QUOTE_SENT_EVENT'
+  | 'CONTRACT_SIGNED'
+  | 'NOTE';
+
+export type LeadInteraction = {
+  id: string;
+  leadId: string | null;
+  type: InteractionType;
+  direction: 'INBOUND' | 'OUTBOUND' | null;
+  subject: string;
+  summary: string | null;
+  occurredAt: string;
+  durationMinutes: number | null;
+  location: string | null;
+  outcome: string | null;
+  nextAction: string | null;
+  ccAuthorIds: string[];
+  followUpDate: string | null;
+  authorId: string | null;
+  author: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  } | null;
+  createdAt: string;
+};
+
+export function useLeadInteractions(leadId: string | undefined) {
+  return useQuery({
+    queryKey: ['leads', leadId, 'interactions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<LeadInteraction[]>>(
+        `/leads/${leadId}/interactions`,
+      );
+      return data.data;
+    },
+    enabled: Boolean(leadId),
+  });
+}
+
+export type LogLeadInteractionBody = {
+  type: InteractionType;
+  direction?: 'INBOUND' | 'OUTBOUND';
+  subject: string;
+  summary?: string;
+  occurredAt?: string;
+  durationMinutes?: number;
+  location?: string;
+  outcome?: string;
+  nextAction?: string;
+  ccAuthorIds?: string[];
+  followUpDate?: string;
+};
+
+export function useLogLeadInteraction(leadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: LogLeadInteractionBody) => {
+      const { data } = await apiClient.post<ApiEnvelope<LeadInteraction>>(
+        `/leads/${leadId}/interactions`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['leads', leadId, 'interactions'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['leads', leadId] });
+    },
+  });
+}
