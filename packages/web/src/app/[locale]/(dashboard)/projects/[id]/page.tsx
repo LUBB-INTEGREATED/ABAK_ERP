@@ -67,6 +67,7 @@ import {
   ReassignOwnerDialog,
 } from '@/components/projects/phase-dialogs';
 import { ProjectGantt } from '@/components/projects/gantt';
+import { LicencesTab } from '@/components/projects/licences-tab';
 import { cn } from '@/lib/utils';
 
 const GATES: ClosureGate[] = [
@@ -157,6 +158,7 @@ export default function ProjectDetailPage({
             {t('project.tabs.phases')} · {project.phases.length}
           </TabsTrigger>
           <TabsTrigger value="gantt">{t('project.tabs.gantt')}</TabsTrigger>
+          <TabsTrigger value="licences">Licences</TabsTrigger>
           <TabsTrigger value="closure">
             {t('project.tabs.closure')}
             {project.closureChecklist?.closedAt && (
@@ -220,6 +222,14 @@ export default function ProjectDetailPage({
         {/* Gantt */}
         <TabsContent value="gantt">
           <ProjectGantt project={project} />
+        </TabsContent>
+
+        {/* Licences — added 2026-05-21 per process correction */}
+        <TabsContent value="licences">
+          <LicencesTab
+            projectId={id}
+            phases={project.phases.map((p) => ({ id: p.id, name: p.name }))}
+          />
         </TabsContent>
 
         {/* Closure */}
