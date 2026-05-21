@@ -211,13 +211,15 @@ export const salesDefinitions: ReportDefinition[] = [
       );
 
       const channelLabels: Record<string, string> = {
-        GOVERNMENT_TENDER: 'مناقصات حكومية',
         REFERRAL: 'إحالة',
         WALK_IN: 'زيارة مباشرة',
+        PHONE: 'مكالمة هاتفية',
+        EXISTING_CLIENT_REPEAT: 'عميل سابق - عمل متكرر',
         SOCIAL_MEDIA: 'وسائل التواصل',
         WEBSITE: 'الموقع الإلكتروني',
         GOOGLE_MAPS: 'خرائط جوجل',
         AI_CHATBOT: 'المساعد الذكي',
+        OTHER: 'أخرى',
       };
 
       const rows = grouped.map((g) => {

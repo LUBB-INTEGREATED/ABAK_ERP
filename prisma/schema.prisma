@@ -315,6 +315,8 @@ model Lead {
 
   pipelineEntry PipelineEntry?
   quotes        Quote[]
+  /// Comms log entries scoped to this lead. See Interaction.
+  interactions  Interaction[]  @relation("LeadInteractions")
 
   qualificationScore Int?    @default(0)
   qualificationNotes String?
@@ -341,13 +343,15 @@ model Lead {
 }
 
 enum LeadChannel {
-  GOVERNMENT_TENDER
   REFERRAL
   WALK_IN
+  PHONE
+  EXISTING_CLIENT_REPEAT
   SOCIAL_MEDIA
   WEBSITE
   GOOGLE_MAPS
   AI_CHATBOT
+  OTHER
 }
 
 enum LeadStatus {
@@ -460,10 +464,25 @@ enum ClientStatus {
   BLACKLISTED
 }
 
+/// Communications log primitive. One entry per contact (call, WhatsApp, email,
+/// meeting, site visit, ...). Can attach to a Lead, Client, Rfq, or Project —
+/// at least one scope FK must be set (enforced at the application layer).
+/// Per the 2026-05-21 process correction, this is the single thread-of-record
+/// for client communication; the Sales Person owns it, and engineers logging
+/// site-visit coordination CC the Sales Person via `ccAuthorIds`.
 model Interaction {
-  id       String @id @default(cuid())
-  clientId String
-  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+
+  // Scopes — at least one must be set. Client remains the canonical scope
+  // for backward compatibility; lead/rfq/project added 2026-05-21.
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  leadId    String?
+  lead      Lead?    @relation("LeadInteractions", fields: [leadId], references: [id], onDelete: Cascade)
+  rfqId     String?
+  rfq       Rfq?     @relation("RfqInteractions", fields: [rfqId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation("ProjectInteractions", fields: [projectId], references: [id], onDelete: Cascade)
 
   type            InteractionType
   direction       InteractionDirection?
@@ -480,10 +499,22 @@ model Interaction {
   authorId String?
   author   User?   @relation("InteractionAuthor", fields: [authorId], references: [id])
 
+  /// Optional list of user IDs CC'd on this entry. Used when an engineer logs
+  /// site-visit coordination and the responsible sales person needs to see it
+  /// on their inbox / the lead's timeline.
+  ccAuthorIds String[]
+
+  /// Optional inline follow-up reminder. When set, the system surfaces the
+  /// entry as an actionable follow-up on the Sales Person's queue.
+  followUpDate DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([clientId])
+  @@index([leadId])
+  @@index([rfqId])
+  @@index([projectId])
   @@index([type])
   @@index([occurredAt])
   @@index([authorId])
@@ -1041,6 +1072,10 @@ model Rfq {
 
   commissions Commission[]
 
+  /// Comms log entries scoped to this RFQ (e.g. site-visit coordination,
+  /// document request follow-up). See Interaction.
+  interactions Interaction[] @relation("RfqInteractions")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
@@ -1140,6 +1175,19 @@ model Project {
   closureChecklist ClosureChecklist?
   invoices         Invoice[]
   govTransactions  GovTransaction[]
+  /// Comms log entries scoped to this project. See Interaction.
+  interactions     Interaction[]     @relation("ProjectInteractions")
+  /// Project-scoped government licences. Replaces the standalone
+  /// GovTransaction model per the 2026-05-21 process correction.
+  licences         Licence[]
+
+  /// Timeline state. Active = phases running on schedule.
+  /// Paused = at least one due-to-start phase is blocked by a non-issued
+  /// licence dependency; pause intervals are excluded from slip math.
+  timelineState      ProjectTimelineState @default(ACTIVE)
+  /// Cumulative duration (in seconds) this project has spent Paused due to
+  /// licence dependencies. Used to back out paused time from slip reports.
+  pausedSecondsTotal Int                  @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1150,6 +1198,11 @@ model Project {
   @@index([pmId])
   @@index([status])
   @@map("projects")
+}
+
+enum ProjectTimelineState {
+  ACTIVE
+  PAUSED
 }
 
 enum ProjectStatus {
@@ -1192,6 +1245,19 @@ model Phase {
   completedById        String?
 
   tasks Task[]
+
+  /// Government licences whose `Issued` status this phase depends on.
+  /// While any dependency is not yet `Issued`, the phase is hard-blocked
+  /// from starting (UI-level guard) and the parent project enters a
+  /// PAUSED timelineState. See Licence + ProjectTimelineState.
+  licenceDependencies Licence[] @relation("PhaseLicenceDependencies")
+
+  /// Set when the engineer / PM requests a phase-block exemption from the
+  /// CEO (e.g., "start work on the building permit before it's issued").
+  /// Justification + audit logged; only granted via the CEO surface.
+  licenceOverrideJustification String?
+  licenceOverrideById          String?
+  licenceOverrideAt            DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1720,4 +1786,126 @@ model EscalationInstance {
   @@unique([ruleId, resource, resourceId])
   @@index([resolvedAt])
   @@map("escalation_instances")
+}
+
+// ============================================
+// Process correction 2026-05-21 — see docs/CORRECTED_CLIENT_JOURNEY.md
+// ============================================
+
+/// Singleton configuration that drives discount + quote approval routing.
+/// One row per organisation. Owned by the CEO / Portal Admin. The Sales
+/// Person can grant discounts up to `salesCeilingPct` without approval;
+/// anything above flows through the configured tiered or sequential chain.
+model PricingPolicy {
+  id String @id @default(cuid())
+
+  /// % discount the sales person can grant without approval.
+  salesCeilingPct Float @default(5)
+
+  /// Routing mode. TIERED = different approvers per discount band.
+  /// SEQUENTIAL = each above-ceiling request goes through every approver
+  /// in order.
+  mode PricingPolicyMode @default(TIERED)
+
+  /// Tiered config (when mode = TIERED). Array of
+  /// `{ upToPct: number, approver: "MANAGER" | "CEO" }` rows.
+  tiers Json @default("[]")
+
+  /// Sequential config (when mode = SEQUENTIAL). Array of approvers in
+  /// order, e.g. `[{ approver: "MANAGER", order: 1 }, { approver: "CEO", order: 2 }]`.
+  sequence Json @default("[]")
+
+  /// % VAT applied to quotes. Default 15% (Saudi VAT).
+  vatPct Float @default(15)
+
+  /// Currency code (ISO 4217). Default SAR.
+  currency String @default("SAR")
+
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("pricing_policy")
+}
+
+enum PricingPolicyMode {
+  TIERED
+  SEQUENTIAL
+}
+
+/// Project-scoped government licence (building permit, demolition permit,
+/// civil-defense approval, MODON licence, commercial registration, etc.).
+/// Replaces the standalone GovTransaction model — government work shows up
+/// as licences inside normal projects, owned by the Department Engineer
+/// assigned to the relevant phase.
+model Licence {
+  id String @id @default(cuid())
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  /// Human-readable licence name, e.g. "Building Permit", "Civil Defense Approval".
+  name String
+
+  /// Name of the government portal where the licence is filed (free text).
+  /// Examples: Balady, Salama Gateway, Etimad, Fursa, MODON, HCIS.
+  portalName String
+
+  /// URL of the licence record on the portal. Anyone with project access
+  /// can click through to check status manually (no portal API integration).
+  portalUrl String?
+
+  /// Request / file ID returned by the portal upon application.
+  requestId String?
+
+  status          LicenceStatus @default(APPLIED)
+  appliedDate     DateTime
+  issuedDate      DateTime?
+  rejectedDate    DateTime?
+  rejectionReason String?
+
+  /// Engineer (or manager) who applied for the licence. Stored as a plain
+  /// user-ID string to avoid a back-relation on User.
+  appliedById String?
+
+  /// Last time anyone updated the licence record. Used to surface "Last
+  /// checked: 4 days ago" on the row + drive the reminder cadence cron.
+  lastCheckedAt DateTime?
+
+  /// Reminder cadence in working days. Cron prompts the owner to check
+  /// the portal at this cadence while status ∈ {Applied, UnderReview}.
+  /// Default 5 working days; admin-configurable per row.
+  reminderCadenceDays Int @default(5)
+
+  /// If this licence is a re-application after a rejection, links to the
+  /// rejected predecessor so the audit trail is preserved.
+  parentLicenceId String?
+  parentLicence   Licence?  @relation("LicenceRemediation", fields: [parentLicenceId], references: [id])
+  remediations    Licence[] @relation("LicenceRemediation")
+
+  /// Phases of this project that cannot start until this licence is `Issued`.
+  blockedPhases Phase[] @relation("PhaseLicenceDependencies")
+
+  notes String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([projectId])
+  @@index([status])
+  @@index([appliedDate])
+  @@index([deletedAt])
+  @@map("licences")
+}
+
+enum LicenceStatus {
+  /// Application submitted, waiting on authority review.
+  APPLIED
+  /// Authority has started review; expect comments / requests for info.
+  UNDER_REVIEW
+  /// Approved + issued. Unblocks dependent phases.
+  ISSUED
+  /// Authority rejected the application. Remediation = new linked licence.
+  REJECTED
 }

@@ -154,27 +154,26 @@ const DRAFT_KEY = 'lead_draft';
 const DRAFT_KEY_PREFIX = 'abak-erp:lead-draft:';
 const AUTO_SAVE_MS = 30_000;
 
-function channelRequirements(channel: LeadChannel) {
-  return {
-    GOVERNMENT_TENDER: {
-      requireEither: ['etimadNumber', 'fursaNumber'] as const,
-      label: 'Tender reference (Etimad or Fursa)',
-    },
+function channelRequirements(
+  channel: LeadChannel,
+): { requireEither: readonly string[]; label: string } | null {
+  const map: Partial<
+    Record<LeadChannel, { requireEither: readonly string[]; label: string }>
+  > = {
     REFERRAL: {
-      requireEither: ['referredBy'] as const,
+      requireEither: ['referredBy'],
       label: 'Referrer name',
     },
     SOCIAL_MEDIA: {
-      requireEither: ['socialPlatform'] as const,
+      requireEither: ['socialPlatform'],
       label: 'Platform',
     },
     GOOGLE_MAPS: {
-      requireEither: ['mapsLink'] as const,
+      requireEither: ['mapsLink'],
       label: 'Google Maps link',
     },
-    WALK_IN: null,
-    WEBSITE: null,
-  }[channel];
+  };
+  return map[channel] ?? null;
 }
 
 function toSubmitPayload(
@@ -232,26 +231,6 @@ function toSubmitPayload(
   if (district) payload.district = district;
 
   switch (channel) {
-    case 'GOVERNMENT_TENDER': {
-      const etimad = optional('etimadNumber');
-      const fursa = optional('fursaNumber');
-      const deadline = optional('tenderDeadline');
-      const tenderPlatform = optional('tenderPlatform');
-      const tenderTitle = optional('tenderTitle');
-      const tenderCategory = optional('tenderCategory');
-      const participationDecision = optional('participationDecision');
-      const skipReason = optional('skipReason');
-      if (etimad) payload.etimadNumber = etimad;
-      if (fursa) payload.fursaNumber = fursa;
-      if (deadline) payload.tenderDeadline = new Date(deadline).toISOString();
-      if (tenderPlatform) payload.source = tenderPlatform;
-      if (tenderTitle) payload.projectLocation = tenderTitle;
-      if (tenderCategory) payload.referralSourceType = tenderCategory;
-      if (participationDecision)
-        payload.qualificationNotes = participationDecision;
-      if (skipReason) payload.lostReason = skipReason;
-      break;
-    }
     case 'REFERRAL': {
       const by = optional('referredBy');
       const rp = optional('referrerPhone');
@@ -738,91 +717,7 @@ function ChannelSpecificCard({
   channel: LeadChannel;
   form: UseFormReturn<FormValues>;
 }) {
-  const participationDecision = form.watch('participationDecision');
-
   switch (channel) {
-    case 'GOVERNMENT_TENDER':
-      return (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              تفاصيل المناقصة الحكومية
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <SelectField
-              label="المنصة"
-              value={form.watch('tenderPlatform') ?? ''}
-              onValueChange={(v) => form.setValue('tenderPlatform', v)}
-              required
-            >
-              <SelectItem value="Etimad">اعتماد</SelectItem>
-              <SelectItem value="Fursa">فرصة</SelectItem>
-              <SelectItem value="OTHER">أخرى</SelectItem>
-            </SelectField>
-            <TextField form={form} name="etimadNumber" label="رقم اعتماد" />
-            <TextField form={form} name="fursaNumber" label="رقم فرصة" />
-            <TextField
-              form={form}
-              name="tenderTitle"
-              label="عنوان المناقصة"
-              required
-            />
-            <SelectField
-              label="فئة المناقصة"
-              value={form.watch('tenderCategory') ?? ''}
-              onValueChange={(v) => form.setValue('tenderCategory', v)}
-            >
-              <SelectItem value="Architecture">معمارية</SelectItem>
-              <SelectItem value="Civil">مدني</SelectItem>
-              <SelectItem value="MEP">MEP</SelectItem>
-              <SelectItem value="Supervision">إشراف</SelectItem>
-              <SelectItem value="Survey">مساحة</SelectItem>
-              <SelectItem value="Other">أخرى</SelectItem>
-            </SelectField>
-            <TextField
-              form={form}
-              name="tenderDeadline"
-              label="موعد التقديم"
-              type="datetime-local"
-              required
-            />
-            <TextField
-              form={form}
-              name="budget"
-              label="القيمة التقديرية (ريال)"
-              type="number"
-            />
-            <SelectField
-              label="قرار المشاركة"
-              value={form.watch('participationDecision') ?? ''}
-              onValueChange={(v) => form.setValue('participationDecision', v)}
-            >
-              <SelectItem value="PENDING">قيد الدراسة</SelectItem>
-              <SelectItem value="PARTICIPATE">المشاركة</SelectItem>
-              <SelectItem value="SKIP">الانسحاب</SelectItem>
-            </SelectField>
-            {participationDecision === 'SKIP' && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="skipReason">سبب الانسحاب</Label>
-                <Textarea
-                  id="skipReason"
-                  rows={3}
-                  {...form.register('skipReason')}
-                />
-              </div>
-            )}
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="serviceDetails">ملخص النطاق التقني</Label>
-              <Textarea
-                id="serviceDetails"
-                rows={3}
-                {...form.register('serviceDetails')}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      );
     case 'REFERRAL':
       return (
         <Card>

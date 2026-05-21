@@ -319,17 +319,6 @@ function Row({
 
 function ChannelSpecific({ lead }: { lead: Lead }) {
   switch (lead.channel) {
-    case 'GOVERNMENT_TENDER':
-      return (
-        <>
-          <Row label="Etimad #" value={lead.etimadNumber} />
-          <Row label="Fursa #" value={lead.fursaNumber} />
-          <Row
-            label="Tender deadline"
-            value={lead.tenderDeadline ? formatDate(lead.tenderDeadline) : null}
-          />
-        </>
-      );
     case 'REFERRAL':
       return (
         <>

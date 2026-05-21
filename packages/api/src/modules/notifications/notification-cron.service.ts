@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LeadChannel, QuoteStatus } from '@prisma/client';
+import { QuoteStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from './notifications.service';
 
@@ -222,51 +222,10 @@ export class NotificationCronService {
     );
   }
 
-  // Tender deadline notifications — daily at 07:00
-  @Cron('0 7 * * *')
-  async notifyTenderDeadlines() {
-    const managers = await this.prisma.user.findMany({
-      where: {
-        role: {
-          in: ['SALES_MANAGER', 'TECHNICAL_MANAGER', 'ADMIN', 'SUPER_ADMIN'],
-        },
-        status: 'ACTIVE',
-      },
-      select: { id: true },
-    });
-    if (managers.length === 0) return;
-    const managerIds = managers.map((m) => m.id);
-
-    const checkDays = [7, 3, 1] as const;
-
-    for (const days of checkDays) {
-      const windowStart = new Date();
-      windowStart.setDate(windowStart.getDate() + days);
-      windowStart.setHours(0, 0, 0, 0);
-      const windowEnd = new Date(windowStart);
-      windowEnd.setHours(23, 59, 59, 999);
-
-      const leads = await this.prisma.lead.findMany({
-        where: {
-          deletedAt: null,
-          channel: LeadChannel.GOVERNMENT_TENDER,
-          tenderDeadline: { gte: windowStart, lte: windowEnd },
-        },
-        select: { id: true, leadNumber: true, tenderDeadline: true },
-        take: 50,
-      });
-
-      if (leads.length === 0) continue;
-
-      void this.notifications.sendToMany(managerIds, {
-        eventCode: `lead.tender_deadline_${days}d`,
-        subject: `${leads.length} مناقصة تنتهي خلال ${days} ${days === 1 ? 'يوم' : 'أيام'}`,
-        body: leads.map((l) => l.leadNumber).join('، '),
-        deepLink: '/leads',
-        payload: { leadIds: leads.map((l) => l.id), daysRemaining: days },
-      });
-    }
-  }
+  // Tender deadline notifications removed 2026-05-21: government tender is
+  // no longer a top-level lead channel. Government work is tracked as
+  // licences inside individual projects; see the per-licence reminder
+  // cadence in the licences service.
 
   // Finance: active projects with no invoice in last 30 days — notify FINANCE_MANAGER every hour
   @Cron(CronExpression.EVERY_HOUR)

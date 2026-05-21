@@ -1,13 +1,23 @@
+// LeadChannel list updated 2026-05-21: GOVERNMENT_TENDER removed (government
+// work is now licences inside projects, see Licence model). Added PHONE,
+// EXISTING_CLIENT_REPEAT, and OTHER as new active channels. AI_CHATBOT kept
+// for future chatbot integration. See docs/CORRECTED_CLIENT_JOURNEY.md §A.
 export const LEAD_CHANNELS = [
-  'GOVERNMENT_TENDER',
   'REFERRAL',
   'WALK_IN',
+  'PHONE',
+  'EXISTING_CLIENT_REPEAT',
   'SOCIAL_MEDIA',
   'WEBSITE',
   'GOOGLE_MAPS',
+  'AI_CHATBOT',
+  'OTHER',
 ] as const;
 export type LeadChannel = (typeof LEAD_CHANNELS)[number];
 
+// LEAD_STATUSES: the tender-specific statuses are deprecated as of 2026-05-21
+// (no government tender channel). Kept temporarily for backward compatibility
+// with any in-flight records; new leads won't enter these states.
 export const LEAD_STATUSES = [
   'INCOMING',
   'ASSIGNED',
@@ -116,12 +126,15 @@ export type LeadFilter = {
 };
 
 export const CHANNEL_LABELS: Record<LeadChannel, string> = {
-  GOVERNMENT_TENDER: 'Government tender',
   REFERRAL: 'Referral',
   WALK_IN: 'Walk-in',
+  PHONE: 'Phone',
+  EXISTING_CLIENT_REPEAT: 'Existing client (repeat)',
   SOCIAL_MEDIA: 'Social media',
   WEBSITE: 'Website',
   GOOGLE_MAPS: 'Google Maps',
+  AI_CHATBOT: 'AI chatbot',
+  OTHER: 'Other',
 };
 
 export const STATUS_LABELS: Record<LeadStatus, string> = {
