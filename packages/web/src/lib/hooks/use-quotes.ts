@@ -116,6 +116,33 @@ export function useAcceptQuote(id: string) {
   });
 }
 
+/**
+ * 1-click conversion of a Won quote to a live Project. Department Manager
+ * action — 2026-05-21 process correction (see docs/CORRECTED_CLIENT_JOURNEY.md §G).
+ * Returns the created Project; the caller should redirect to its detail page.
+ */
+export function useConvertQuoteToProject(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      body: {
+        title?: string;
+        description?: string;
+        startDate?: string;
+      } = {},
+    ) => {
+      const { data } = await apiClient.post<
+        ApiEnvelope<{ id: string; projectNumber: string }>
+      >(`/quotes/${id}/convert-to-project`, body);
+      return data.data;
+    },
+    onSuccess: () => {
+      invalidate(qc, id);
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
 export function useRejectQuote(id: string) {
   const qc = useQueryClient();
   return useMutation({

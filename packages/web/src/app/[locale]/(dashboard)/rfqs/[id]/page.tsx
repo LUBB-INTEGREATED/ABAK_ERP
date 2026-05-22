@@ -3,10 +3,17 @@
 import { useState, use } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPicker } from '@/components/ui/user-picker';
+import { PricerAssignments } from '@/components/rfqs/pricer-assignments';
 import {
   RfqPriorityBadge,
   RfqStatusBadge,
@@ -195,9 +202,21 @@ export default function RfqDetailPage({
         </TabsContent>
 
         <TabsContent value="team" className="space-y-4">
+          {/* New 2026-05-21 model: per-department pricer assignments with
+              Lead Pricer designation. Replaces the RFQ Engineer + Financial
+              Reviewer split. See docs/CORRECTED_CLIENT_JOURNEY.md §C. */}
+          <PricerAssignments rfqId={rfq.id} />
+
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{t('rfq.tabs.team')}</CardTitle>
+              <CardTitle className="text-base">
+                Legacy assignments (pre-2026-05-21)
+              </CardTitle>
+              <CardDescription>
+                The old three-user assignment model. Kept visible for in-flight
+                RFQs created under the previous process; new RFQs use the
+                per-department Lead Pricer model above.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <PersonInfo

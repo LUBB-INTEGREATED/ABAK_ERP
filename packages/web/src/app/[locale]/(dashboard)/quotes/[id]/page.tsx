@@ -10,6 +10,7 @@ import {
   BadgeCheck,
   BadgeDollarSign,
   FileText,
+  FolderPlus,
   MessageSquare,
   Printer,
   Scale,
@@ -43,6 +44,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   useAcceptQuote,
+  useConvertQuoteToProject,
   useDecideApproval,
   useQuote,
   useRejectQuote,
@@ -67,6 +69,7 @@ export default function QuoteDetailPage() {
   const submitMutation = useSubmitQuote(id);
   const sendMutation = useSendQuote(id);
   const acceptMutation = useAcceptQuote(id);
+  const convertMutation = useConvertQuoteToProject(id);
   const rejectMutation = useRejectQuote(id);
   const decideMutation = useDecideApproval(id);
   const inDiscussionMutation = useSetInDiscussion(id);
@@ -232,6 +235,27 @@ export default function QuoteDetailPage() {
             <BadgeCheck className="mr-1 h-3.5 w-3.5" />
             PO {quote.purchaseOrder.poNumber}
           </Badge>
+        )}
+        {/* 1-click conversion: Won → Project. Department Manager surface
+            (2026-05-21 process correction). Visible only on WON quotes that
+            don't yet have a project. */}
+        {quote.status === 'WON' && (
+          <Button
+            size="sm"
+            variant="default"
+            onClick={async () => {
+              const project = await callMutation('Converted to project', () =>
+                convertMutation.mutateAsync({}),
+              );
+              if (project?.id) {
+                window.location.href = `/projects/${project.id}`;
+              }
+            }}
+            disabled={convertMutation.isPending}
+          >
+            <FolderPlus className="mr-2 h-4 w-4" />
+            {convertMutation.isPending ? 'Converting…' : 'Convert to project'}
+          </Button>
         )}
       </div>
 
