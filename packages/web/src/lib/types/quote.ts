@@ -46,9 +46,32 @@ export const LOSS_REASONS = [
 ] as const;
 export type LossReason = (typeof LOSS_REASONS)[number];
 
+export type QuoteItemDepartment = {
+  id: string;
+  name: string;
+  nameAr: string | null;
+};
+
+export type QuoteItemMethodologyCard = {
+  id: string;
+  description: string;
+  steps: string[];
+  deliverable: string;
+};
+
+export type QuoteItemGanttBlock = {
+  id: string;
+  startDay: number;
+  durationDays: number;
+  categoryTone: string;
+};
+
 export type QuoteItem = {
   id: string;
   serviceId: string | null;
+  /** 2026-05-21 process correction: department for grouping. */
+  departmentId: string | null;
+  department: QuoteItemDepartment | null;
   description: string;
   quantity: number;
   unit: string | null;
@@ -57,6 +80,10 @@ export type QuoteItem = {
   subtotal: number;
   notes: string | null;
   position: number;
+  /** Optional per-line methodology card (page 5 of canonical PDF). */
+  methodologyCard: QuoteItemMethodologyCard | null;
+  /** Optional per-line gantt block (page 6 of canonical PDF). */
+  ganttBlock: QuoteItemGanttBlock | null;
 };
 
 export type PaymentMilestone = {

@@ -231,6 +231,12 @@ export default function QuotePrintPage({
           </section>
         )}
 
+        {/* Methodology cards (page 5 of canonical PDF) — 2026-05-21 correction */}
+        <MethodologySection items={quote.items} />
+
+        {/* Gantt timeline (page 6 of canonical PDF) — 2026-05-21 correction */}
+        <GanttSection items={quote.items} />
+
         {/* Terms */}
         {quote.deliveryTimeline && (
           <Block
@@ -313,6 +319,14 @@ function ItemsTable({ items }: { items: QuoteItem[] }) {
       </div>
     );
   }
+
+  // 2026-05-21 process correction: group line items by department when any
+  // item carries a departmentId. Single-dept quotes (and legacy quotes
+  // without departmentId) render as one ungrouped table to avoid noise.
+  const sorted = items.slice().sort((a, b) => a.position - b.position);
+  const hasDepartments = sorted.some((item) => item.department);
+  const groups = hasDepartments ? groupByDepartment(sorted) : null;
+
   return (
     <table className="mt-2 w-full border-collapse text-sm">
       <thead>
@@ -330,44 +344,237 @@ function ItemsTable({ items }: { items: QuoteItem[] }) {
         </tr>
       </thead>
       <tbody>
-        {items
-          .slice()
-          .sort((a, b) => a.position - b.position)
-          .map((item, idx) => (
-            <tr key={item.id} className="border-b last:border-0 align-top">
-              <td
-                className="py-2 font-mono text-xs text-muted-foreground"
-                dir="ltr"
+        {groups
+          ? groups.flatMap((g, gi) => [
+              <tr
+                key={`hdr-${gi}`}
+                className="border-b border-abak-blue/40 bg-abak-blue/5"
               >
-                {idx + 1}
-              </td>
-              <td className="py-2 pe-3">
-                <div className="font-medium">{item.description}</div>
-                {item.notes && (
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {item.notes}
-                  </div>
-                )}
-              </td>
-              <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
-                {item.quantity}
-              </td>
-              <td className="py-2 text-end text-xs text-muted-foreground">
-                {item.unit ?? '—'}
-              </td>
-              <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
-                {formatMoney(item.unitPrice)}
-              </td>
-              <td
-                className="py-2 text-end font-mono font-medium tabular-nums"
-                dir="ltr"
-              >
-                {formatMoney(item.subtotal)}
-              </td>
-            </tr>
-          ))}
+                <td
+                  colSpan={6}
+                  className="py-1.5 text-start text-[11px] font-semibold uppercase tracking-wide text-abak-blue"
+                >
+                  {g.label}
+                </td>
+              </tr>,
+              ...g.items.map((item, idx) => (
+                <ItemRow
+                  key={item.id}
+                  item={item}
+                  index={getGlobalIndex(sorted, item)}
+                  formatMoney={formatMoney}
+                />
+              )),
+            ])
+          : sorted.map((item, idx) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                index={idx + 1}
+                formatMoney={formatMoney}
+              />
+            ))}
       </tbody>
     </table>
+  );
+}
+
+type GroupedItems = { label: string; items: QuoteItem[] }[];
+
+function groupByDepartment(items: QuoteItem[]): GroupedItems {
+  const out: GroupedItems = [];
+  const byKey = new Map<string, QuoteItem[]>();
+  const order: string[] = [];
+  const labels = new Map<string, string>();
+  for (const item of items) {
+    const key = item.departmentId ?? '__ungrouped';
+    if (!byKey.has(key)) {
+      byKey.set(key, []);
+      order.push(key);
+      labels.set(
+        key,
+        item.department?.nameAr ??
+          item.department?.name ??
+          'بنود أخرى — Other items',
+      );
+    }
+    byKey.get(key)!.push(item);
+  }
+  for (const key of order) {
+    out.push({ label: labels.get(key) ?? key, items: byKey.get(key) ?? [] });
+  }
+  return out;
+}
+
+function getGlobalIndex(sorted: QuoteItem[], item: QuoteItem) {
+  return sorted.findIndex((i) => i.id === item.id) + 1;
+}
+
+function ItemRow({
+  item,
+  index,
+  formatMoney,
+}: {
+  item: QuoteItem;
+  index: number;
+  formatMoney: (n: number) => string;
+}) {
+  return (
+    <tr key={item.id} className="border-b last:border-0 align-top">
+      <td className="py-2 font-mono text-xs text-muted-foreground" dir="ltr">
+        {index}
+      </td>
+      <td className="py-2 pe-3">
+        <div className="font-medium">{item.description}</div>
+        {item.notes && (
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {item.notes}
+          </div>
+        )}
+        {item.methodologyCard?.deliverable && (
+          <div className="mt-0.5 text-xs text-abak-blue/80">
+            ✓ {item.methodologyCard.deliverable}
+          </div>
+        )}
+      </td>
+      <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
+        {item.quantity}
+      </td>
+      <td className="py-2 text-end text-xs text-muted-foreground">
+        {item.unit ?? '—'}
+      </td>
+      <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
+        {formatMoney(item.unitPrice)}
+      </td>
+      <td
+        className="py-2 text-end font-mono font-medium tabular-nums"
+        dir="ltr"
+      >
+        {formatMoney(item.subtotal)}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * Per-line methodology section. Mirrors page 5 of the canonical
+ * ABAK quote PDF — description + step bullets + deliverable per line item.
+ * 2026-05-21 process correction. Items without a methodologyCard are skipped
+ * so the section is empty when no items carry one.
+ */
+export function MethodologySection({ items }: { items: QuoteItem[] }) {
+  const withMethodology = items
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .filter((item) => item.methodologyCard);
+
+  if (withMethodology.length === 0) return null;
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-sm font-bold uppercase tracking-wide text-abak-blue">
+        Project Execution Methodology · منهجية تنفيذ المشروع
+      </h3>
+      <div className="mt-2 grid gap-3 md:grid-cols-2">
+        {withMethodology.map((item, idx) => {
+          const mc = item.methodologyCard!;
+          return (
+            <div
+              key={item.id}
+              className="rounded border-l-4 border-abak-blue/60 bg-muted/10 p-3"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {idx + 1}
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-abak-blue">
+                  {item.description}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-dark-text/80">{mc.description}</p>
+              {mc.steps.length > 0 && (
+                <ul className="mt-1.5 list-disc space-y-0.5 ps-5 text-xs text-dark-text/70">
+                  {mc.steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 rounded bg-abak-blue/10 px-2 py-1 text-[10px] uppercase tracking-wide text-abak-blue">
+                Deliverable:{' '}
+                <span className="font-semibold">{mc.deliverable}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Gantt timeline section. Mirrors page 6 of the canonical PDF.
+ * Items without a ganttBlock are skipped.
+ */
+export function GanttSection({ items }: { items: QuoteItem[] }) {
+  const withGantt = items
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .filter((item) => item.ganttBlock);
+  if (withGantt.length === 0) return null;
+
+  const totalDays = Math.max(
+    ...withGantt.map(
+      (i) => i.ganttBlock!.startDay + i.ganttBlock!.durationDays,
+    ),
+    1,
+  );
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-sm font-bold uppercase tracking-wide text-abak-blue">
+        Project Execution Schedule · جدول التنفيذ ({totalDays} days)
+      </h3>
+      <div className="mt-3 space-y-1.5">
+        {withGantt.map((item, idx) => {
+          const g = item.ganttBlock!;
+          const leftPct = (g.startDay / totalDays) * 100;
+          const widthPct = (g.durationDays / totalDays) * 100;
+          return (
+            <div
+              key={item.id}
+              className="grid grid-cols-12 items-center gap-2 text-xs"
+            >
+              <div className="col-span-4 truncate" title={item.description}>
+                <span className="font-mono text-muted-foreground">
+                  {idx + 1}.
+                </span>{' '}
+                {item.description}
+              </div>
+              <div className="col-span-8 relative h-4 rounded bg-muted/30">
+                <div
+                  className="absolute top-0 h-full rounded"
+                  style={{
+                    insetInlineStart: `${leftPct}%`,
+                    width: `${widthPct}%`,
+                    backgroundColor: g.categoryTone,
+                  }}
+                  title={`D${g.startDay + 1}–D${g.startDay + g.durationDays}`}
+                />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 text-[9px] font-mono font-medium text-white"
+                  style={{
+                    insetInlineStart: `${leftPct + widthPct / 2}%`,
+                    transform: 'translateX(-50%) translateY(-50%)',
+                  }}
+                >
+                  {g.durationDays}d
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
