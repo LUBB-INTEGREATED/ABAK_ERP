@@ -2,6 +2,9 @@
 
 **Status:** Site live at **http://72.61.229.5:3487/** (NOT port 80 — nginx vhost listens on 3487).
 
+**2026-05-22 follow-up wave shipped** — every remaining backlog item except FigJam + the
+gov-transactions data decision is now closed; see **"Day-after wave"** below.
+
 This doc is the morning-after summary so you can pick up cleanly.
 
 ## What you'll see live
@@ -110,19 +113,84 @@ Two migrations ran cleanly on both local and VPS:
 - `rfq_doc_requests` table (pricer → sales person doc request stream).
 - `rfq_site_visit_requests` table (pricer → sales person + direct-coord flow).
 
-## What's NOT done (scope-honest)
+## Day-after wave (shipped 2026-05-22)
 
-1. **Discount approval routing not yet wired to PricingPolicy** — the policy admin screen works and `PricingPolicyService.resolveApprovalChain(pct)` returns the right approver chain, but the quote module's approval workflow still routes against the old hardcoded `approval_threshold_tier*` settings. Replacing that wiring is a focused refactor — half a day. See task #19.
-2. **Per-line methodology + gantt editor UI** — the schema + API + print preview rendering are all in place, but there's no in-app editor that lets a Lead Pricer add methodology card / gantt block per line item without going through the API directly. Adding it means extending the existing quote builder with a drawer per line item. ~1 day. See task #13.
-3. **Doc-request + site-visit-request UI panels on the RFQ page** — backend `POST /rfqs/:id/doc-requests` + `POST /rfqs/:id/site-visit-requests` endpoints exist, but no side-panel UI yet for pricers to raise them. ~2h each. See journey doc §D.
-4. **Per-licence reminder cron** — the licence schema has `reminderCadenceDays`, but no cron is wired yet to send the reminder when the cadence elapses. ~1h.
-5. **CEO licence-exemption override UI** — schema fields in place; no UI surface yet. ~2h.
-6. **FigJam board update** — markdown is now ahead of the board; B2 section needs deletion and B3 needs a rewrite; A3/A4/A5 swimlanes need new role rows.
-7. **`gov_transactions` data migration** — the old `/gov-transactions` route still works for legacy data; whether to migrate that data into project-attached `Licence` records is a decision that needs your input (you may have demo records on the VPS).
+Commit `a930949` closes the entire scope-honest backlog except the two manual / decision items.
+Everything below is live on the VPS.
+
+### 8. gov-transactions repositioned as status board
+
+Sidebar now shows **"Applied applications"** under Delivery. The page itself carries an
+Info banner explaining its new role: read-only view for previously filed applications.
+New work happens inside the Project Licences tab; the board lets you scan every existing
+filing's status without drilling into projects.
+
+### 9. RFQ Requests tab — doc + site-visit panels
+
+New **"Requests"** tab on the RFQ detail view. Two cards:
+
+- **Document requests** — pricers click "Raise request", describe what they need, and the
+  sales person is notified. Inline Resolve / Cancel.
+- **Site-visit requests** — purpose + optional preferred-date window. Open requests show
+  Schedule / Complete / Cancel actions; closed rows fade to muted background.
+- Empty states explain the activity, not just "nothing here" (Norman pattern).
+
+### 10. Per-licence reminder cron
+
+Daily 08:00 cron iterates over APPLIED / UNDER_REVIEW licences and notifies the
+`appliedById` owner if the more recent of `lastCheckedAt` and `lastReminderAt` is older
+than `reminderCadenceDays`. Notification deep-links to the project's Licences tab.
+
+Migration `20260522180000_licence_last_reminder_at_and_phase_override` adds
+`Licence.lastReminderAt` so the cron throttles without lying about user activity.
+
+### 11. CEO licence-exemption override (UI + backend)
+
+Backend: `POST /projects/:id/phases/:phaseId/licence-override` (SUPER_ADMIN-only via
+RolesGuard, 20-char justification minimum) and `DELETE` to clear. The
+`recomputeProjectTimelineState` now skips phases with an active override, so granting
+one unblocks the project's PAUSED state.
+
+UI: a new **"CEO licence-exemption override"** panel on the Licences tab. It lists
+currently-blocked phases (CEO sees a "Grant override" action; others see "CEO-only
+action"); it also lists active overrides with their justification, with a "Clear
+override" action available to anyone with project access.
+
+### 12. Discount approval routing wired to PricingPolicy
+
+`QuotesService.submit()` now computes the quote's effective discount %, calls
+`PricingPolicyService.resolveApprovalChain(pct)`, and appends those approvers as
+additional tiers on top of the BR-07 value-based tiers (1 + 2 + optional 3).
+Role dedupe avoids asking the same person twice. The Tier-1 notification body now
+also surfaces the discount % so the first approver sees the context immediately.
+
+### 13. Per-line methodology + Gantt editor in the quote builder
+
+The Step 2 line items in `/quotes/new` now have:
+
+- **Department picker** (per-line) — wires `departmentId` so the print preview can group.
+- A collapsible **"منهجية + Gantt"** panel below each line. Inside:
+  - **Methodology**: Add → description + step list (insert/delete steps) + deliverable.
+  - **Gantt**: Add → startDay + durationDays + colour picker for category tone.
+- Both render straight into the canonical PDF (page 5 = methodology, page 6 = Gantt).
+- Status badges on each line (📋 منهجية + 📅 Gantt: يوم X + Yيوم) so the pricer can
+  scan which lines already have which artifacts attached.
+
+## Genuinely-pending items (no code path)
+
+1. **FigJam board update** — markdown flows are ahead of the board. B2 section needs
+   deletion, B3 needs a rewrite, A3/A4/A5 swimlanes need new role rows. This is manual
+   visual work.
+2. **`gov_transactions` data decision** — user opted to **keep** the existing module as
+   a read-only status board for already-filed applications (see #8 above). The DB rows
+   stay where they are; no migration to `Licence` necessary.
 
 ## Commits shipped
 
 ```
+a930949 feat(correction): final-wave UI + cron + override + discount routing
+8ebc5ef feat(correction): show department badge + methodology deliverable on quote detail items
+5d72cf8 docs(correction): update overnight summary with new features shipped
 b4ea826 feat(correction): quote print preview groups by dept + methodology + gantt
 3d1c50c feat(correction): RFQ Pricer Assignments + Convert-to-Project button
 2db50c5 feat(correction): multi-dept quote schema + RFQ assignments + 1-click convert
