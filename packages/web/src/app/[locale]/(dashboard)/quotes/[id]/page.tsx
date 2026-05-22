@@ -278,7 +278,19 @@ export default function QuoteDetailPage() {
               <TableBody>
                 {quote.items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.description}</TableCell>
+                    <TableCell>
+                      <div>{item.description}</div>
+                      {item.department && (
+                        <Badge variant="outline" className="mt-1 text-[10px]">
+                          {item.department.nameAr ?? item.department.name}
+                        </Badge>
+                      )}
+                      {item.methodologyCard?.deliverable && (
+                        <div className="mt-1 text-xs text-abak-blue/80">
+                          ✓ {item.methodologyCard.deliverable}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {item.quantity} {item.unit ?? ''}
                     </TableCell>
