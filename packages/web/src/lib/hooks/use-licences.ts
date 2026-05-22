@@ -114,3 +114,54 @@ export function useUpdateLicence(projectId: string, licenceId: string) {
     },
   });
 }
+
+// ------------------------------------------------------------------
+// CEO override on phase ↔ licence dependency
+// ------------------------------------------------------------------
+
+export function useOverridePhaseLicenceBlock(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      phaseId,
+      justification,
+    }: {
+      phaseId: string;
+      justification: string;
+    }) => {
+      const { data } = await apiClient.post<ApiEnvelope<unknown>>(
+        `/projects/${projectId}/phases/${phaseId}/licence-override`,
+        { justification },
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'licences'],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['projects', projectId],
+      });
+    },
+  });
+}
+
+export function useClearPhaseLicenceOverride(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (phaseId: string) => {
+      const { data } = await apiClient.delete<ApiEnvelope<unknown>>(
+        `/projects/${projectId}/phases/${phaseId}/licence-override`,
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['projects', projectId, 'licences'],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ['projects', projectId],
+      });
+    },
+  });
+}

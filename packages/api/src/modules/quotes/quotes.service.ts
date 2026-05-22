@@ -21,6 +21,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PricingPolicyService } from '../settings/pricing-policy.service';
 import type {
   AcceptRejectQuoteDto,
   CreateQuoteDto,
@@ -84,6 +85,7 @@ export class QuotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly pricingPolicy: PricingPolicyService,
   ) {}
 
   async create(dto: CreateQuoteDto, actorId?: string) {
@@ -371,16 +373,25 @@ export class QuotesService {
       }
     }
 
-    const tiers = await this.requiredApprovalTiers(quote.totalAmount);
-    // BR-07: tiers always contains at least [1, 2]; never skip approvals.
+    // BR-07 value-based mandatory tiers (1 = Dept Manager, 2 = Executive
+    // Director, optional 3 = CEO).
+    const valueTiers = await this.requiredApprovalTiers(quote.totalAmount);
+
+    // 2026-05-21 process correction — pricing-policy-driven discount tiers.
+    // Computed from the effective discount percentage on the quote; the
+    // policy decides whether the discount is within the sales person's
+    // ceiling (no approval) or escalates through the configured chain.
+    const discountPct = this.computeEffectiveDiscountPct(quote);
+    const discountChain =
+      await this.pricingPolicy.resolveApprovalChain(discountPct);
+    const discountTierRoles = this.resolveDiscountChainRoles(discountChain);
 
     const approverIdByTier = new Map<number, string>();
-    // Optional override — caller may pin one tier's approver via dto.approverId.
-    // When multiple tiers are in play, only assign the override to tier 1 and
-    // auto-pick the remaining tiers by role.
-    for (const tier of tiers) {
+
+    // Resolve value-based approvers first (preserve historical override behaviour).
+    for (const tier of valueTiers) {
       const picked =
-        tier === tiers[0] && dto.approverId
+        tier === valueTiers[0] && dto.approverId
           ? { id: dto.approverId }
           : await this.pickApprover(tier);
       if (!picked) {
@@ -389,6 +400,38 @@ export class QuotesService {
         );
       }
       approverIdByTier.set(tier, picked.id);
+    }
+
+    // Append discount-derived approvers as additional tiers, deduplicating
+    // by role to avoid double-asking the same person.
+    const valueTierRoleIds = new Set(
+      await Promise.all(
+        Array.from(approverIdByTier.values()).map(async (uid) => {
+          const u = await this.prisma.user.findUnique({
+            where: { id: uid },
+            select: { role: true },
+          });
+          return u?.role;
+        }),
+      ),
+    );
+    const tiers = [...valueTiers];
+    let nextTier = (valueTiers[valueTiers.length - 1] ?? 0) + 1;
+    for (const role of discountTierRoles) {
+      if (valueTierRoleIds.has(role)) continue;
+      const approver = await this.prisma.user.findFirst({
+        where: { role, status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!approver) {
+        throw new BadRequestException(
+          `Pricing policy requires ${role} approval for ${discountPct}% discount but no active user with that role exists.`,
+        );
+      }
+      approverIdByTier.set(nextTier, approver.id);
+      tiers.push(nextTier);
+      valueTierRoleIds.add(role);
+      nextTier++;
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -413,13 +456,49 @@ export class QuotesService {
         recipientId: tier1ApproverId,
         eventCode: 'quote.submitted_for_approval',
         subject: `عرض سعر يحتاج موافقتك: ${quote.quoteNumber}`,
-        body: `بقيمة ${quote.totalAmount.toLocaleString('ar-SA')} ريال — المستوى 1`,
+        body: `بقيمة ${quote.totalAmount.toLocaleString('ar-SA')} ريال — المستوى 1${
+          discountPct > 0 ? ` (خصم ${discountPct.toFixed(1)}٪)` : ''
+        }`,
         deepLink: `/quotes/${id}`,
         payload: { quoteId: id, quoteNumber: quote.quoteNumber, tier: 1 },
       });
     }
 
     return updated;
+  }
+
+  /**
+   * Effective discount % for a quote — combines line-item discounts with
+   * the quote-level discount, returning a single % of pre-discount subtotal.
+   * Used by the PricingPolicy approval-routing.
+   */
+  private computeEffectiveDiscountPct(quote: {
+    subtotal: number;
+    discountAmount: number;
+  }): number {
+    // QuoteItem.subtotal already applied per-line discounts before being
+    // summed into Quote.subtotal. So the "raw" subtotal here is post-line-
+    // discount. Quote.discountAmount is the additional quote-level discount.
+    // We treat the total reduction as a % of raw subtotal for policy lookup.
+    if (quote.subtotal <= 0) return 0;
+    return (quote.discountAmount / quote.subtotal) * 100;
+  }
+
+  /**
+   * Map the policy's role strings to UserRole enums. The policy stores
+   * them as plain strings so it can be serialised in JSON; we resolve to
+   * the actual Prisma enum here.
+   */
+  private resolveDiscountChainRoles(chain: string[]): UserRole[] {
+    const map: Record<string, UserRole> = {
+      SALES_MANAGER: UserRole.SALES_MANAGER,
+      TECHNICAL_MANAGER: UserRole.TECHNICAL_MANAGER,
+      FINANCE_MANAGER: UserRole.FINANCE_MANAGER,
+      CEO: UserRole.SUPER_ADMIN,
+    };
+    return chain
+      .map((role) => map[role])
+      .filter((role): role is UserRole => Boolean(role));
   }
 
   async decideApproval(

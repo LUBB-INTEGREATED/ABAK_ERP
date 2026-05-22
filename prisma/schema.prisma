@@ -2043,6 +2043,11 @@ model Licence {
   /// Default 5 working days; admin-configurable per row.
   reminderCadenceDays Int @default(5)
 
+  /// Last time the reminder cron pinged the owner about this licence.
+  /// Separate from lastCheckedAt (which reflects user action) so the cron
+  /// can throttle itself without lying about user activity.
+  lastReminderAt DateTime?
+
   /// If this licence is a re-application after a rejection, links to the
   /// rejected predecessor so the audit trail is preserved.
   parentLicenceId String?

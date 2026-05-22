@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPicker } from '@/components/ui/user-picker';
 import { PricerAssignments } from '@/components/rfqs/pricer-assignments';
+import { RfqRequestsPanel } from '@/components/rfqs/rfq-requests-panel';
 import {
   RfqPriorityBadge,
   RfqStatusBadge,
@@ -109,6 +110,7 @@ export default function RfqDetailPage({
         <TabsList>
           <TabsTrigger value="overview">{t('rfq.tabs.overview')}</TabsTrigger>
           <TabsTrigger value="team">{t('rfq.tabs.team')}</TabsTrigger>
+          <TabsTrigger value="requests">{t('rfq.tabs.requests')}</TabsTrigger>
           <TabsTrigger value="quote">{t('rfq.tabs.quote')}</TabsTrigger>
           <TabsTrigger value="outcome">{t('rfq.tabs.outcome')}</TabsTrigger>
         </TabsList>
@@ -314,6 +316,10 @@ export default function RfqDetailPage({
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="requests" className="space-y-4">
+          <RfqRequestsPanel rfqId={rfq.id} />
         </TabsContent>
 
         <TabsContent value="quote" className="space-y-4">

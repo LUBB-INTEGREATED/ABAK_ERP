@@ -16,6 +16,7 @@ import {
   Settings,
   Sliders,
   CalendarCheck,
+  Landmark,
   Percent,
   User,
   X,
@@ -73,10 +74,11 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
       { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
-      // /gov-transactions removed 2026-05-21: government work is now tracked
-      // as Licences inside the relevant project, not a standalone module.
-      // The route file remains in the codebase for legacy data access but is
-      // no longer linked from the sidebar.
+      {
+        href: '/gov-transactions',
+        labelKey: 'nav.appliedApplications',
+        icon: Landmark,
+      },
     ],
   },
   {

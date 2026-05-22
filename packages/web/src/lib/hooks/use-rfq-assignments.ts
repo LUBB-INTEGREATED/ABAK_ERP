@@ -115,3 +115,147 @@ export function useDepartments() {
     },
   });
 }
+
+// ------------------------------------------------------------------
+// Doc requests + site-visit requests on an RFQ
+// ------------------------------------------------------------------
+
+export type RfqRequestStatus = 'OPEN' | 'RESOLVED' | 'CANCELLED';
+
+export type RfqDocRequest = {
+  id: string;
+  rfqId: string;
+  requestedById: string;
+  description: string;
+  status: RfqRequestStatus;
+  response: string | null;
+  attachmentUrl: string | null;
+  resolvedById: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+};
+
+export type RfqSiteVisitRequest = {
+  id: string;
+  rfqId: string;
+  requestedById: string;
+  purpose: string;
+  preferredDateFrom: string | null;
+  preferredDateTo: string | null;
+  scheduledAt: string | null;
+  completedAt: string | null;
+  status: RfqRequestStatus;
+  notes: string | null;
+  createdAt: string;
+};
+
+export function useRfqDocRequests(rfqId: string | undefined) {
+  return useQuery({
+    queryKey: ['rfqs', rfqId, 'doc-requests'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<RfqDocRequest[]>>(
+        `/rfqs/${rfqId}/doc-requests`,
+      );
+      return data.data;
+    },
+    enabled: Boolean(rfqId),
+  });
+}
+
+export function useCreateRfqDocRequest(rfqId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { description: string }) => {
+      const { data } = await apiClient.post<ApiEnvelope<RfqDocRequest>>(
+        `/rfqs/${rfqId}/doc-requests`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['rfqs', rfqId, 'doc-requests'] }),
+  });
+}
+
+export function useUpdateRfqDocRequest(rfqId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      ...body
+    }: {
+      requestId: string;
+      response?: string;
+      attachmentUrl?: string;
+      status?: RfqRequestStatus;
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<RfqDocRequest>>(
+        `/rfqs/${rfqId}/doc-requests/${requestId}`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['rfqs', rfqId, 'doc-requests'] }),
+  });
+}
+
+export function useRfqSiteVisitRequests(rfqId: string | undefined) {
+  return useQuery({
+    queryKey: ['rfqs', rfqId, 'site-visit-requests'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<RfqSiteVisitRequest[]>>(
+        `/rfqs/${rfqId}/site-visit-requests`,
+      );
+      return data.data;
+    },
+    enabled: Boolean(rfqId),
+  });
+}
+
+export function useCreateRfqSiteVisitRequest(rfqId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      purpose: string;
+      preferredDateFrom?: string;
+      preferredDateTo?: string;
+    }) => {
+      const { data } = await apiClient.post<ApiEnvelope<RfqSiteVisitRequest>>(
+        `/rfqs/${rfqId}/site-visit-requests`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({
+        queryKey: ['rfqs', rfqId, 'site-visit-requests'],
+      }),
+  });
+}
+
+export function useUpdateRfqSiteVisitRequest(rfqId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      ...body
+    }: {
+      requestId: string;
+      status?: RfqRequestStatus;
+      scheduledAt?: string;
+      completedAt?: string;
+      notes?: string;
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<RfqSiteVisitRequest>>(
+        `/rfqs/${rfqId}/site-visit-requests/${requestId}`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({
+        queryKey: ['rfqs', rfqId, 'site-visit-requests'],
+      }),
+  });
+}

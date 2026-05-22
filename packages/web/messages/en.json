@@ -67,6 +67,7 @@
     "projects": "Projects",
     "finance": "Finance",
     "govTransactions": "Gov Transactions",
+    "appliedApplications": "Applied applications",
     "pro": "PRO dashboard",
     "reports": "Reports",
     "executive": "Executive Dashboard",
@@ -96,6 +97,10 @@
   "gov": {
     "title": "Government transactions",
     "subtitle": "Manage filings with authorities, municipalities, and platforms (Etimad, Fursa).",
+    "dashboardTitle": "Applied applications — status board",
+    "dashboardSubtitle": "Read-only view of every government filing across all projects, grouped by status.",
+    "statusBoardNoticeTitle": "This is a status board for previously filed applications.",
+    "statusBoardNoticeBody": "New licence applications are now opened from inside the relevant project's Licences tab. Use this board to monitor progress on filings already in flight.",
     "number": "Tx number",
     "authority": "Authority",
     "authorityCategory": "Authority category",
@@ -536,6 +541,7 @@
     "tabs": {
       "overview": "Overview",
       "team": "Team",
+      "requests": "Requests",
       "quote": "Quote",
       "outcome": "Outcome"
     },

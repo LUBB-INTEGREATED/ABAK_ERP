@@ -3,7 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import { Link } from '@/i18n/navigation';
-import { ChevronRight, Loader2, Minus, Plus, Trash2 } from 'lucide-react';
+import {
+  CalendarRange,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  ClipboardList,
+  Loader2,
+  Minus,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -24,16 +34,32 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useClientsList } from '@/lib/hooks/use-clients';
 import { useCreateQuote } from '@/lib/hooks/use-quotes';
+import { useDepartments } from '@/lib/hooks/use-rfq-assignments';
 import { useAdminServices } from '@/lib/hooks/use-services';
+
+interface MethodologyDraft {
+  description: string;
+  steps: string[];
+  deliverable: string;
+}
+
+interface GanttDraft {
+  startDay: number;
+  durationDays: number;
+  categoryTone?: string;
+}
 
 interface LineItem {
   serviceId?: string;
+  departmentId?: string;
   description: string;
   quantity: number;
   unit?: string;
   unitPrice: number;
   discountPct?: number;
   notes?: string;
+  methodology?: MethodologyDraft;
+  gantt?: GanttDraft;
 }
 
 interface Milestone {
@@ -95,6 +121,7 @@ export default function NewQuotePage() {
 
   const { data: clientsData } = useClientsList({ limit: 200 });
   const { data: services } = useAdminServices(false);
+  const { data: departments = [] } = useDepartments();
 
   // Step 1 — Basic info
   const [clientId, setClientId] = useState('');
@@ -126,6 +153,16 @@ export default function NewQuotePage() {
   const [milestoneTemplate, setMilestoneTemplate] = useState('');
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Per-item expand state for the methodology + gantt editors
+  // (default collapsed so the long list stays scannable).
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const toggleExpanded = (i: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
 
   const clients = clientsData?.data ?? [];
   const totals = calcTotals(items, discountType, discountValue, taxRate);
@@ -535,6 +572,29 @@ export default function NewQuotePage() {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs">القسم</Label>
+                      <Select
+                        value={item.departmentId ?? ''}
+                        onValueChange={(v) => updateItem(i, 'departmentId', v)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="اختر القسم..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departments.map((d) => (
+                            <SelectItem
+                              key={d.id}
+                              value={d.id}
+                              className="text-xs"
+                            >
+                              {d.nameAr ?? d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="lg:col-span-2 space-y-1">
                       <Label className="text-xs">الخدمة / الوصف *</Label>
                       <Select
@@ -635,6 +695,49 @@ export default function NewQuotePage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Methodology + Gantt toggle — collapsed by default to keep
+                      the list scannable for small quotes. Methodology renders
+                      on page 5 of the PDF; gantt on page 6. */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-muted-foreground"
+                      onClick={() => toggleExpanded(i)}
+                    >
+                      {expanded.has(i) ? (
+                        <ChevronUp className="me-1 h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="me-1 h-3.5 w-3.5" />
+                      )}
+                      منهجية + Gantt
+                    </Button>
+                    {item.methodology && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                        <ClipboardList className="h-3 w-3" />
+                        منهجية
+                      </span>
+                    )}
+                    {item.gantt && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] text-sky-700">
+                        <CalendarRange className="h-3 w-3" />
+                        Gantt: يوم {item.gantt.startDay} +{' '}
+                        {item.gantt.durationDays}يوم
+                      </span>
+                    )}
+                  </div>
+
+                  {expanded.has(i) && (
+                    <MethodologyGanttEditor
+                      methodology={item.methodology}
+                      gantt={item.gantt}
+                      onMethodologyChange={(m) =>
+                        updateItem(i, 'methodology', m)
+                      }
+                      onGanttChange={(g) => updateItem(i, 'gantt', g)}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -725,7 +828,9 @@ export default function NewQuotePage() {
         </Card>
       )}
 
-      {/* ── Step 3: Payment Milestones ──────────────────────────────── */}
+      {/* (Methodology + Gantt editor lives at the bottom of the file as
+          a reusable subcomponent — see MethodologyGanttEditor.) */}
+
       {step === 3 && (
         <Card>
           <CardHeader>
@@ -881,6 +986,251 @@ export default function NewQuotePage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// MethodologyGanttEditor — collapsible per-line panel.
+//
+// Renders into the canonical PDF (methodology = page 5, gantt = page 6).
+// The "Add" buttons explicitly create the optional records so the pricer
+// doesn't accidentally save an empty methodology/gantt; the "Remove" link
+// clears it back to undefined.
+// ────────────────────────────────────────────────────────────────────
+
+function MethodologyGanttEditor({
+  methodology,
+  gantt,
+  onMethodologyChange,
+  onGanttChange,
+}: {
+  methodology?: MethodologyDraft;
+  gantt?: GanttDraft;
+  onMethodologyChange: (m: MethodologyDraft | undefined) => void;
+  onGanttChange: (g: GanttDraft | undefined) => void;
+}) {
+  return (
+    <div className="grid gap-3 rounded-md border bg-background p-3 md:grid-cols-2">
+      {/* Methodology */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">
+            <ClipboardList className="me-1 inline h-3.5 w-3.5" />
+            المنهجية (صفحة 5 من PDF)
+          </Label>
+          {methodology ? (
+            <button
+              type="button"
+              onClick={() => onMethodologyChange(undefined)}
+              className="text-[11px] text-rose-500 hover:underline"
+            >
+              إزالة
+            </button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={() =>
+                onMethodologyChange({
+                  description: '',
+                  steps: [''],
+                  deliverable: '',
+                })
+              }
+            >
+              <Plus className="me-1 h-3 w-3" />
+              إضافة منهجية
+            </Button>
+          )}
+        </div>
+
+        {methodology && (
+          <div className="space-y-2">
+            <Textarea
+              rows={3}
+              className="text-xs"
+              placeholder="وصف منهجية تنفيذ هذا البند..."
+              value={methodology.description}
+              onChange={(e) =>
+                onMethodologyChange({
+                  ...methodology,
+                  description: e.target.value,
+                })
+              }
+            />
+
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">
+                الخطوات
+              </Label>
+              {methodology.steps.map((step, si) => (
+                <div key={si} className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground w-4">
+                    {si + 1}.
+                  </span>
+                  <Input
+                    className="h-7 flex-1 text-xs"
+                    placeholder={`الخطوة ${si + 1}`}
+                    value={step}
+                    onChange={(e) => {
+                      const next = [...methodology.steps];
+                      next[si] = e.target.value;
+                      onMethodologyChange({ ...methodology, steps: next });
+                    }}
+                  />
+                  {methodology.steps.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = methodology.steps.filter(
+                          (_, idx) => idx !== si,
+                        );
+                        onMethodologyChange({ ...methodology, steps: next });
+                      }}
+                      className="text-rose-400 hover:text-rose-600"
+                      aria-label="حذف الخطوة"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[11px] text-muted-foreground"
+                onClick={() =>
+                  onMethodologyChange({
+                    ...methodology,
+                    steps: [...methodology.steps, ''],
+                  })
+                }
+              >
+                <Plus className="me-1 h-3 w-3" />
+                إضافة خطوة
+              </Button>
+            </div>
+
+            <Input
+              className="h-7 text-xs"
+              placeholder="المخرج (deliverable) المتوقع"
+              value={methodology.deliverable}
+              onChange={(e) =>
+                onMethodologyChange({
+                  ...methodology,
+                  deliverable: e.target.value,
+                })
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Gantt */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold">
+            <CalendarRange className="me-1 inline h-3.5 w-3.5" />
+            Gantt (صفحة 6 من PDF)
+          </Label>
+          {gantt ? (
+            <button
+              type="button"
+              onClick={() => onGanttChange(undefined)}
+              className="text-[11px] text-rose-500 hover:underline"
+            >
+              إزالة
+            </button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={() =>
+                onGanttChange({
+                  startDay: 0,
+                  durationDays: 7,
+                  categoryTone: '#2d7ad1',
+                })
+              }
+            >
+              <Plus className="me-1 h-3 w-3" />
+              إضافة بلوك Gantt
+            </Button>
+          )}
+        </div>
+
+        {gantt && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-0.5">
+                <Label className="text-[11px] text-muted-foreground">
+                  يبدأ يوم
+                </Label>
+                <Input
+                  className="h-7 text-xs"
+                  type="number"
+                  min={0}
+                  value={gantt.startDay}
+                  onChange={(e) =>
+                    onGanttChange({
+                      ...gantt,
+                      startDay: Math.max(0, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-0.5">
+                <Label className="text-[11px] text-muted-foreground">
+                  المدة (أيام)
+                </Label>
+                <Input
+                  className="h-7 text-xs"
+                  type="number"
+                  min={1}
+                  value={gantt.durationDays}
+                  onChange={(e) =>
+                    onGanttChange({
+                      ...gantt,
+                      durationDays: Math.max(1, Number(e.target.value)),
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <Label className="text-[11px] text-muted-foreground">
+                لون التصنيف
+              </Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={gantt.categoryTone ?? '#2d7ad1'}
+                  onChange={(e) =>
+                    onGanttChange({ ...gantt, categoryTone: e.target.value })
+                  }
+                  className="h-7 w-12 rounded border bg-transparent"
+                />
+                <Input
+                  className="h-7 flex-1 text-xs font-mono"
+                  value={gantt.categoryTone ?? '#2d7ad1'}
+                  onChange={(e) =>
+                    onGanttChange({ ...gantt, categoryTone: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-muted-foreground">
+              المعاينة في الـ PDF: شريط ملوّن من اليوم {gantt.startDay} إلى{' '}
+              {gantt.startDay + gantt.durationDays}.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

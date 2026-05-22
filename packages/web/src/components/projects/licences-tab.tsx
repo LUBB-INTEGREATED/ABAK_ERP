@@ -58,14 +58,21 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   type Licence,
   type LicenceStatus,
+  useClearPhaseLicenceOverride,
   useCreateLicence,
+  useOverridePhaseLicenceBlock,
   useProjectLicences,
   useUpdateLicence,
 } from '@/lib/hooks/use-licences';
+import { useAuthStore } from '@/lib/auth';
 
 type ProjectPhaseLite = {
   id: string;
   name: string;
+  status?: string;
+  licenceOverrideJustification?: string | null;
+  licenceOverrideById?: string | null;
+  licenceOverrideAt?: string | null;
 };
 
 const STATUS_LABELS: Record<LicenceStatus, string> = {
@@ -112,6 +119,24 @@ export function LicencesTab({
 }) {
   const { data: licences = [], isLoading } = useProjectLicences(projectId);
   const [addOpen, setAddOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const isCeo = user?.role === 'SUPER_ADMIN';
+
+  // Phases that are currently blocked (have non-ISSUED dependency licences)
+  // and either have or could benefit from a CEO override.
+  const blockedPhasesMap = new Map<string, ProjectPhaseLite>(
+    phases.map((p) => [p.id, p]),
+  );
+  const blockedPhaseIds = new Set<string>();
+  for (const l of licences) {
+    if (l.status === 'ISSUED') continue;
+    for (const bp of l.blockedPhases) blockedPhaseIds.add(bp.id);
+  }
+  const blockedPhases: ProjectPhaseLite[] = Array.from(blockedPhaseIds)
+    .map((id) => blockedPhasesMap.get(id))
+    .filter((p): p is ProjectPhaseLite => Boolean(p));
+
+  const overriddenPhases = phases.filter((p) => p.licenceOverrideAt);
 
   const blocking = licences.filter(
     (l) => l.status !== 'ISSUED' && l.blockedPhases.length > 0,
@@ -182,6 +207,18 @@ export function LicencesTab({
         </Card>
       )}
 
+      {/* CEO override panel — only visible to CEO when something is blocked
+          or already overridden. Justification + actor + timestamp are
+          permanently logged so the override has a clear audit trail. */}
+      {(blockedPhases.length > 0 || overriddenPhases.length > 0) && (
+        <CeoOverridePanel
+          projectId={projectId}
+          isCeo={isCeo}
+          blockedPhases={blockedPhases}
+          overriddenPhases={overriddenPhases}
+        />
+      )}
+
       <AddLicenceSheet
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -189,6 +226,234 @@ export function LicencesTab({
         phases={phases}
       />
     </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// CEO override — separate panel so it's discoverable but doesn't crowd
+// the licence list. Shows blocked phases the CEO can unblock, plus the
+// log of overrides already granted (visible to everyone).
+// ------------------------------------------------------------------
+
+function CeoOverridePanel({
+  projectId,
+  isCeo,
+  blockedPhases,
+  overriddenPhases,
+}: {
+  projectId: string;
+  isCeo: boolean;
+  blockedPhases: ProjectPhaseLite[];
+  overriddenPhases: ProjectPhaseLite[];
+}) {
+  const [overrideTarget, setOverrideTarget] = useState<ProjectPhaseLite | null>(
+    null,
+  );
+  const clear = useClearPhaseLicenceOverride(projectId);
+
+  async function doClear(phaseId: string) {
+    if (
+      !window.confirm(
+        'Clear this CEO override? The phase will go back to being blocked until the licence is issued.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await clear.mutateAsync(phaseId);
+      toast.success('Override cleared.');
+    } catch {
+      toast.error('Failed to clear override.');
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base font-semibold">
+          CEO licence-exemption override
+        </CardTitle>
+        <CardDescription>
+          Only the CEO can let a phase start before its blocking licence is
+          issued. The justification is permanently logged for audit.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Blocked phases without an override — CEO can grant one */}
+        {blockedPhases.filter((p) => !p.licenceOverrideAt).length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Currently blocked
+            </p>
+            <ul className="space-y-2">
+              {blockedPhases
+                .filter((p) => !p.licenceOverrideAt)
+                .map((phase) => (
+                  <li
+                    key={phase.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50/40 p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium">{phase.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Waiting on licence to be issued
+                      </div>
+                    </div>
+                    {isCeo ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setOverrideTarget(phase)}
+                      >
+                        Grant override
+                      </Button>
+                    ) : (
+                      <span className="text-xs italic text-muted-foreground">
+                        CEO-only action
+                      </span>
+                    )}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Phases that already have an override — log for everyone */}
+        {overriddenPhases.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Active overrides
+            </p>
+            <ul className="space-y-2">
+              {overriddenPhases.map((phase) => (
+                <li
+                  key={phase.id}
+                  className="rounded-md border border-emerald-200 bg-emerald-50/40 p-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="text-sm font-medium">{phase.name}</div>
+                      {phase.licenceOverrideAt && (
+                        <div className="text-xs text-muted-foreground">
+                          Overridden{' '}
+                          {formatDistanceToNowStrict(
+                            new Date(phase.licenceOverrideAt),
+                            { addSuffix: true },
+                          )}
+                        </div>
+                      )}
+                      {phase.licenceOverrideJustification && (
+                        <p className="rounded bg-white/60 p-2 text-xs italic text-emerald-900">
+                          "{phase.licenceOverrideJustification}"
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => doClear(phase.id)}
+                      disabled={clear.isPending}
+                      className="text-muted-foreground"
+                    >
+                      Clear override
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {blockedPhases.length === 0 && overriddenPhases.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No blocked phases right now.
+          </p>
+        )}
+      </CardContent>
+
+      {overrideTarget && (
+        <GrantOverrideSheet
+          projectId={projectId}
+          phase={overrideTarget}
+          onClose={() => setOverrideTarget(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function GrantOverrideSheet({
+  projectId,
+  phase,
+  onClose,
+}: {
+  projectId: string;
+  phase: ProjectPhaseLite;
+  onClose: () => void;
+}) {
+  const grant = useOverridePhaseLicenceBlock(projectId);
+  const [justification, setJustification] = useState('');
+
+  async function submit() {
+    if (justification.trim().length < 20) {
+      toast.error('Justification must be at least 20 characters.');
+      return;
+    }
+    try {
+      await grant.mutateAsync({
+        phaseId: phase.id,
+        justification: justification.trim(),
+      });
+      toast.success('Override granted.');
+      onClose();
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { message?: string | string[] } } })
+          ?.response?.data?.message ?? 'Failed to grant override.';
+      toast.error(Array.isArray(message) ? message.join(', ') : message);
+    }
+  }
+
+  return (
+    <Sheet open onOpenChange={(o) => (!o ? onClose() : null)}>
+      <SheetContent className="sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Grant CEO override</SheetTitle>
+          <SheetDescription>
+            Allow <strong>{phase.name}</strong> to start before its blocking
+            licence is issued. This decision is permanently logged with your
+            name and timestamp.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-4 space-y-3">
+          <Label htmlFor="cer-just">Justification (≥ 20 characters)</Label>
+          <Textarea
+            id="cer-just"
+            rows={5}
+            value={justification}
+            onChange={(e) => setJustification(e.target.value)}
+            placeholder="e.g. Permit submission delayed by authority; mobilization can proceed because client has issued a written go-ahead and accepts liability."
+          />
+          <div className="text-xs text-muted-foreground">
+            {justification.length} chars
+          </div>
+        </div>
+
+        <SheetFooter className="mt-6">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={grant.isPending}
+          >
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={grant.isPending}>
+            {grant.isPending ? 'Granting…' : 'Grant override'}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

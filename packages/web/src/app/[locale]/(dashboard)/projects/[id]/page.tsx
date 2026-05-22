@@ -228,7 +228,14 @@ export default function ProjectDetailPage({
         <TabsContent value="licences">
           <LicencesTab
             projectId={id}
-            phases={project.phases.map((p) => ({ id: p.id, name: p.name }))}
+            phases={project.phases.map((p) => ({
+              id: p.id,
+              name: p.name,
+              status: p.status,
+              licenceOverrideJustification: p.licenceOverrideJustification,
+              licenceOverrideById: p.licenceOverrideById,
+              licenceOverrideAt: p.licenceOverrideAt,
+            }))}
           />
         </TabsContent>
 

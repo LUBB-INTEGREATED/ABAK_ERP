@@ -97,6 +97,11 @@ export interface Phase {
   clientAcknowledgedAt: string | null;
   completedAt: string | null;
   tasks: Task[];
+  // CEO licence-exemption override (process correction 2026-05-21).
+  // When set, phase is allowed to start even if blocking licences aren't issued.
+  licenceOverrideJustification?: string | null;
+  licenceOverrideById?: string | null;
+  licenceOverrideAt?: string | null;
 }
 
 export interface ClosureChecklist {

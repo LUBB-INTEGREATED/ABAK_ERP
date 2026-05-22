@@ -6,9 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   type CreateLicenceDto,
   LicencesService,
@@ -59,5 +63,49 @@ export class LicencesController {
     @Param('licenceId') licenceId: string,
   ) {
     return this.licences.softDelete(projectId, licenceId);
+  }
+}
+
+/**
+ * Separate controller for CEO override on phase ↔ licence dependencies.
+ * Lives under /projects/:projectId/phases/:phaseId/ so the URL reads
+ * naturally as a phase action, not a licence action.
+ */
+@ApiTags('project-phase-licence-overrides')
+@Controller('projects/:projectId/phases/:phaseId/licence-override')
+export class PhaseLicenceOverrideController {
+  constructor(private readonly licences: LicencesService) {}
+
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary:
+      'CEO override: allow a phase to start before its blocking licences are issued. Justification ≥ 20 chars required and is permanently logged.',
+  })
+  override(
+    @Param('projectId') projectId: string,
+    @Param('phaseId') phaseId: string,
+    @Body() dto: { justification: string },
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.licences.overridePhaseLicenceBlock(
+      projectId,
+      phaseId,
+      dto,
+      actorId,
+    );
+  }
+
+  @Delete()
+  @ApiOperation({
+    summary:
+      'Clear a CEO override (mistake, or licence is now issued so override no longer needed).',
+  })
+  clear(
+    @Param('projectId') projectId: string,
+    @Param('phaseId') phaseId: string,
+  ) {
+    return this.licences.clearPhaseLicenceOverride(projectId, phaseId);
   }
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, Landmark, Search } from 'lucide-react';
+import { AlertTriangle, Info, Landmark, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useGovStats, useGovTransactions } from '@/lib/hooks/use-gov';
 import type { GovTxStatus } from '@/lib/types/gov';
@@ -49,9 +49,25 @@ export default function GovTransactionsListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-abak-blue">{t('gov.title')}</h1>
-        <p className="text-sm text-muted-foreground">{t('gov.subtitle')}</p>
+        <h1 className="text-2xl font-bold text-abak-blue">
+          {t('gov.dashboardTitle')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {t('gov.dashboardSubtitle')}
+        </p>
       </div>
+
+      <Card className="border-abak-blue/20 bg-abak-blue/5">
+        <CardContent className="flex items-start gap-3 py-3 text-sm text-abak-blue/90">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium">{t('gov.statusBoardNoticeTitle')}</p>
+            <p className="text-xs text-abak-blue/80">
+              {t('gov.statusBoardNoticeBody')}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Kpi
