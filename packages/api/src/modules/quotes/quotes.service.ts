@@ -8,11 +8,15 @@ import {
   ApprovalStatus,
   ConfirmationType,
   DiscountType,
+  PaymentValidationStatus,
+  PhaseStatus,
   POStatus,
   Prisma,
+  ProjectStatus,
   QuoteStatus,
   UserRole,
 } from '@prisma/client';
+import { DEFAULT_PHASE_TEMPLATE } from '../projects/phase-template';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -49,7 +53,14 @@ const QUOTE_INCLUDE = {
   preparedBy: {
     select: { id: true, firstName: true, lastName: true, email: true },
   },
-  items: { orderBy: { position: 'asc' } },
+  items: {
+    orderBy: { position: 'asc' },
+    include: {
+      department: { select: { id: true, name: true, nameAr: true } },
+      methodologyCard: true,
+      ganttBlock: true,
+    },
+  },
   paymentMilestones: { orderBy: { position: 'asc' } },
   approvals: {
     include: {
@@ -123,6 +134,7 @@ export class QuotesService {
         items: {
           create: items.map((item, index) => ({
             serviceId: item.serviceId,
+            departmentId: item.departmentId,
             description: item.description,
             quantity: item.quantity,
             unit: item.unit,
@@ -134,6 +146,29 @@ export class QuotesService {
               (1 - (item.discountPct ?? 0) / 100),
             notes: item.notes,
             position: item.position ?? index,
+            ...(item.methodology
+              ? {
+                  methodologyCard: {
+                    create: {
+                      description: item.methodology.description,
+                      steps: (item.methodology.steps ??
+                        []) as unknown as Prisma.InputJsonValue,
+                      deliverable: item.methodology.deliverable,
+                    },
+                  },
+                }
+              : {}),
+            ...(item.gantt
+              ? {
+                  ganttBlock: {
+                    create: {
+                      startDay: item.gantt.startDay,
+                      durationDays: item.gantt.durationDays,
+                      categoryTone: item.gantt.categoryTone ?? '#2d7ad1',
+                    },
+                  },
+                }
+              : {}),
           })),
         },
         paymentMilestones: {
@@ -255,6 +290,7 @@ export class QuotesService {
         data.items = {
           create: items.map((item, index) => ({
             serviceId: item.serviceId,
+            departmentId: item.departmentId,
             description: item.description,
             quantity: item.quantity,
             unit: item.unit,
@@ -266,6 +302,29 @@ export class QuotesService {
               (1 - (item.discountPct ?? 0) / 100),
             notes: item.notes,
             position: item.position ?? index,
+            ...(item.methodology
+              ? {
+                  methodologyCard: {
+                    create: {
+                      description: item.methodology.description,
+                      steps: (item.methodology.steps ??
+                        []) as unknown as Prisma.InputJsonValue,
+                      deliverable: item.methodology.deliverable,
+                    },
+                  },
+                }
+              : {}),
+            ...(item.gantt
+              ? {
+                  ganttBlock: {
+                    create: {
+                      startDay: item.gantt.startDay,
+                      durationDays: item.gantt.durationDays,
+                      categoryTone: item.gantt.categoryTone ?? '#2d7ad1',
+                    },
+                  },
+                }
+              : {}),
           })),
         };
       }
@@ -1036,5 +1095,146 @@ export class QuotesService {
       select: { poNumber: true },
     });
     return nextEntityNumber('PO', last?.poNumber);
+  }
+
+  private async nextProjectNumber() {
+    const last = await this.prisma.project.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { projectNumber: true },
+    });
+    return nextEntityNumber('PRJ', last?.projectNumber);
+  }
+
+  // ============================================================
+  // 1-click conversion: Won Quote → live Project
+  // ============================================================
+  //
+  // 2026-05-21 process correction. The Department Manager clicks "Convert
+  // to Project" on a Won quote and the system handles the rest in one
+  // transaction:
+  //
+  //   1. Verify quote is Won.
+  //   2. Auto-validate the commercial confirmation (if present) so the PO
+  //      can be minted. Finance still validates payments downstream — only
+  //      the confirmation gate is collapsed.
+  //   3. Mint the PO.
+  //   4. Bump client lifetimeValue by the contract value.
+  //   5. Create the Project + default 7-phase template.
+  //   6. (Optional) wire phase-licence dependencies — deferred to the
+  //      Licences tab after creation.
+  //
+  // The conversion is reversible within 24h via `undoConversion` (see
+  // ProjectsService). Department Manager is the actor.
+  //
+  // See docs/CORRECTED_CLIENT_JOURNEY.md §G "Won → 1-click project".
+
+  async convertToProject(
+    quoteId: string,
+    dto: { title?: string; description?: string; startDate?: string } = {},
+    actorId: string,
+  ) {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      include: {
+        client: { select: { id: true } },
+        commercialConfirmation: true,
+        purchaseOrder: { include: { project: true } },
+        items: { select: { id: true, departmentId: true, description: true } },
+      },
+    });
+    if (!quote) throw new NotFoundException('Quote not found');
+    if (quote.status !== QuoteStatus.WON) {
+      throw new BadRequestException(
+        'Only WON quotes can be converted to a project',
+      );
+    }
+    if (quote.purchaseOrder?.project) {
+      throw new BadRequestException(
+        `A project already exists for this quote (${quote.purchaseOrder.project.projectNumber}).`,
+      );
+    }
+
+    const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
+    const poNumber =
+      quote.purchaseOrder?.poNumber ?? (await this.nextPoNumber());
+    const projectNumber = await this.nextProjectNumber();
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Mark commercial confirmation as validated (if it exists).
+      if (
+        quote.commercialConfirmation &&
+        quote.commercialConfirmation.validationStatus !==
+          PaymentValidationStatus.VALIDATED
+      ) {
+        await tx.commercialConfirmation.update({
+          where: { id: quote.commercialConfirmation.id },
+          data: {
+            validationStatus: PaymentValidationStatus.VALIDATED,
+            validatedAt: new Date(),
+            validatedById: actorId,
+            validationNote:
+              'Auto-validated as part of 1-click Convert to Project (2026-05-21).',
+          },
+        });
+      }
+
+      // 2. Mint the PO (or reuse existing).
+      const po =
+        quote.purchaseOrder ??
+        (await tx.purchaseOrder.create({
+          data: {
+            poNumber,
+            quoteId: quote.id,
+            clientId: quote.clientId,
+            contractValue: quote.totalAmount,
+            status: POStatus.ACTIVE,
+          },
+        }));
+
+      // 3. Bump client lifetimeValue.
+      await tx.client.update({
+        where: { id: quote.clientId },
+        data: { lifetimeValue: { increment: quote.totalAmount } },
+      });
+
+      // 4. Create the Project with default phases.
+      const project = await tx.project.create({
+        data: {
+          projectNumber,
+          poId: po.id,
+          clientId: quote.clientId,
+          title: dto.title ?? quote.title,
+          description: dto.description ?? quote.description ?? undefined,
+          pmId: actorId,
+          contractValue: quote.totalAmount,
+          startDate,
+          status: ProjectStatus.PLANNING,
+          createdBy: actorId,
+        },
+      });
+
+      let cursor = startDate;
+      for (const t of DEFAULT_PHASE_TEMPLATE) {
+        const plannedStart = new Date(cursor);
+        const plannedEnd = new Date(cursor);
+        plannedEnd.setDate(plannedEnd.getDate() + t.durationDays);
+        await tx.phase.create({
+          data: {
+            projectId: project.id,
+            name: t.name,
+            phaseCode: t.phaseCode,
+            position: t.position,
+            ownerId: actorId,
+            status: PhaseStatus.NOT_STARTED,
+            plannedStart,
+            plannedEnd,
+            evidenceRequired: t.evidenceRequired,
+          },
+        });
+        cursor = plannedEnd;
+      }
+
+      return project;
+    });
   }
 }

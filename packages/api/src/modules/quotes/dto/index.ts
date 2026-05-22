@@ -23,11 +23,67 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+/**
+ * Per-line methodology card (description + steps + deliverable). Renders on
+ * page 5 of the canonical 8-page PDF.
+ * Added 2026-05-21 process correction — see docs/CORRECTED_CLIENT_JOURNEY.md §4.
+ */
+export class MethodologyCardInputDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  description!: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  steps?: string[];
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  deliverable!: string;
+}
+
+/**
+ * Per-line gantt block. Renders on page 6 of the canonical PDF.
+ * 2026-05-21 process correction.
+ */
+export class GanttBlockInputDto {
+  @ApiProperty({ minimum: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  startDay!: number;
+
+  @ApiProperty({ minimum: 1 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  durationDays!: number;
+
+  @ApiPropertyOptional({ default: '#2d7ad1' })
+  @IsOptional()
+  @IsString()
+  categoryTone?: string;
+}
+
 export class QuoteItemInputDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   serviceId?: string;
+
+  /**
+   * Department (= ServiceCategory) that priced this item. Used to group
+   * line items into per-department sections on the quote builder + PDF.
+   * Added 2026-05-21 process correction.
+   */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
 
   @ApiProperty()
   @IsString()
@@ -69,6 +125,20 @@ export class QuoteItemInputDto {
   @Type(() => Number)
   @IsInt()
   position?: number;
+
+  /** Optional per-line methodology card (description + steps + deliverable). */
+  @ApiPropertyOptional({ type: MethodologyCardInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => MethodologyCardInputDto)
+  methodology?: MethodologyCardInputDto;
+
+  /** Optional per-line gantt block (startDay + durationDays + tone). */
+  @ApiPropertyOptional({ type: GanttBlockInputDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GanttBlockInputDto)
+  gantt?: GanttBlockInputDto;
 }
 
 export class MilestoneInputDto {

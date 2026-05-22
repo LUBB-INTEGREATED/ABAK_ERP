@@ -112,6 +112,12 @@ enum UserStatus {
 // Service Catalog
 // ============================================
 
+/// ServiceCategory doubles as the "Department" in the 2026-05-21 process
+/// correction. ABAK's departments (Architecture, Structural, MEP, Safety,
+/// Surveying, Licensing, Supervision, ...) map 1:1 to the categories of
+/// services they offer, so we reuse this model rather than introduce a
+/// parallel `Department` table. RfqAssignment and QuoteItem both reference
+/// it as their "department" anchor.
 model ServiceCategory {
   id          String  @id @default(cuid())
   name        String  @unique
@@ -121,7 +127,9 @@ model ServiceCategory {
   order       Int     @default(0)
   isActive    Boolean @default(true)
 
-  services Service[]
+  services       Service[]
+  rfqAssignments RfqAssignment[]
+  quoteItems     QuoteItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -895,6 +903,13 @@ model QuoteItem {
   serviceId String?
   service   Service? @relation(fields: [serviceId], references: [id])
 
+  /// Multi-dept quote support (2026-05-21 process correction).
+  /// Groups line items into department sections on the quote builder
+  /// and on the printed PDF. References ServiceCategory which doubles
+  /// as the catalog of internal departments.
+  departmentId String?
+  department   ServiceCategory? @relation(fields: [departmentId], references: [id])
+
   description String
   quantity    Float
   unit        String?
@@ -904,11 +919,56 @@ model QuoteItem {
   notes       String?
   position    Int     @default(0)
 
+  /// Optional methodology card rendered on page 5 of the canonical PDF.
+  methodologyCard MethodologyCard?
+  /// Optional gantt block rendered on page 6 of the canonical PDF.
+  ganttBlock      GanttBlock?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([quoteId])
+  @@index([departmentId])
   @@map("quote_items")
+}
+
+/// Per-line methodology card (description + steps + deliverable). Optional;
+/// when present, the auto-generated PDF includes the methodology page.
+/// 2026-05-21 process correction — see docs/CORRECTED_CLIENT_JOURNEY.md §4.
+model MethodologyCard {
+  id          String    @id @default(cuid())
+  quoteItemId String    @unique
+  quoteItem   QuoteItem @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+
+  description String
+  /// Ordered list of method steps (3–5 bullets typically). Stored as
+  /// JSON array of strings for editor simplicity.
+  steps       Json   @default("[]")
+  deliverable String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("methodology_cards")
+}
+
+/// Per-line gantt block. Optional; when present, the auto-generated PDF
+/// includes the project timeline page. Co-existing across line items
+/// renders the multi-bar Gantt with per-department tone.
+model GanttBlock {
+  id          String    @id @default(cuid())
+  quoteItemId String    @unique
+  quoteItem   QuoteItem @relation(fields: [quoteItemId], references: [id], onDelete: Cascade)
+
+  startDay     Int
+  durationDays Int
+  /// Hex string ('#2d7ad1') or named tone key — used as bar fill on Gantt.
+  categoryTone String @default("#2d7ad1")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gantt_blocks")
 }
 
 model PaymentMilestone {
@@ -1076,6 +1136,13 @@ model Rfq {
   /// document request follow-up). See Interaction.
   interactions Interaction[] @relation("RfqInteractions")
 
+  /// Per-department pricer assignments. One row per department involved.
+  /// Exactly one row across the whole RFQ must have isLeadPricer = true.
+  /// 2026-05-21 process correction — see docs/CORRECTED_CLIENT_JOURNEY.md §C.
+  assignments       RfqAssignment[]
+  docRequests       RfqDocRequest[]
+  siteVisitRequests RfqSiteVisitRequest[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
@@ -1086,6 +1153,105 @@ model Rfq {
   @@index([status])
   @@index([createdAt])
   @@map("rfqs")
+}
+
+/// Per-department pricer assignment on an RFQ. The Department Manager
+/// (or Sales Manager for multi-dept) picks one engineer per department;
+/// exactly one of those engineers carries the `isLeadPricer = true` flag.
+/// The Lead Pricer sees and submits the consolidated quote; non-lead
+/// assignees only see + submit their own section.
+model RfqAssignment {
+  id    String @id @default(cuid())
+  rfqId String
+  rfq   Rfq    @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  /// Engineer (or manager) responsible for this department's section.
+  /// Plain string FK to avoid a User back-relation cascade.
+  assigneeId String
+
+  departmentId String
+  department   ServiceCategory @relation(fields: [departmentId], references: [id])
+
+  /// Exactly one row across the RFQ should be true. Enforced at the
+  /// service layer (Prisma doesn't support partial unique indexes here).
+  isLeadPricer Boolean @default(false)
+
+  status      RfqAssignmentStatus @default(IN_PROGRESS)
+  assignedAt  DateTime            @default(now())
+  submittedAt DateTime?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rfqId, departmentId])
+  @@index([rfqId])
+  @@index([assigneeId])
+  @@index([departmentId])
+  @@map("rfq_assignments")
+}
+
+enum RfqAssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  REVISION_REQUESTED
+}
+
+/// Engineer-to-sales-person document request raised while pricing an RFQ.
+/// The pricer needs an extra document from the client (CR, soil report,
+/// etc.); request lands in the sales person's inbox; the sales person
+/// resolves with the document attached.
+model RfqDocRequest {
+  id    String @id @default(cuid())
+  rfqId String
+  rfq   Rfq    @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  requestedById String
+  description   String
+  status        RfqRequestStatus @default(PENDING)
+  response      String?
+  attachmentUrl String?
+  resolvedById  String?
+  resolvedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rfqId])
+  @@index([status])
+  @@map("rfq_doc_requests")
+}
+
+/// Engineer's request for a site visit before pricing. The sales person
+/// is notified for first contact; the engineer can then coordinate
+/// directly with the client (CC'd via Interaction.ccAuthorIds).
+model RfqSiteVisitRequest {
+  id    String @id @default(cuid())
+  rfqId String
+  rfq   Rfq    @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  requestedById     String
+  purpose           String
+  preferredDateFrom DateTime?
+  preferredDateTo   DateTime?
+  status            RfqRequestStatus @default(PENDING)
+  scheduledAt       DateTime?
+  completedAt       DateTime?
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rfqId])
+  @@index([status])
+  @@map("rfq_site_visit_requests")
+}
+
+enum RfqRequestStatus {
+  PENDING
+  RESOLVED
+  CANCELLED
 }
 
 enum RfqStatus {

@@ -116,6 +116,22 @@ export class QuotesController {
     return this.quotes.accept(id, dto, actorId);
   }
 
+  // 1-click conversion: Won Quote → live Project (Department Manager flow).
+  // 2026-05-21 process correction — see docs/CORRECTED_CLIENT_JOURNEY.md §G.
+  @Post('quotes/:id/convert-to-project')
+  @ApiOperation({
+    summary:
+      'Convert a Won quote to a live Project in one click. Auto-validates the commercial confirmation, mints the PO, creates the Project + default phases.',
+  })
+  convertToProject(
+    @Param('id') id: string,
+    @Body()
+    dto: { title?: string; description?: string; startDate?: string },
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.quotes.convertToProject(id, dto, actorId);
+  }
+
   @Patch('quotes/:id/reject')
   @ApiOperation({ summary: 'Mark quote as REJECTED with optional reason' })
   reject(@Param('id') id: string, @Body() dto: AcceptRejectQuoteDto) {
