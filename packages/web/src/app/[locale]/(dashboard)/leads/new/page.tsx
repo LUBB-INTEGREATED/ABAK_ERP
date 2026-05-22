@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -282,6 +283,7 @@ function toSubmitPayload(
 
 export default function NewLeadPage() {
   const router = useRouter();
+  const tNew = useTranslations('leadNew');
   const [channel, setChannel] = useState<LeadChannel>('WEBSITE');
   const [showDraftBanner, setShowDraftBanner] = useState(false);
   const form = useForm<FormValues>({
@@ -424,17 +426,14 @@ export default function NewLeadPage() {
             استرجاع
           </Button>
           <Button size="sm" variant="ghost" onClick={discardDraft}>
-            تجاهل
+            {tNew('discard')}
           </Button>
         </div>
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-abak-blue">New lead</h1>
-        <p className="text-sm text-muted-foreground">
-          Pick the channel the opportunity came through, then fill in the
-          details.
-        </p>
+        <h1 className="text-2xl font-bold text-abak-blue">{tNew('heading')}</h1>
+        <p className="text-sm text-muted-foreground">{tNew('subheading')}</p>
       </div>
 
       <Tabs

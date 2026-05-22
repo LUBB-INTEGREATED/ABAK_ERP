@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,11 +22,11 @@ import {
 } from '@/components/ui/select';
 import { useClassifyClient } from '@/lib/hooks/use-clients';
 import {
-  CLASSIFICATION_LABELS,
   CLIENT_CLASSIFICATIONS,
   type Client,
   type ClientClassification,
 } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 export function ClassifyDialog({
   open,
@@ -36,6 +37,8 @@ export function ClassifyDialog({
   onOpenChange: (open: boolean) => void;
   client: Client;
 }) {
+  const t = useTranslations('clients.classifyDialog');
+  const classificationLabel = useEnumLabel('clientClassification');
   const [classification, setClassification] = useState<ClientClassification>(
     client.classification,
   );
@@ -45,12 +48,12 @@ export function ClassifyDialog({
   async function submit() {
     try {
       await mutation.mutateAsync({ classification, manual });
-      toast.success('Classification updated');
+      toast.success(t('updated'));
       onOpenChange(false);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to update';
+          ?.response?.data?.message ?? t('failed');
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
   }
@@ -59,16 +62,13 @@ export function ClassifyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reclassify</DialogTitle>
-          <DialogDescription>
-            Locking the classification prevents the auto-classifier from
-            changing it.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Classification</Label>
+            <Label>{t('classification')}</Label>
             <Select
               value={classification}
               onValueChange={(value) =>
@@ -81,7 +81,7 @@ export function ClassifyDialog({
               <SelectContent>
                 {CLIENT_CLASSIFICATIONS.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {CLASSIFICATION_LABELS[c]}
+                    {classificationLabel(c)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -95,16 +95,16 @@ export function ClassifyDialog({
               onChange={(event) => setManual(event.target.checked)}
               className="h-4 w-4 rounded border-input"
             />
-            <Label htmlFor="manual">Lock from auto-reclassify</Label>
+            <Label htmlFor="manual">{t('lockManual')}</Label>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Apply'}
+            {mutation.isPending ? t('saving') : t('submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

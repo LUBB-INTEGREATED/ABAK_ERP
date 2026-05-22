@@ -15,6 +15,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCreateClient } from '@/lib/hooks/use-clients';
 import type { Lead } from '@/lib/types/lead';
 
@@ -33,6 +40,9 @@ export function ConvertLeadDialog({
   const [phone, setPhone] = useState(lead.phone);
   const [email, setEmail] = useState(lead.email ?? '');
   const [city, setCity] = useState(lead.projectLocation ?? '');
+  const [clientType, setClientType] = useState<
+    'INDIVIDUAL' | 'COMPANY' | 'GOVERNMENT' | 'NGO' | 'OTHER'
+  >(lead.companyName ? 'COMPANY' : 'INDIVIDUAL');
   const [duplicateId, setDuplicateId] = useState<string | null>(null);
   const mutation = useCreateClient();
 
@@ -41,6 +51,7 @@ export function ConvertLeadDialog({
     try {
       const client = await mutation.mutateAsync({
         contactName: contactName.trim(),
+        clientType,
         companyName: companyName.trim() || undefined,
         phone: phone.trim(),
         email: email.trim() || undefined,
@@ -118,13 +129,33 @@ export function ConvertLeadDialog({
               onChange={(event) => setEmail(event.target.value)}
             />
           </div>
-          <div className="md:col-span-2 space-y-2">
+          <div className="space-y-2">
             <Label htmlFor="city">City</Label>
             <Input
               id="city"
               value={city}
               onChange={(event) => setCity(event.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="clientType">Client type</Label>
+            <Select
+              value={clientType}
+              onValueChange={(value) =>
+                setClientType(value as typeof clientType)
+              }
+            >
+              <SelectTrigger id="clientType">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                <SelectItem value="COMPANY">Company</SelectItem>
+                <SelectItem value="GOVERNMENT">Government</SelectItem>
+                <SelectItem value="NGO">NGO</SelectItem>
+                <SelectItem value="OTHER">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

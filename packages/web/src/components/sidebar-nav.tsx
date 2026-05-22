@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, type ComponentType } from 'react';
+import { useState } from 'react';
 import {
   LayoutDashboard,
   UsersRound,
@@ -22,6 +22,7 @@ import {
   X,
   LogOut,
   BarChart2,
+  type LucideIcon,
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 type NavItem = {
   href: string;
   labelKey: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: LucideIcon;
 };
 
 type NavGroup = {
@@ -123,8 +124,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-abak-blue text-white">
-      <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
+    <div className="relative flex h-full w-full flex-col bg-abak-blue text-white">
+      <div className="relative flex items-center gap-3 border-b border-white/10 px-5 py-5">
         <Image
           src="/images/logo.jpg"
           alt="ABAK"
@@ -132,9 +133,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           height={36}
           className="rounded-md bg-white"
         />
-        <span className="font-semibold tracking-tight">
+        <span className="font-display text-lg leading-none tracking-wide text-white">
           {t('common.appName')}
         </span>
+        {/* Hairline gold rule — single brand-anchor moment per page */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-5 bottom-0 h-px bg-gradient-to-r from-transparent via-abak-gold/60 to-transparent"
+        />
       </div>
 
       <nav
@@ -159,14 +165,27 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   key={item.href}
                   href={item.href}
                   onClick={onNavigate}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'bg-white/15 font-semibold'
-                      : 'text-white/85 hover:bg-white/10',
+                      ? 'bg-white/15 font-semibold text-white'
+                      : 'text-white/75 hover:bg-white/10 hover:text-white',
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-abak-gold"
+                    />
+                  )}
+                  <Icon
+                    className={cn(
+                      'h-4 w-4 transition-transform',
+                      active ? 'text-abak-gold' : 'text-white/75',
+                    )}
+                    strokeWidth={active ? 2.25 : 1.75}
+                  />
                   <span>{t(item.labelKey)}</span>
                 </Link>
               );
@@ -187,14 +206,27 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   key={item.href}
                   href={item.href}
                   onClick={onNavigate}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'bg-white/15 font-semibold'
-                      : 'text-white/85 hover:bg-white/10',
+                      ? 'bg-white/15 font-semibold text-white'
+                      : 'text-white/75 hover:bg-white/10 hover:text-white',
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="absolute inset-y-1.5 start-0 w-[3px] rounded-full bg-abak-gold"
+                    />
+                  )}
+                  <Icon
+                    className={cn(
+                      'h-4 w-4 transition-transform',
+                      active ? 'text-abak-gold' : 'text-white/75',
+                    )}
+                    strokeWidth={active ? 2.25 : 1.75}
+                  />
                   <span>{t(item.labelKey)}</span>
                 </Link>
               );

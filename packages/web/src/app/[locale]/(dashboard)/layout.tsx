@@ -1,7 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import AuthGuard from '@/components/auth-guard';
-import Providers from '@/components/providers';
 import { DesktopSidebar, MobileSidebar } from '@/components/sidebar-nav';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationBell } from '@/components/notification-bell';
@@ -16,11 +15,9 @@ export default async function DashboardLayout({
   const { locale } = await params;
   setRequestLocale(locale);
   return (
-    <Providers>
-      <AuthGuard>
-        <DashboardChrome>{children}</DashboardChrome>
-      </AuthGuard>
-    </Providers>
+    <AuthGuard>
+      <DashboardChrome>{children}</DashboardChrome>
+    </AuthGuard>
   );
 }
 

@@ -64,6 +64,7 @@ export default function QuoteDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const t = useTranslations();
+  const tQ = useTranslations('quoteDetail');
   const { data: quote, isLoading, isError, error } = useQuote(id);
   const user = useAuthStore((state) => state.user);
   const submitMutation = useSubmitQuote(id);
@@ -184,13 +185,13 @@ export default function QuoteDetailPage() {
             size="sm"
             variant="outline"
             onClick={() =>
-              callMutation('العميل يراجع', () =>
+              callMutation(tQ('clientReviewing'), () =>
                 inDiscussionMutation.mutateAsync(),
               )
             }
             disabled={inDiscussionMutation.isPending}
           >
-            <MessageSquare className="mr-2 h-4 w-4" /> العميل يراجع
+            <MessageSquare className="me-2 h-4 w-4" /> {tQ('clientReviewing')}
           </Button>
         )}
         {(['SENT', 'IN_DISCUSSION'] as QuoteStatus[]).includes(
@@ -200,11 +201,13 @@ export default function QuoteDetailPage() {
             size="sm"
             variant="outline"
             onClick={() =>
-              callMutation('تفاوض', () => inNegotiationMutation.mutateAsync())
+              callMutation(tQ('negotiating'), () =>
+                inNegotiationMutation.mutateAsync(),
+              )
             }
             disabled={inNegotiationMutation.isPending}
           >
-            <Scale className="mr-2 h-4 w-4" /> تفاوض
+            <Scale className="me-2 h-4 w-4" /> {tQ('negotiating')}
           </Button>
         )}
         {(
@@ -372,24 +375,29 @@ export default function QuoteDetailPage() {
           quote.numberOfRevisions !== null) && (
           <Card className="md:col-span-3">
             <CardHeader>
-              <CardTitle className="text-base">النطاق التقني</CardTitle>
+              <CardTitle className="text-base">
+                {tQ('technicalScope')}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {quote.scopeOfWork && (
-                <ScopeRow label="نطاق العمل" value={quote.scopeOfWork} />
+                <ScopeRow label={tQ('scopeOfWork')} value={quote.scopeOfWork} />
               )}
               {quote.deliverables && (
-                <ScopeRow label="المخرجات" value={quote.deliverables} />
+                <ScopeRow
+                  label={tQ('deliverables')}
+                  value={quote.deliverables}
+                />
               )}
               {quote.exclusions && (
-                <ScopeRow label="المستثنيات" value={quote.exclusions} />
+                <ScopeRow label={tQ('exclusions')} value={quote.exclusions} />
               )}
               {quote.assumptions && (
-                <ScopeRow label="الافتراضات" value={quote.assumptions} />
+                <ScopeRow label={tQ('assumptions')} value={quote.assumptions} />
               )}
               {quote.numberOfRevisions !== null && (
                 <ScopeRow
-                  label="جولات المراجعة"
+                  label={tQ('reviewRounds')}
                   value={String(quote.numberOfRevisions)}
                 />
               )}

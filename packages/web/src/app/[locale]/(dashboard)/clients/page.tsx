@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { ar as arLocale } from 'date-fns/locale';
 import { RefreshCcw, Search, Sliders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,15 +31,14 @@ import {
 import { cn } from '@/lib/utils';
 import { useClientsList, useClientStats } from '@/lib/hooks/use-clients';
 import {
-  CLASSIFICATION_LABELS,
   CLIENT_CLASSIFICATIONS,
-  CLIENT_STATUS_LABELS,
   CLIENT_STATUSES,
   type Client,
   type ClientClassification,
   type ClientFilter,
   type ClientStatus,
 } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 const PAGE_SIZE = 50;
 const ALL = '__all__';
@@ -58,6 +59,11 @@ function KpiCard({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function ClientsListPage() {
+  const tC = useTranslations('clients.list');
+  const locale = useLocale();
+  const classificationLabel = useEnumLabel('clientClassification');
+  const statusLabel = useEnumLabel('clientStatus');
+
   const [search, setSearch] = useState('');
   const [classification, setClassification] = useState<
     ClientClassification | undefined
@@ -102,42 +108,43 @@ export default function ClientsListPage() {
     setPage(1);
   }
 
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-abak-blue">Clients</h1>
-          <p className="text-sm text-muted-foreground">
-            360° view of every account the team manages.
-          </p>
+          <h1 className="text-2xl font-bold text-abak-blue">{tC('title')}</h1>
+          <p className="text-sm text-muted-foreground">{tC('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
+            aria-label={tC('refresh')}
+            title={tC('refresh')}
           >
             <RefreshCcw
-              className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')}
+              className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
-            Refresh
           </Button>
           <Button asChild size="sm">
-            <Link href="/clients/new">New client</Link>
+            <Link href="/clients/new">{tC('newClient')}</Link>
           </Button>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-        <KpiCard label="Total clients" value={stats.data?.total ?? '—'} />
-        <KpiCard label="VIP" value={vipCount} />
-        <KpiCard label="Dormant" value={dormantCount} />
+        <KpiCard label={tC('totalClients')} value={stats.data?.total ?? '—'} />
+        <KpiCard label={tC('vip')} value={vipCount} />
+        <KpiCard label={tC('dormant')} value={dormantCount} />
         <KpiCard
-          label="Avg. lifetime value"
+          label={tC('avgLifetimeValue')}
           value={
             stats.data
-              ? `${Math.round(stats.data.averageLifetimeValue).toLocaleString()} SAR`
+              ? `${Math.round(stats.data.averageLifetimeValue).toLocaleString(numLocale)} ${tC('currency')}`
               : '—'
           }
         />
@@ -147,23 +154,24 @@ export default function ClientsListPage() {
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
           <div className="min-w-[240px] flex-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Search
+              {tC('search')}
             </label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => {
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Name, company, phone, email, number…"
-                className="pl-9"
+                placeholder={tC('searchPlaceholderShort')}
+                className="ps-9"
               />
             </div>
           </div>
           <FilterSelect
-            label="Classification"
+            label={tC('classification')}
+            allLabel={tC('allClassifications')}
             value={classification}
             onChange={(value) => {
               setClassification(value);
@@ -171,11 +179,12 @@ export default function ClientsListPage() {
             }}
             options={CLIENT_CLASSIFICATIONS.map((c) => ({
               value: c,
-              label: CLASSIFICATION_LABELS[c],
+              label: classificationLabel(c),
             }))}
           />
           <FilterSelect
-            label="Status"
+            label={tC('status')}
+            allLabel={tC('allStatuses')}
             value={status}
             onChange={(value) => {
               setStatus(value);
@@ -183,12 +192,12 @@ export default function ClientsListPage() {
             }}
             options={CLIENT_STATUSES.map((s) => ({
               value: s,
-              label: CLIENT_STATUS_LABELS[s],
+              label: statusLabel(s),
             }))}
           />
           <div className="w-40">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              City
+              {tC('city')}
             </label>
             <Input
               value={city}
@@ -196,11 +205,11 @@ export default function ClientsListPage() {
                 setCity(event.target.value);
                 setPage(1);
               }}
-              placeholder="Riyadh…"
+              placeholder={tC('cityPlaceholder')}
             />
           </div>
           <Button variant="ghost" size="sm" onClick={reset}>
-            <Sliders className="mr-2 h-4 w-4" /> Reset
+            <Sliders className="me-2 h-4 w-4" /> {tC('reset')}
           </Button>
         </CardContent>
       </Card>
@@ -210,14 +219,14 @@ export default function ClientsListPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Number</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Classification</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Account manager</TableHead>
-                <TableHead>Interactions</TableHead>
-                <TableHead>Lifetime value</TableHead>
-                <TableHead>Last contact</TableHead>
+                <TableHead>{tC('number')}</TableHead>
+                <TableHead>{tC('contact')}</TableHead>
+                <TableHead>{tC('classification')}</TableHead>
+                <TableHead>{tC('status')}</TableHead>
+                <TableHead>{tC('accountManager')}</TableHead>
+                <TableHead>{tC('interactions')}</TableHead>
+                <TableHead>{tC('lifetimeValue')}</TableHead>
+                <TableHead>{tC('lastContact')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -227,7 +236,7 @@ export default function ClientsListPage() {
                     colSpan={8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Loading…
+                    {tC('loading')}
                   </TableCell>
                 </TableRow>
               )}
@@ -239,7 +248,7 @@ export default function ClientsListPage() {
                   >
                     {error instanceof Error
                       ? error.message
-                      : 'Failed to load clients.'}
+                      : tC('failedToLoad')}
                   </TableCell>
                 </TableRow>
               )}
@@ -249,7 +258,7 @@ export default function ClientsListPage() {
                     colSpan={8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No clients match the current filters.
+                    {tC('noResults')}
                   </TableCell>
                 </TableRow>
               )}
@@ -266,8 +275,11 @@ export default function ClientsListPage() {
       {data && data.data.length > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            Showing {(page - 1) * PAGE_SIZE + 1}–
-            {Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()}
+            {tC('showing', {
+              from: (page - 1) * PAGE_SIZE + 1,
+              to: Math.min(page * PAGE_SIZE, total),
+              total: total.toLocaleString(numLocale),
+            })}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -276,18 +288,16 @@ export default function ClientsListPage() {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Previous
+              {tC('previous')}
             </Button>
-            <span>
-              Page {page} / {pages}
-            </span>
+            <span>{tC('pageOf', { page, pages })}</span>
             <Button
               variant="outline"
               size="sm"
               disabled={page >= pages}
               onClick={() => setPage((p) => Math.min(pages, p + 1))}
             >
-              Next
+              {tC('next')}
             </Button>
           </div>
         </div>
@@ -298,11 +308,13 @@ export default function ClientsListPage() {
 
 function FilterSelect<T extends string>({
   label,
+  allLabel,
   value,
   onChange,
   options,
 }: {
   label: string;
+  allLabel: string;
   value: T | undefined;
   onChange: (value: T | undefined) => void;
   options: { value: T; label: string }[];
@@ -319,10 +331,10 @@ function FilterSelect<T extends string>({
         }
       >
         <SelectTrigger>
-          <SelectValue placeholder={`All ${label.toLowerCase()}`} />
+          <SelectValue placeholder={allLabel} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={ALL}>All {label.toLowerCase()}</SelectItem>
+          <SelectItem value={ALL}>{allLabel}</SelectItem>
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
@@ -335,11 +347,15 @@ function FilterSelect<T extends string>({
 }
 
 function ClientRow({ client }: { client: Client }) {
+  const tC = useTranslations('clients.list');
+  const locale = useLocale();
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   const manager = client.accountManager
     ? [client.accountManager.firstName, client.accountManager.lastName]
         .filter(Boolean)
         .join(' ') || client.accountManager.email
-    : 'Unassigned';
+    : tC('unassigned');
 
   return (
     <TableRow className="cursor-pointer">
@@ -368,12 +384,13 @@ function ClientRow({ client }: { client: Client }) {
         {client._count?.interactions ?? 0}
       </TableCell>
       <TableCell className="text-sm">
-        {client.lifetimeValue.toLocaleString()} SAR
+        {client.lifetimeValue.toLocaleString(numLocale)} {tC('currency')}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         {client.lastInteractionAt
           ? formatDistanceToNow(new Date(client.lastInteractionAt), {
               addSuffix: true,
+              locale: locale === 'ar' ? arLocale : undefined,
             })
           : '—'}
       </TableCell>

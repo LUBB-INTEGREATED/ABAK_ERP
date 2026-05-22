@@ -3,7 +3,15 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { RefreshCcw, Search, Sliders, UsersRound } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {
+  ChevronDown,
+  ChevronUp,
+  RefreshCcw,
+  Search,
+  Sliders,
+  UsersRound,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,6 +83,7 @@ function startOfTodayIso() {
 }
 
 export default function LeadsListPage() {
+  const t = useTranslations('leads.list');
   const currentUser = useAuthStore((state) => state.user);
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<LeadChannel | undefined>();
@@ -89,6 +98,12 @@ export default function LeadsListPage() {
   const [createdFrom, setCreatedFrom] = useState('');
   const [page, setPage] = useState(1);
   const [quick, setQuick] = useState<QuickFilter>(null);
+  // Advanced disclosure: only Search + Channel + Status + SLA visible by default
+  // (per UI audit Tier 2 — 9 filters at once freezes new users).
+  // Auto-opens if any advanced filter is already populated so users see what's filtering.
+  const advancedFiltersActive =
+    !!priority || !!serviceId || !!location || !!budgetMin || !!budgetMax;
+  const [showAdvanced, setShowAdvanced] = useState(advancedFiltersActive);
 
   const services = useServices();
 
@@ -193,52 +208,53 @@ export default function LeadsListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-abak-blue">Leads</h1>
-          <p className="text-sm text-muted-foreground">
-            Track every incoming opportunity across all six channels.
-          </p>
+          <h1 className="font-display text-display-md text-primary">
+            {t('title')}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
+            aria-label={t('refresh')}
+            title={t('refresh')}
           >
             <RefreshCcw
-              className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')}
+              className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
-            Refresh
           </Button>
           <Button asChild size="sm">
-            <Link href="/leads/new">New lead</Link>
+            <Link href="/leads/new">{t('newLead')}</Link>
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Total leads" value={stats.data?.total ?? '—'} />
-        <StatCard label="Today" value={stats.data?.todayCount ?? '—'} />
-        <StatCard label="Overdue SLA" value={overdueCount} />
+        <StatCard label={t('totalLeads')} value={stats.data?.total ?? '—'} />
+        <StatCard label={t('today')} value={stats.data?.todayCount ?? '—'} />
+        <StatCard label={t('overdueSla')} value={overdueCount} />
         <StatCard
-          label="Filtered"
+          label={t('filtered')}
           value={isLoading ? '…' : total.toLocaleString()}
         />
       </div>
 
       <div className="flex flex-wrap gap-2">
         <QuickChip
-          label="My leads"
+          label={t('myLeads')}
           active={quick === 'my-leads'}
           onClick={() => applyQuickFilter('my-leads')}
         />
         <QuickChip
-          label="Overdue SLA"
+          label={t('overdueSla')}
           active={quick === 'overdue'}
           onClick={() => applyQuickFilter('overdue')}
         />
         <QuickChip
-          label="New today"
+          label={t('newToday')}
           active={quick === 'new-today'}
           onClick={() => applyQuickFilter('new-today')}
         />
@@ -248,7 +264,7 @@ export default function LeadsListPage() {
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
           <div className="min-w-[240px] flex-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Search
+              {t('search')}
             </label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -258,14 +274,14 @@ export default function LeadsListPage() {
                   setSearch(event.target.value);
                   setPage(1);
                 }}
-                placeholder="Lead number, name, phone, email…"
+                placeholder={t('searchPlaceholder')}
                 className="pl-9"
               />
             </div>
           </div>
 
           <FilterSelect
-            label="Channel"
+            label={t('filterChannel')}
             value={channel}
             onChange={(value) => {
               setChannel(value);
@@ -277,7 +293,7 @@ export default function LeadsListPage() {
             }))}
           />
           <FilterSelect
-            label="Status"
+            label={t('filterStatus')}
             value={status}
             onChange={(value) => {
               setStatus(value);
@@ -289,19 +305,7 @@ export default function LeadsListPage() {
             }))}
           />
           <FilterSelect
-            label="Priority"
-            value={priority}
-            onChange={(value) => {
-              setPriority(value);
-              setPage(1);
-            }}
-            options={LEAD_PRIORITIES.map((p) => ({
-              value: p,
-              label: PRIORITY_LABELS[p],
-            }))}
-          />
-          <FilterSelect
-            label="SLA"
+            label={t('filterSla')}
             value={slaStatus}
             onChange={(value) => {
               setSlaStatus(value);
@@ -313,66 +317,97 @@ export default function LeadsListPage() {
             }))}
           />
 
-          <FilterSelect
-            label="Service"
-            value={serviceId}
-            onChange={(value) => {
-              setServiceId(value);
-              setPage(1);
-            }}
-            options={(services.data ?? []).map((svc) => ({
-              value: svc.id,
-              label: `${svc.name} (${svc.code})`,
-            }))}
-          />
-
-          <div className="w-40">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Location
-            </label>
-            <Input
-              value={location}
-              onChange={(event) => {
-                setLocation(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Riyadh…"
-            />
-          </div>
-
-          <div className="w-28">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Min budget
-            </label>
-            <Input
-              type="number"
-              min={0}
-              value={budgetMin}
-              onChange={(event) => {
-                setBudgetMin(event.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="w-28">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Max budget
-            </label>
-            <Input
-              type="number"
-              min={0}
-              value={budgetMax}
-              onChange={(event) => {
-                setBudgetMax(event.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+          >
+            {showAdvanced ? (
+              <ChevronUp className="mr-2 h-4 w-4" />
+            ) : (
+              <ChevronDown className="mr-2 h-4 w-4" />
+            )}
+            {t('advanced')}
+            {advancedFiltersActive && !showAdvanced && (
+              <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-secondary" />
+            )}
+          </Button>
 
           <Button variant="ghost" size="sm" onClick={resetFilters}>
             <Sliders className="mr-2 h-4 w-4" />
-            Reset
+            {t('reset')}
           </Button>
+
+          {showAdvanced && (
+            <div className="mt-2 flex w-full flex-wrap items-end gap-3 border-t border-border pt-3">
+              <FilterSelect
+                label={t('filterPriority')}
+                value={priority}
+                onChange={(value) => {
+                  setPriority(value);
+                  setPage(1);
+                }}
+                options={LEAD_PRIORITIES.map((p) => ({
+                  value: p,
+                  label: PRIORITY_LABELS[p],
+                }))}
+              />
+              <FilterSelect
+                label={t('filterService')}
+                value={serviceId}
+                onChange={(value) => {
+                  setServiceId(value);
+                  setPage(1);
+                }}
+                options={(services.data ?? []).map((svc) => ({
+                  value: svc.id,
+                  label: `${svc.name} (${svc.code})`,
+                }))}
+              />
+              <div className="w-40">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  {t('filterLocation')}
+                </label>
+                <Input
+                  value={location}
+                  onChange={(event) => {
+                    setLocation(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder={t('locationPlaceholder')}
+                />
+              </div>
+              <div className="w-28">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  {t('filterMinBudget')}
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={budgetMin}
+                  onChange={(event) => {
+                    setBudgetMin(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <div className="w-28">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  {t('filterMaxBudget')}
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={budgetMax}
+                  onChange={(event) => {
+                    setBudgetMax(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -388,7 +423,7 @@ export default function LeadsListPage() {
           title: 'No leads yet',
           description:
             'Leads land here automatically from the 6 intake channels. You can also log one manually.',
-          action: { label: 'New lead', href: '/leads/new' },
+          action: { label: t('newLead'), href: '/leads/new' },
         }}
         emptyFiltered={{
           icon: UsersRound,

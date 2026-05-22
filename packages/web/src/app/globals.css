@@ -4,68 +4,89 @@
 
 @layer base {
   :root {
-    --abak-blue: 196 58% 32%;
-    --abak-gold: 43 43% 46%;
+    /* Brand anchors — deep authority navy + burnt copper accent on warm sand */
+    --abak-navy: 210 65% 12%; /* #0B1F33 — deep authority navy */
+    --abak-copper: 21 61% 44%; /* #B45C2C — burnt copper accent */
 
-    --background: 30 20% 97%;
-    --foreground: 0 0% 11%;
+    /* Surfaces — warm sand backdrop, warm-white cards (tone-driven hierarchy, no shadow needed) */
+    --background: 40 40% 93%; /* #F4EFE5 sand */
+    --foreground: 25 25% 12%; /* warm near-black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
+    --card: 40 45% 97%; /* #FBF7F0 warm cream — lifts off sand */
+    --card-foreground: 25 25% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
+    --popover: 40 45% 97%;
+    --popover-foreground: 25 25% 12%;
 
-    --primary: 196 58% 32%;
-    --primary-foreground: 0 0% 100%;
+    /* Brand → primary (deep navy) */
+    --primary: 210 65% 12%;
+    --primary-foreground: 40 40% 96%;
 
-    --secondary: 43 43% 46%;
-    --secondary-foreground: 0 0% 100%;
+    /* Brand accent → secondary (burnt copper) — emphasis, NOT success */
+    --secondary: 21 61% 44%;
+    --secondary-foreground: 40 40% 96%;
 
-    --muted: 220 13% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 40 20% 88%; /* warm sand-band */
+    --muted-foreground: 25 12% 36%;
 
-    --accent: 43 43% 46%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 21 61% 44%;
+    --accent-foreground: 40 40% 96%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 40 40% 96%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 196 58% 32%;
+    /* Real semantic tokens — gold is NOT success */
+    --success: 158 64% 32%; /* emerald-700 */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%; /* amber-600 */
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 42%; /* sky-600 */
+    --info-foreground: 0 0% 100%;
+
+    --border: 40 16% 82%;
+    --input: 40 16% 82%;
+
+    /* Focus ring — copper contrasts against both maroon fills and sand surfaces */
+    --ring: 21 61% 44%;
 
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    --background: 215 30% 8%;
+    --foreground: 40 35% 94%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 28% 11%;
+    --card-foreground: 40 35% 94%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 28% 11%;
+    --popover-foreground: 40 35% 94%;
 
-    --primary: 211 100% 61%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 40 35% 94%;
+    --primary-foreground: 215 30% 8%;
 
-    --secondary: 43 50% 70%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 21 65% 58%;
+    --secondary-foreground: 215 30% 8%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 215 22% 17%;
+    --muted-foreground: 220 14% 65%;
 
-    --accent: 43 50% 70%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 21 65% 58%;
+    --accent-foreground: 215 30% 8%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 40 35% 94%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 211 100% 61%;
+    --success: 158 64% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 58%;
+    --warning-foreground: 215 30% 8%;
+    --info: 199 89% 58%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 22% 22%;
+    --input: 215 22% 22%;
+    --ring: 21 65% 58%;
   }
 }
 
@@ -78,7 +99,8 @@
     @apply bg-background text-foreground;
     font-feature-settings:
       'rlig' 1,
-      'calt' 1;
+      'calt' 1,
+      'ss01' 1;
   }
 
   [dir='rtl'] {
@@ -98,47 +120,59 @@
     font-family:
       var(--font-inter), var(--font-cairo), 'Inter', system-ui, sans-serif;
   }
+
+  /* Display headings — Noto Naskh in Arabic, Cormorant in Latin.
+     Body-default font stays for readability; only display tier uses the editorial face. */
+  [dir='rtl'] :is(.font-display, .display-lg, .display-md) {
+    font-family:
+      var(--font-naskh), 'Noto Naskh Arabic', 'Cairo', system-ui, serif;
+  }
+  [dir='ltr'] :is(.font-display, .display-lg, .display-md) {
+    font-family:
+      var(--font-display), 'Cormorant Garamond', Georgia, 'Times New Roman',
+      serif;
+  }
 }
 
 @layer components {
   .input-base {
-    @apply w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-abak-blue disabled:cursor-not-allowed disabled:opacity-60;
+    @apply w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-primary {
-    @apply bg-abak-blue hover:bg-abak-blue-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 font-semibold px-6 py-3 rounded-lg transition-colors;
   }
 
   .btn-secondary {
-    @apply bg-abak-gold hover:bg-abak-gold-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold px-6 py-3 rounded-lg transition-colors;
   }
 
   .btn-outline {
-    @apply border-2 border-abak-blue text-abak-blue hover:bg-abak-blue hover:text-white font-semibold px-6 py-3 rounded-lg transition-colors;
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-colors;
   }
 
   .card-abak {
-    @apply bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-card rounded-xl border border-border p-6 transition-shadow;
   }
 
   .badge-active {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-abak-blue/10 text-abak-blue;
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary;
   }
 
   .badge-success {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-abak-gold/10 text-abak-gold;
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))];
   }
 
   .badge-warning {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700;
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))];
   }
 
   .badge-error {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700;
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-destructive/10 text-destructive;
   }
 
   .nav-abak {
-    @apply bg-abak-blue text-white shadow-lg;
+    @apply bg-primary text-primary-foreground shadow-lg;
   }
 
   .nav-item {
@@ -153,5 +187,57 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Tabular figures — for KPI values, money, table columns, percentages, timers.
+     Engineers spot misaligned digits in 0.3 seconds. */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings:
+      'tnum' 1,
+      'lnum' 1;
+  }
+
+  /* Type scale — matches tailwind config; provides class hooks for non-Tailwind contexts. */
+  .display-lg {
+    font-size: 2.5rem;
+    line-height: 3rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  .display-md {
+    font-size: 2rem;
+    line-height: 2.5rem;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  .heading-lg {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  .heading-md {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+  }
+  .heading-sm {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+  }
+  .body {
+    font-size: 0.875rem;
+    line-height: 1.375rem;
+  }
+  .body-sm {
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
+  .caption {
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+    letter-spacing: 0.02em;
   }
 }

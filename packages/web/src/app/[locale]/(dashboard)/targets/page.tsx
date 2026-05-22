@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Loader2, Plus, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,13 +37,7 @@ import {
   useTargets,
   useUpsertTarget,
 } from '@/lib/hooks/use-pipeline';
-
-const TARGET_TYPE_LABELS: Record<TargetType, string> = {
-  REVENUE: 'الإيراد (ريال)',
-  QUOTES_SENT: 'عروض أسعار مرسلة',
-  CONVERSIONS: 'صفقات مُغلقة',
-  VISITS: 'زيارات ميدانية',
-};
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 const TARGET_TYPES: TargetType[] = [
   'REVENUE',
@@ -63,21 +57,6 @@ function attainmentBadge(pct: number) {
   if (pct >= 100) return 'default';
   if (pct >= 80) return 'secondary';
   return 'destructive';
-}
-
-function formatValue(type: TargetType, value: number) {
-  if (type === 'REVENUE') {
-    return value.toLocaleString('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
-      maximumFractionDigits: 0,
-    });
-  }
-  return value.toLocaleString('ar-SA');
-}
-
-function periodLabel(p: TargetPeriod) {
-  return p === 'MONTHLY' ? 'شهري' : 'ربع سنوي';
 }
 
 function currentPeriodDates(period: TargetPeriod): {
@@ -112,6 +91,11 @@ interface EditRow {
 
 export default function TargetsPage() {
   const t = useTranslations();
+  const tT = useTranslations('targets');
+  const locale = useLocale();
+  const metricLabel = useEnumLabel('targetMetric');
+  const periodLabel = useEnumLabel('period');
+
   const [period, setPeriod] = useState<TargetPeriod>('MONTHLY');
   const [editRow, setEditRow] = useState<EditRow | null>(null);
 
@@ -119,11 +103,22 @@ export default function TargetsPage() {
   const { data: targets, isLoading } = useTargets();
   const { mutateAsync: upsert, isPending } = useUpsertTarget();
 
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+  const formatValue = (type: TargetType, value: number) => {
+    if (type === 'REVENUE') {
+      return value.toLocaleString(numLocale, {
+        style: 'currency',
+        currency: 'SAR',
+        maximumFractionDigits: 0,
+      });
+    }
+    return value.toLocaleString(numLocale);
+  };
+
   const reps = (users ?? []).filter((u) =>
     ['SALES_REPRESENTATIVE', 'SALES_MANAGER'].includes(u.role),
   );
 
-  // Build a lookup: ownerId → type → target
   const targetMap = new Map<string, Map<TargetType, SalesTarget>>();
   for (const t of targets ?? []) {
     if (t.period !== period) continue;
@@ -162,9 +157,7 @@ export default function TargetsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t('nav.targets')}</h1>
-          <p className="text-sm text-muted-foreground">
-            إدارة أهداف الفريق وتتبع الإنجاز
-          </p>
+          <p className="text-sm text-muted-foreground">{tT('subtitle')}</p>
         </div>
         <Select
           value={period}
@@ -174,13 +167,14 @@ export default function TargetsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="MONTHLY">شهري</SelectItem>
-            <SelectItem value="QUARTERLY">ربع سنوي</SelectItem>
+            <SelectItem value="MONTHLY">{periodLabel('MONTHLY')}</SelectItem>
+            <SelectItem value="QUARTERLY">
+              {periodLabel('QUARTERLY')}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Summary KPI cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {TARGET_TYPES.map((type) => {
           const allTargets = (targets ?? []).filter(
@@ -198,13 +192,13 @@ export default function TargetsPage() {
           return (
             <Card key={type} className="p-4">
               <p className="text-xs text-muted-foreground">
-                {TARGET_TYPE_LABELS[type]}
+                {metricLabel(type)}
               </p>
               <p className="mt-1 text-lg font-bold">
                 {formatValue(type, totalAchieved)}
               </p>
               <p className="text-xs text-muted-foreground">
-                من {formatValue(type, totalTarget)}
+                {tT('ofTotal', { total: formatValue(type, totalTarget) })}
               </p>
               <div className="mt-2 space-y-1">
                 <Progress value={pct} className="h-1.5" />
@@ -215,14 +209,13 @@ export default function TargetsPage() {
         })}
       </div>
 
-      {/* Rep × Target-type grid */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            أهداف الفريق — {periodLabel(period)}
+            {tT('byRepHeading', { period: periodLabel(period) })}
           </CardTitle>
           <CardDescription className="text-xs">
-            انقر على خلية لتعيين أو تعديل الهدف
+            {tT('byRepHint')}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -235,13 +228,15 @@ export default function TargetsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">المندوب</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      {tT('rep')}
+                    </TableHead>
                     {TARGET_TYPES.map((type) => (
                       <TableHead
                         key={type}
                         className="whitespace-nowrap text-center text-xs"
                       >
-                        {TARGET_TYPE_LABELS[type]}
+                        {metricLabel(type)}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -253,7 +248,7 @@ export default function TargetsPage() {
                         colSpan={TARGET_TYPES.length + 1}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
-                        لا يوجد مندوبون
+                        {tT('noReps')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -318,7 +313,7 @@ export default function TargetsPage() {
                                 </div>
                               ) : (
                                 <button
-                                  className="group w-full space-y-1 rounded p-1 text-left hover:bg-muted"
+                                  className="group w-full space-y-1 rounded p-1 text-start hover:bg-muted"
                                   onClick={() => startEdit(rep.id, type)}
                                 >
                                   {tgt ? (
@@ -343,13 +338,18 @@ export default function TargetsPage() {
                                         />
                                       </div>
                                       <p className="text-[10px] text-muted-foreground">
-                                        من {formatValue(type, tgt.targetValue)}
+                                        {tT('ofTotal', {
+                                          total: formatValue(
+                                            type,
+                                            tgt.targetValue,
+                                          ),
+                                        })}
                                       </p>
                                     </>
                                   ) : (
                                     <span className="flex items-center gap-0.5 text-xs text-muted-foreground group-hover:text-foreground">
                                       <Plus className="h-3 w-3" />
-                                      تعيين هدف
+                                      {tT('setTarget')}
                                     </span>
                                   )}
                                 </button>

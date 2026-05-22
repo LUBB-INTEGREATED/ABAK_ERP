@@ -18,11 +18,8 @@ import {
 } from '@/components/ui/select';
 import { useCreateClient } from '@/lib/hooks/use-clients';
 import { useUsers } from '@/lib/hooks/use-leads';
-import {
-  CLIENT_TYPES,
-  CLIENT_TYPE_LABELS,
-  type ClientType,
-} from '@/lib/types/client';
+import { CLIENT_TYPES, type ClientType } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 const SAUDI_REGIONS = [
   'الرياض',
@@ -42,6 +39,7 @@ const SAUDI_REGIONS = [
 
 export default function NewClientPage() {
   const router = useRouter();
+  const clientTypeLabel = useEnumLabel('clientType');
   const mutation = useCreateClient();
   const users = useUsers();
   const activeUsers = users.data?.filter((u) => u.status === 'ACTIVE') ?? [];
@@ -187,7 +185,7 @@ export default function NewClientPage() {
                 <SelectContent>
                   {CLIENT_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {CLIENT_TYPE_LABELS[type]}
+                      {clientTypeLabel(type)}
                     </SelectItem>
                   ))}
                 </SelectContent>

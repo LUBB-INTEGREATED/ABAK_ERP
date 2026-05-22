@@ -553,73 +553,76 @@ export default function NewQuotePage() {
               {items.map((item, i) => (
                 <div
                   key={i}
-                  className="rounded-lg border bg-muted/30 p-3 space-y-3"
+                  className="rounded-lg border bg-card p-4 space-y-4"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="text-sm font-semibold text-primary">
                       البند {i + 1}
                     </span>
                     {items.length > 1 && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6"
+                        className="h-7 w-7"
                         onClick={() => removeItem(i)}
+                        aria-label="حذف البند"
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs">القسم</Label>
-                      <Select
-                        value={item.departmentId ?? ''}
-                        onValueChange={(v) => updateItem(i, 'departmentId', v)}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="اختر القسم..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.map((d) => (
-                            <SelectItem
-                              key={d.id}
-                              value={d.id}
-                              className="text-xs"
-                            >
-                              {d.nameAr ?? d.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  {/* Section 1 — Service definition (department + service + description) */}
+                  <section className="space-y-3">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      الخدمة
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">القسم</Label>
+                        <Select
+                          value={item.departmentId ?? ''}
+                          onValueChange={(v) =>
+                            updateItem(i, 'departmentId', v)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر القسم..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.nameAr ?? d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="lg:col-span-2 space-y-1">
-                      <Label className="text-xs">الخدمة / الوصف *</Label>
-                      <Select
-                        value={item.serviceId ?? ''}
-                        onValueChange={(v) => {
-                          if (v) autofillFromService(i, v);
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="اختر خدمة أو اكتب وصفاً..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(services ?? []).map((s) => (
-                            <SelectItem
-                              key={s.id}
-                              value={s.id}
-                              className="text-xs"
-                            >
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">الخدمة *</Label>
+                        <Select
+                          value={item.serviceId ?? ''}
+                          onValueChange={(v) => {
+                            if (v) autofillFromService(i, v);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر خدمة..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(services ?? []).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">الوصف</Label>
                       <Input
-                        className="h-8 text-xs"
                         placeholder="وصف البند"
                         value={item.description}
                         onChange={(e) =>
@@ -627,74 +630,85 @@ export default function NewQuotePage() {
                         }
                       />
                     </div>
+                  </section>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs">الكمية *</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          updateItem(i, 'quantity', Number(e.target.value))
-                        }
-                      />
+                  {/* Section 2 — Pricing (qty + unit + price + discount, in a 4-col band) */}
+                  <section className="space-y-3 border-t border-border pt-3">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      التسعير
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">الكمية *</Label>
+                        <Input
+                          className="num"
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.quantity}
+                          onChange={(e) =>
+                            updateItem(i, 'quantity', Number(e.target.value))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">الوحدة</Label>
+                        <Input
+                          placeholder="م², ساعة، ..."
+                          value={item.unit ?? ''}
+                          onChange={(e) =>
+                            updateItem(i, 'unit', e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">سعر الوحدة (ريال) *</Label>
+                        <Input
+                          className="num"
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.unitPrice}
+                          onChange={(e) =>
+                            updateItem(i, 'unitPrice', Number(e.target.value))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">خصم البند (%)</Label>
+                        <Input
+                          className="num"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={item.discountPct ?? 0}
+                          onChange={(e) =>
+                            updateItem(i, 'discountPct', Number(e.target.value))
+                          }
+                        />
+                      </div>
                     </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs">الوحدة</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder="م², ساعة، ..."
-                        value={item.unit ?? ''}
-                        onChange={(e) => updateItem(i, 'unit', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs">سعر الوحدة (ريال) *</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          updateItem(i, 'unitPrice', Number(e.target.value))
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs">خصم البند (%)</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={item.discountPct ?? 0}
-                        onChange={(e) =>
-                          updateItem(i, 'discountPct', Number(e.target.value))
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1 lg:col-span-2">
-                      <Label className="text-xs">ملاحظات</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={item.notes ?? ''}
-                        onChange={(e) => updateItem(i, 'notes', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="flex items-end justify-end">
-                      <p className="text-sm font-semibold">
+                    <div className="flex items-baseline justify-end gap-2 pt-1">
+                      <span className="text-xs text-muted-foreground">
+                        إجمالي البند
+                      </span>
+                      <span className="num text-base font-semibold text-primary">
                         {sar(calcItemTotal(item))}
-                      </p>
+                      </span>
                     </div>
-                  </div>
+                  </section>
+
+                  {/* Section 3 — Notes (optional, full-width) */}
+                  <section className="space-y-1.5 border-t border-border pt-3">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      ملاحظات
+                    </h3>
+                    <Input
+                      placeholder="ملاحظات إضافية لهذا البند..."
+                      value={item.notes ?? ''}
+                      onChange={(e) => updateItem(i, 'notes', e.target.value)}
+                    />
+                  </section>
 
                   {/* Methodology + Gantt toggle — collapsed by default to keep
                       the list scannable for small quotes. Methodology renders

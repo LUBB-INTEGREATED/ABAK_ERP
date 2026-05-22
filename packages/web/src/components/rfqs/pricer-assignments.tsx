@@ -21,7 +21,7 @@
  */
 
 import { useState } from 'react';
-import { Plus, Star, StarOff, Trash2 } from 'lucide-react';
+import { CircleAlert, Plus, Star, StarOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -136,15 +136,24 @@ export function PricerAssignments({ rfqId }: { rfqId: string }) {
           )}
 
           {leadCount === 0 && assignments.length > 0 && (
-            <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-              ⚠ No Lead Pricer designated. Pick one (⭐) so the quote can be
-              submitted for approval.
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-warning/30 bg-warning/10 p-2 text-xs text-warning">
+              <CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>
+                No Lead Pricer designated. Tap the{' '}
+                <Star className="inline h-3 w-3 fill-current" aria-hidden /> on
+                one row so the quote can be submitted for approval.
+              </span>
             </p>
           )}
           {leadCount > 1 && (
-            <p className="mt-3 rounded-md border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900">
-              ⚠ {leadCount} Lead Pricers designated — should be exactly 1.
-              Toggle the ⭐ off on the duplicate rows.
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+              <CircleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>
+                {leadCount} Lead Pricers designated — should be exactly 1.
+                Toggle the{' '}
+                <Star className="inline h-3 w-3 fill-current" aria-hidden /> off
+                on the duplicate rows.
+              </span>
             </p>
           )}
         </CardContent>

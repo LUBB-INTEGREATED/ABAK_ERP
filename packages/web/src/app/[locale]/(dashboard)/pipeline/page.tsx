@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowRightLeft, CalendarPlus, RefreshCcw } from 'lucide-react';
@@ -39,10 +40,10 @@ import {
   CLOSED_STAGES,
   OPEN_STAGES,
   PIPELINE_STAGES,
-  STAGE_LABELS,
   type PipelineEntry,
   type PipelineStage,
 } from '@/lib/types/pipeline';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 const STAGE_ACCENT: Record<PipelineStage, string> = {
   NEW_LEAD: 'border-sky-200',
@@ -59,31 +60,13 @@ const STAGE_ACCENT: Record<PipelineStage, string> = {
   POSTPONED: 'border-zinc-300',
 };
 
-// BPD-aligned VisitType labels (Arabic)
-const VISIT_TYPE_LABELS: Record<VisitType, string> = {
-  CLIENT_OFFICE: 'زيارة مكتب العميل',
-  SITE: 'زيارة الموقع',
-  ABAK_OFFICE: 'العميل في مكتبنا',
-  VIRTUAL: 'اجتماع افتراضي',
-  EVENT: 'فعالية / معرض',
-};
-
-const SENTIMENT_LABELS: Record<ClientSentiment, string> = {
-  VERY_INTERESTED: 'مهتم جداً',
-  INTERESTED: 'مهتم',
-  NEUTRAL: 'محايد',
-  HESITANT: 'متردد',
-  NOT_INTERESTED: 'غير مهتم',
-};
-
-// BPD M3-008: READY_FOR_RFQ qualification checklist (5 criteria)
-const RFQ_CHECKLIST = [
-  'تم تأكيد جدية العميل واهتمامه بالمضي قدماً',
-  'نوع الخدمة أو المشروع محدد بوضوح',
-  'الموقع أو المنطقة تم تحديده',
-  'تم التواصل مع صاحب القرار',
-  'الوثائق المطلوبة متاحة أو تم التعهد بها رسمياً',
-];
+const RFQ_KEYS = [
+  'rfqCriterion1',
+  'rfqCriterion2',
+  'rfqCriterion3',
+  'rfqCriterion4',
+  'rfqCriterion5',
+] as const;
 
 function kpi(label: string, value: string | number) {
   return (
@@ -101,6 +84,14 @@ function kpi(label: string, value: string | number) {
 }
 
 export default function PipelinePage() {
+  const t = useTranslations('pipelineUi');
+  const locale = useLocale();
+  const stageLabel = useEnumLabel('pipelineStage');
+  const visitTypeLabel = useEnumLabel('visitType');
+  const sentimentLabel = useEnumLabel('interestLevel');
+
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   const [search, setSearch] = useState('');
   const filter = useMemo(
     () => ({ search: search.trim() || undefined }),
@@ -116,14 +107,12 @@ export default function PipelinePage() {
   const [reason, setReason] = useState('');
   const [postponedUntil, setPostponedUntil] = useState('');
 
-  // READY_FOR_RFQ checklist dialog state
   const [rfqCheckOpen, setRfqCheckOpen] = useState(false);
   const [rfqEntry, setRfqEntry] = useState<PipelineEntry | null>(null);
   const [rfqChecked, setRfqChecked] = useState<boolean[]>(
-    new Array(RFQ_CHECKLIST.length).fill(false),
+    new Array(RFQ_KEYS.length).fill(false),
   );
 
-  // Visit dialog state
   const [visitOpen, setVisitOpen] = useState(false);
   const [visitType, setVisitType] = useState<VisitType>('CLIENT_OFFICE');
   const [visitPurpose, setVisitPurpose] = useState('');
@@ -156,9 +145,8 @@ export default function PipelinePage() {
 
   function handleStageSelectChange(value: PipelineStage) {
     if (value === 'READY_FOR_RFQ' && activeEntry) {
-      // Show qualification checklist before actually setting the stage
       setRfqEntry(activeEntry);
-      setRfqChecked(new Array(RFQ_CHECKLIST.length).fill(false));
+      setRfqChecked(new Array(RFQ_KEYS.length).fill(false));
       setRfqCheckOpen(true);
     }
     setNextStage(value);
@@ -167,23 +155,22 @@ export default function PipelinePage() {
   async function submitMove() {
     if (!activeEntry) return;
 
-    // If user selected READY_FOR_RFQ but checklist not confirmed, show it
     if (nextStage === 'READY_FOR_RFQ') {
       const allChecked = rfqChecked.every(Boolean);
       if (!allChecked) {
         setRfqEntry(activeEntry);
-        setRfqChecked(new Array(RFQ_CHECKLIST.length).fill(false));
+        setRfqChecked(new Array(RFQ_KEYS.length).fill(false));
         setRfqCheckOpen(true);
         return;
       }
     }
 
     if (nextStage === 'LOST' && !reason.trim()) {
-      toast.error('Reason is required for LOST');
+      toast.error(t('reasonRequiredLost'));
       return;
     }
     if (nextStage === 'POSTPONED' && !postponedUntil) {
-      toast.error('Postponed-until date is required');
+      toast.error(t('postponedDateRequired'));
       return;
     }
     try {
@@ -195,12 +182,12 @@ export default function PipelinePage() {
           ? new Date(postponedUntil).toISOString()
           : undefined,
       });
-      toast.success(`Moved to ${STAGE_LABELS[nextStage]}`);
+      toast.success(t('movedTo', { stage: stageLabel(nextStage) }));
       setActiveEntry(null);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to move';
+          ?.response?.data?.message ?? t('moveFailed');
       toast.error(
         Array.isArray(message) ? message.join(', ') : String(message),
       );
@@ -214,13 +201,13 @@ export default function PipelinePage() {
         id: rfqEntry.id,
         stage: 'READY_FOR_RFQ',
       });
-      toast.success(`Moved to ${STAGE_LABELS['READY_FOR_RFQ']}`);
+      toast.success(t('movedTo', { stage: stageLabel('READY_FOR_RFQ') }));
       setRfqCheckOpen(false);
       setActiveEntry(null);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to move';
+          ?.response?.data?.message ?? t('moveFailed');
       toast.error(
         Array.isArray(message) ? message.join(', ') : String(message),
       );
@@ -229,11 +216,11 @@ export default function PipelinePage() {
 
   async function submitVisit() {
     if (!visitPurpose.trim()) {
-      toast.error('Purpose is required');
+      toast.error(t('purposeRequired'));
       return;
     }
     if (!visitScheduledAt) {
-      toast.error('Scheduled date/time is required');
+      toast.error(t('scheduledDateRequired'));
       return;
     }
     try {
@@ -245,7 +232,7 @@ export default function PipelinePage() {
         clientSentiment: visitSentiment || undefined,
         attachmentUrls: [],
       });
-      toast.success('تم تسجيل الزيارة');
+      toast.success(t('visitLogged'));
       setVisitOpen(false);
       setVisitType('CLIENT_OFFICE');
       setVisitPurpose('');
@@ -256,7 +243,7 @@ export default function PipelinePage() {
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to log visit';
+          ?.response?.data?.message ?? t('logVisitFailed');
       toast.error(
         Array.isArray(message) ? message.join(', ') : String(message),
       );
@@ -267,10 +254,8 @@ export default function PipelinePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-abak-blue">Sales pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Every opportunity across all nine stages.
-          </p>
+          <h1 className="text-2xl font-bold text-abak-blue">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -278,35 +263,42 @@ export default function PipelinePage() {
             size="sm"
             onClick={() => setVisitOpen(true)}
           >
-            <CalendarPlus className="mr-2 h-4 w-4" />
-            تسجيل زيارة
+            <CalendarPlus className="me-2 h-4 w-4" />
+            {t('logVisit')}
           </Button>
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
+            aria-label={t('refresh')}
+            title={t('refresh')}
           >
             <RefreshCcw
-              className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')}
+              className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
-            Refresh
           </Button>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-        {kpi('Open opportunities', stats.data?.totals.openCount ?? '—')}
-        {kpi('Open value', `${Math.round(openValue).toLocaleString()} SAR`)}
-        {kpi('Won value', `${Math.round(wonValue).toLocaleString()} SAR`)}
-        {kpi('Conversion', `${(conversion * 100).toFixed(1)}%`)}
+        {kpi(t('kpiOpenOpportunities'), stats.data?.totals.openCount ?? '—')}
+        {kpi(
+          t('kpiOpenValue'),
+          `${Math.round(openValue).toLocaleString(numLocale)} SAR`,
+        )}
+        {kpi(
+          t('kpiWonValue'),
+          `${Math.round(wonValue).toLocaleString(numLocale)} SAR`,
+        )}
+        {kpi(t('kpiConversion'), `${(conversion * 100).toFixed(1)}%`)}
       </div>
 
       <Card>
         <CardContent className="py-4">
           <div className="flex flex-wrap gap-3">
             <Input
-              placeholder="Search lead / client number, name…"
+              placeholder={t('searchPlaceholder')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="max-w-md"
@@ -340,29 +332,28 @@ export default function PipelinePage() {
         ))}
       </div>
 
-      {/* Move Stage Dialog */}
       <Dialog
         open={Boolean(activeEntry)}
         onOpenChange={(open) => !open && setActiveEntry(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Move stage</DialogTitle>
+            <DialogTitle>{t('moveStage')}</DialogTitle>
             <DialogDescription>
-              {activeEntry && (
-                <>
-                  Current: {STAGE_LABELS[activeEntry.stage]} ·{' '}
-                  {(activeEntry.lead?.leadNumber ||
-                    activeEntry.client?.clientNumber) ??
-                    '—'}
-                </>
-              )}
+              {activeEntry &&
+                t('moveCurrent', {
+                  stage: stageLabel(activeEntry.stage),
+                  number:
+                    (activeEntry.lead?.leadNumber ||
+                      activeEntry.client?.clientNumber) ??
+                    '—',
+                })}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label>New stage</Label>
+              <Label>{t('newStageLabel')}</Label>
               <Select
                 value={nextStage}
                 onValueChange={(value) =>
@@ -377,7 +368,7 @@ export default function PipelinePage() {
                     (s) => activeEntry && s !== activeEntry.stage,
                   ).map((s) => (
                     <SelectItem key={s} value={s}>
-                      {STAGE_LABELS[s]}
+                      {stageLabel(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -386,7 +377,7 @@ export default function PipelinePage() {
 
             {(nextStage === 'LOST' || nextStage === 'POSTPONED') && (
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason</Label>
+                <Label htmlFor="reason">{t('reasonLabel')}</Label>
                 <Textarea
                   id="reason"
                   value={reason}
@@ -397,7 +388,7 @@ export default function PipelinePage() {
 
             {nextStage === 'POSTPONED' && (
               <div className="space-y-2">
-                <Label htmlFor="postponedUntil">Revisit on</Label>
+                <Label htmlFor="postponedUntil">{t('revisitOn')}</Label>
                 <Input
                   id="postponedUntil"
                   type="date"
@@ -410,39 +401,35 @@ export default function PipelinePage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setActiveEntry(null)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={submitMove} disabled={moveMutation.isPending}>
-              {moveMutation.isPending ? 'Moving…' : 'Move'}
+              {moveMutation.isPending ? t('movingTo') : t('moveButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* READY_FOR_RFQ Qualification Checklist Dialog */}
       <Dialog
         open={rfqCheckOpen}
         onOpenChange={(open) => {
           if (!open) {
             setRfqCheckOpen(false);
-            // Reset stage selection if user cancels
             if (activeEntry) {
               setNextStage(activeEntry.stage);
             }
           }
         }}
       >
-        <DialogContent className="max-w-lg" dir="rtl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>تأهيل الفرصة لطلب عرض السعر</DialogTitle>
-            <DialogDescription>
-              يجب تأكيد جميع المعايير الخمسة للمضي قدماً
-            </DialogDescription>
+            <DialogTitle>{t('rfqTitle')}</DialogTitle>
+            <DialogDescription>{t('rfqDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {RFQ_CHECKLIST.map((criterion, index) => (
-              <div key={index} className="flex items-start gap-3">
+            {RFQ_KEYS.map((key, index) => (
+              <div key={key} className="flex items-start gap-3">
                 <Checkbox
                   id={`rfq-check-${index}`}
                   checked={rfqChecked[index]}
@@ -457,19 +444,13 @@ export default function PipelinePage() {
                   htmlFor={`rfq-check-${index}`}
                   className="cursor-pointer text-sm leading-snug"
                 >
-                  {criterion}
+                  {t(key)}
                 </Label>
               </div>
             ))}
           </div>
 
-          <DialogFooter className="flex-row-reverse gap-2">
-            <Button
-              onClick={confirmRfqChecklist}
-              disabled={!rfqChecked.every(Boolean) || moveMutation.isPending}
-            >
-              {moveMutation.isPending ? 'جاري النقل…' : 'تأكيد'}
-            </Button>
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
@@ -477,26 +458,28 @@ export default function PipelinePage() {
                 if (activeEntry) setNextStage(activeEntry.stage);
               }}
             >
-              إلغاء
+              {t('cancel')}
+            </Button>
+            <Button
+              onClick={confirmRfqChecklist}
+              disabled={!rfqChecked.every(Boolean) || moveMutation.isPending}
+            >
+              {moveMutation.isPending ? t('movingTo') : t('rfqConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Log Visit Dialog */}
       <Dialog open={visitOpen} onOpenChange={setVisitOpen}>
-        <DialogContent className="max-w-lg" dir="rtl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>تسجيل زيارة ميدانية</DialogTitle>
-            <DialogDescription>
-              سجّل تفاصيل الزيارة وسيتم إنشاء تفاعل تلقائي في CRM
-            </DialogDescription>
+            <DialogTitle>{t('logVisitTitle')}</DialogTitle>
+            <DialogDescription>{t('logVisitDescription')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Visit Type */}
             <div className="space-y-2">
-              <Label htmlFor="visitType">نوع الزيارة</Label>
+              <Label htmlFor="visitType">{t('visitType')}</Label>
               <Select
                 value={visitType}
                 onValueChange={(value) => setVisitType(value as VisitType)}
@@ -505,30 +488,36 @@ export default function PipelinePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(VISIT_TYPE_LABELS) as VisitType[]).map((vt) => (
+                  {(
+                    [
+                      'CLIENT_OFFICE',
+                      'SITE',
+                      'ABAK_OFFICE',
+                      'VIRTUAL',
+                      'EVENT',
+                    ] as VisitType[]
+                  ).map((vt) => (
                     <SelectItem key={vt} value={vt}>
-                      {VISIT_TYPE_LABELS[vt]}
+                      {visitTypeLabel(vt)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Purpose / Discussion Summary */}
             <div className="space-y-2">
-              <Label htmlFor="visitPurpose">ملخص النقاش</Label>
+              <Label htmlFor="visitPurpose">{t('discussionSummary')}</Label>
               <Textarea
                 id="visitPurpose"
                 value={visitPurpose}
                 onChange={(e) => setVisitPurpose(e.target.value)}
-                placeholder="موضوع الزيارة ومحاور النقاش الرئيسية"
+                placeholder={t('discussionPlaceholder')}
                 rows={3}
               />
             </div>
 
-            {/* Scheduled At */}
             <div className="space-y-2">
-              <Label htmlFor="visitScheduledAt">تاريخ ووقت الزيارة</Label>
+              <Label htmlFor="visitScheduledAt">{t('scheduledAt')}</Label>
               <Input
                 id="visitScheduledAt"
                 type="datetime-local"
@@ -537,21 +526,19 @@ export default function PipelinePage() {
               />
             </div>
 
-            {/* Key Outcomes */}
             <div className="space-y-2">
-              <Label htmlFor="visitKeyOutcomes">النتائج الرئيسية</Label>
+              <Label htmlFor="visitKeyOutcomes">{t('keyOutcomes')}</Label>
               <Textarea
                 id="visitKeyOutcomes"
                 value={visitKeyOutcomes}
                 onChange={(e) => setVisitKeyOutcomes(e.target.value)}
-                placeholder="النتائج والقرارات المتخذة"
+                placeholder={t('keyOutcomesPlaceholder')}
                 rows={2}
               />
             </div>
 
-            {/* Client Sentiment */}
             <div className="space-y-2">
-              <Label htmlFor="visitSentiment">مؤشر اهتمام العميل</Label>
+              <Label htmlFor="visitSentiment">{t('clientSentiment')}</Label>
               <Select
                 value={visitSentiment}
                 onValueChange={(value) =>
@@ -559,41 +546,48 @@ export default function PipelinePage() {
                 }
               >
                 <SelectTrigger id="visitSentiment">
-                  <SelectValue placeholder="اختر مستوى الاهتمام" />
+                  <SelectValue placeholder={t('selectSentiment')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(SENTIMENT_LABELS) as ClientSentiment[]).map(
-                    (s) => (
-                      <SelectItem key={s} value={s}>
-                        {SENTIMENT_LABELS[s]}
-                      </SelectItem>
-                    ),
-                  )}
+                  {(
+                    [
+                      'VERY_INTERESTED',
+                      'INTERESTED',
+                      'NEUTRAL',
+                      'HESITANT',
+                      'NOT_INTERESTED',
+                    ] as ClientSentiment[]
+                  ).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {sentimentLabel(s)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Next Action */}
             <div className="space-y-2">
-              <Label htmlFor="visitNextAction">الخطوة التالية</Label>
+              <Label htmlFor="visitNextAction">{t('nextActionLabel')}</Label>
               <Input
                 id="visitNextAction"
                 value={visitNextAction}
                 onChange={(e) => setVisitNextAction(e.target.value)}
-                placeholder="ما الإجراء المطلوب بعد هذه الزيارة؟"
+                placeholder={t('nextActionPlaceholder')}
               />
             </div>
           </div>
 
-          <DialogFooter className="flex-row-reverse gap-2">
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVisitOpen(false)}>
+              {t('cancel')}
+            </Button>
             <Button
               onClick={submitVisit}
               disabled={createVisitMutation.isPending}
             >
-              {createVisitMutation.isPending ? 'جاري الحفظ…' : 'حفظ الزيارة'}
-            </Button>
-            <Button variant="outline" onClick={() => setVisitOpen(false)}>
-              إلغاء
+              {createVisitMutation.isPending
+                ? t('savingVisit')
+                : t('saveVisit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -615,6 +609,11 @@ function StageColumn({
   compact?: boolean;
   onMove: (entry: PipelineEntry) => void;
 }) {
+  const t = useTranslations('pipelineUi');
+  const stageLabel = useEnumLabel('pipelineStage');
+  const locale = useLocale();
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   const totalValue = entries.reduce(
     (sum, entry) => sum + (entry.estimatedValue ?? 0),
     0,
@@ -630,21 +629,21 @@ function StageColumn({
       <div className="border-b px-3 py-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-abak-blue">
-            {STAGE_LABELS[stage]}
+            {stageLabel(stage)}
           </div>
           <Badge variant="outline">{entries.length}</Badge>
         </div>
         <div className="text-xs text-muted-foreground">
-          {Math.round(totalValue).toLocaleString()} SAR
+          {Math.round(totalValue).toLocaleString(numLocale)} SAR
         </div>
       </div>
       <div className="flex-1 space-y-2 p-2">
         {isLoading && (
-          <div className="text-xs text-muted-foreground">Loading…</div>
+          <div className="text-xs text-muted-foreground">{t('loading')}</div>
         )}
         {!isLoading && entries.length === 0 && (
           <div className="py-6 text-center text-xs text-muted-foreground">
-            Empty
+            {t('empty')}
           </div>
         )}
         {entries.map((entry) => (
@@ -666,12 +665,16 @@ function EntryCard({
   entry: PipelineEntry;
   onMove: () => void;
 }) {
+  const t = useTranslations('pipelineUi');
+  const locale = useLocale();
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   const subject =
     entry.lead?.companyName ||
     entry.lead?.contactName ||
     entry.client?.companyName ||
     entry.client?.contactName ||
-    'Unknown';
+    t('unknown');
   const number =
     entry.lead?.leadNumber ||
     entry.client?.clientNumber ||
@@ -679,7 +682,7 @@ function EntryCard({
   const owner = entry.owner
     ? [entry.owner.firstName, entry.owner.lastName].filter(Boolean).join(' ') ||
       entry.owner.email
-    : 'Unassigned';
+    : t('unassigned');
 
   const href = entry.lead
     ? `/leads/${entry.lead.id}`
@@ -700,18 +703,18 @@ function EntryCard({
           <Button
             size="sm"
             variant="ghost"
-            className="-mr-2 h-7 px-2"
+            className="-me-2 h-7 px-2"
             onClick={onMove}
-            aria-label="Move stage"
+            aria-label={t('moveStage')}
           >
-            <ArrowRightLeft className="h-3.5 w-3.5" />
+            <ArrowRightLeft className="h-3.5 w-3.5 rtl:rotate-180" />
           </Button>
         </div>
         <div className="text-sm font-medium">{subject}</div>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{owner}</span>
           {entry.estimatedValue !== null && (
-            <span>{entry.estimatedValue.toLocaleString()} SAR</span>
+            <span>{entry.estimatedValue.toLocaleString(numLocale)} SAR</span>
           )}
         </div>
         {entry.probability !== null && (

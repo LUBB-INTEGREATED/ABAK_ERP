@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import {
   BarChart2,
@@ -38,26 +38,22 @@ const CATEGORY_META: Record<
   executive: { icon: BarChart2, color: 'text-abak-gold' },
 };
 
-const CATEGORY_LABELS: Record<ReportCategory, string> = {
-  sales: 'المبيعات',
-  rfq: 'طلبات العروض',
-  project: 'المشاريع',
-  finance: 'المالية',
-  gov: 'المعاملات الحكومية',
-  sla: 'مستويات الخدمة',
-  executive: 'التنفيذي',
-};
-
 function ReportCard({ report }: { report: ReportMeta }) {
   const router = useRouter();
+  const locale = useLocale();
+  const isAr = locale === 'ar';
   return (
     <Card
       className="cursor-pointer transition-shadow hover:shadow-md"
       onClick={() => router.push(`/reports/${report.code}`)}
     >
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">{report.nameAr}</CardTitle>
-        <CardDescription className="text-xs">{report.nameEn}</CardDescription>
+        <CardTitle className="text-sm font-semibold">
+          {isAr ? report.nameAr : report.nameEn}
+        </CardTitle>
+        <CardDescription className="text-xs">
+          {isAr ? report.nameEn : report.nameAr}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-1">
@@ -65,7 +61,7 @@ function ReportCard({ report }: { report: ReportMeta }) {
             .filter((f) => f.required)
             .map((f) => (
               <Badge key={f.key} variant="secondary" className="text-[10px]">
-                {f.labelAr}
+                {isAr ? f.labelAr : f.labelEn}
               </Badge>
             ))}
         </div>
@@ -76,6 +72,7 @@ function ReportCard({ report }: { report: ReportMeta }) {
 
 export default function ReportsPage() {
   const t = useTranslations();
+  const tCat = useTranslations('reports.categories');
   const { data: catalog, isLoading } = useReportCatalog();
   const [activeTab, setActiveTab] = useState<string>('sales');
 
@@ -107,8 +104,13 @@ export default function ReportsPage() {
                   className="gap-1.5"
                 >
                   {Icon && <Icon className={`h-3.5 w-3.5 ${meta.color}`} />}
-                  {CATEGORY_LABELS[cat.category as ReportCategory] ??
-                    cat.category}
+                  {(() => {
+                    try {
+                      return tCat(cat.category as never);
+                    } catch {
+                      return cat.category;
+                    }
+                  })()}
                   <Badge variant="outline" className="ms-1 text-[10px]">
                     {cat.reports.length}
                   </Badge>

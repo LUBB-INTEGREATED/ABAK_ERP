@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Banknote,
@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useExecutiveKpis } from '@/lib/hooks/use-reports';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 function KpiCard({
   title,
@@ -68,21 +69,6 @@ function KpiCard({
   );
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  NEW_LEAD: 'عميل جديد',
-  FIRST_CONTACT_MADE: 'التواصل الأول',
-  MEETING_SCHEDULED: 'اجتماع مجدول',
-  MEETING_DONE: 'اجتماع منتهٍ',
-  READY_FOR_RFQ: 'جاهز للطلب',
-  RFQ_SUBMITTED: 'طلب تسعير مُرسَل',
-  QUOTE_IN_PREPARATION: 'عرض في الإعداد',
-  QUOTE_SENT_TO_CLIENT: 'عرض مُرسَل للعميل',
-  NEGOTIATION_REVISION: 'تفاوض / مراجعة',
-  WON: 'ربح',
-  LOST: 'خسارة',
-  POSTPONED: 'تأجيل',
-};
-
 const PIPELINE_COLORS = [
   '#1e3a5f',
   '#2563eb',
@@ -95,10 +81,14 @@ const PIPELINE_COLORS = [
 
 export default function ExecutiveDashboardPage() {
   const t = useTranslations();
+  const tEx = useTranslations('executive');
+  const locale = useLocale();
+  const stageLabel = useEnumLabel('pipelineStage');
   const { data: kpis, isLoading } = useExecutiveKpis();
 
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
   const sarFmt = (n: number) =>
-    n.toLocaleString('ar-SA', {
+    n.toLocaleString(numLocale, {
       style: 'currency',
       currency: 'SAR',
       maximumFractionDigits: 0,
@@ -125,7 +115,7 @@ export default function ExecutiveDashboardPage() {
           {kpis && (
             <p className="text-xs text-muted-foreground">
               {t('reports.lastUpdated')}:{' '}
-              {new Date(kpis.generatedAt).toLocaleTimeString('ar-SA')}
+              {new Date(kpis.generatedAt).toLocaleTimeString(numLocale)}
             </p>
           )}
         </div>
@@ -141,46 +131,46 @@ export default function ExecutiveDashboardPage() {
       ) : (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <KpiCard
-            title="الإيرادات الشهرية"
+            title={tEx('kpi.monthlyRevenue')}
             value={sarFmt(kpis?.monthlyRevenue.actual ?? 0)}
-            sub={`الهدف: ${sarFmt(kpis?.monthlyRevenue.target ?? 0)}`}
+            sub={`${t('targets.target')}: ${sarFmt(kpis?.monthlyRevenue.target ?? 0)}`}
             icon={Banknote}
             trend={attainment ?? undefined}
           />
           <KpiCard
-            title="معدل الربح (90 يوماً)"
+            title={tEx('kpi.profitMargin')}
             value={`${kpis?.winRate ?? 0}%`}
             icon={Trophy}
           />
           <KpiCard
-            title="كفاءة التحصيل"
+            title={tEx('kpi.collectionEfficiency')}
             value={`${kpis?.collectionEfficiency ?? 0}%`}
-            sub={`مفتوح: ${sarFmt(kpis?.openInvoicesValue ?? 0)}`}
+            sub={`${tEx('kpi.openGovTx')}: ${sarFmt(kpis?.openInvoicesValue ?? 0)}`}
             icon={TrendingUp}
           />
           <KpiCard
-            title="العمولات المتراكمة"
+            title={tEx('kpi.accumulatedCommission')}
             value={sarFmt(kpis?.commissionAccruing ?? 0)}
             icon={ClipboardList}
           />
           <KpiCard
-            title="مشاريع نشطة"
+            title={tEx('kpi.activeProjects')}
             value={kpis?.activeProjectsCount ?? 0}
             icon={Building2}
           />
           <KpiCard
-            title="مشاريع في خطر"
+            title={tEx('kpi.atRiskProjects')}
             value={kpis?.atRiskProjectsCount ?? 0}
             icon={AlertTriangle}
             alert={(kpis?.atRiskProjectsCount ?? 0) > 0}
           />
           <KpiCard
-            title="معاملات حكومية مفتوحة"
+            title={tEx('kpi.openGovTx')}
             value={kpis?.openGovTransactionsCount ?? 0}
             icon={ClipboardList}
           />
           <KpiCard
-            title="بانتظار ردنا (حكومي)"
+            title={tEx('kpi.awaitingOurResponse')}
             value={kpis?.awaitingResponseGovCount ?? 0}
             icon={AlertTriangle}
             alert={(kpis?.awaitingResponseGovCount ?? 0) > 0}
@@ -192,7 +182,9 @@ export default function ExecutiveDashboardPage() {
         {/* Pipeline Funnel */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">خط المبيعات بالمراحل</CardTitle>
+            <CardTitle className="text-base">
+              {tEx('pipelineByStage')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -202,7 +194,7 @@ export default function ExecutiveDashboardPage() {
                 <BarChart
                   data={openPipeline?.map((s) => ({
                     ...s,
-                    name: STAGE_LABELS[s.stage] ?? s.stage,
+                    name: stageLabel(s.stage),
                   }))}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
@@ -210,12 +202,16 @@ export default function ExecutiveDashboardPage() {
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip
                     formatter={(value, name) =>
-                      name === 'count'
-                        ? [value, 'العدد']
-                        : [sarFmt(Number(value)), 'القيمة']
+                      name === tEx('count')
+                        ? [value, tEx('count')]
+                        : [sarFmt(Number(value)), tEx('value')]
                     }
                   />
-                  <Bar dataKey="count" name="العدد" radius={[4, 4, 0, 0]}>
+                  <Bar
+                    dataKey="count"
+                    name={tEx('count')}
+                    radius={[4, 4, 0, 0]}
+                  >
                     {openPipeline?.map((_, i) => (
                       <Cell
                         key={i}
@@ -233,7 +229,7 @@ export default function ExecutiveDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">
-              تحقق أهداف فريق المبيعات
+              {tEx('targetAchievement')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -241,7 +237,7 @@ export default function ExecutiveDashboardPage() {
               <Skeleton className="h-56" />
             ) : (kpis?.repAttainments ?? []).length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">
-                لا توجد أهداف محددة لهذا الشهر
+                {tEx('noTargets')}
               </p>
             ) : (
               <div className="space-y-3">

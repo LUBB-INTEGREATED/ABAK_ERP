@@ -17,45 +17,48 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLeadsList, useLeadStats } from '@/lib/hooks/use-leads';
 import { useClientStats } from '@/lib/hooks/use-clients';
-import {
-  CHANNEL_LABELS,
-  SLA_LABELS,
-  STATUS_LABELS,
-  type LeadChannel,
-  type LeadStatus,
-  type SLAStatus,
-} from '@/lib/types/lead';
-import {
-  CLASSIFICATION_LABELS,
-  type ClientClassification,
-} from '@/lib/types/client';
+import { type LeadStatus, type SLAStatus } from '@/lib/types/lead';
+import { type ClientClassification } from '@/lib/types/client';
 import { Link } from '@/i18n/navigation';
+import { useTranslations as useT } from 'next-intl';
+
+// Brand-anchored categorical palette. Navy ramp for in-progress / neutral states,
+// semantic tones reserved for terminal states (success green, destructive red, muted gray).
+// This replaces the 10-color rainbow flagged in the UI audit (Tier 3 #12).
+const BRAND_NAVY = '#0B1F33';
+const BRAND_NAVY_400 = '#3D6590';
+const BRAND_NAVY_300 = '#6F8DAE';
+const BRAND_COPPER = '#B45C2C';
+const SUCCESS = '#15803D'; // emerald-700 (matches --success token)
+const DESTRUCTIVE = '#C8302C';
+const WARNING = '#D97706';
+const MUTED = '#94928D';
 
 const CLASSIFICATION_COLORS: Record<ClientClassification, string> = {
-  NEW: '#0ea5e9',
-  RETURNING: '#236382',
-  VIP: '#A78B42',
-  DORMANT: '#a1a1aa',
-  ARCHIVED: '#ef4444',
+  NEW: BRAND_NAVY_300,
+  RETURNING: BRAND_NAVY,
+  VIP: BRAND_COPPER,
+  DORMANT: MUTED,
+  ARCHIVED: DESTRUCTIVE,
 };
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
-  INCOMING: '#0ea5e9',
-  ASSIGNED: '#236382',
-  IN_PROGRESS: '#6366f1',
-  QUALIFIED: '#A78B42',
-  DISQUALIFIED: '#a1a1aa',
-  TENDER_PENDING: '#a855f7',
-  TENDER_ACTIVE: '#3b82f6',
-  TENDER_SUBMITTED: '#06b6d4',
-  TENDER_WON: '#10b981',
-  TENDER_LOST: '#ef4444',
+  INCOMING: BRAND_NAVY_300,
+  ASSIGNED: BRAND_NAVY_400,
+  IN_PROGRESS: BRAND_NAVY,
+  QUALIFIED: SUCCESS,
+  DISQUALIFIED: MUTED,
+  TENDER_PENDING: BRAND_NAVY_400,
+  TENDER_ACTIVE: BRAND_NAVY,
+  TENDER_SUBMITTED: BRAND_COPPER,
+  TENDER_WON: SUCCESS,
+  TENDER_LOST: DESTRUCTIVE,
 };
 
 const SLA_COLORS: Record<SLAStatus, string> = {
-  ON_TIME: '#10b981',
-  DUE_SOON: '#f59e0b',
-  OVERDUE: '#ef4444',
+  ON_TIME: SUCCESS,
+  DUE_SOON: WARNING,
+  OVERDUE: DESTRUCTIVE,
 };
 
 export default function DashboardPage() {
@@ -63,28 +66,38 @@ export default function DashboardPage() {
   const clientStats = useClientStats();
   const recent = useLeadsList({ limit: 5, sort: 'createdAt', order: 'desc' });
   const t = useTranslations();
+  const tLeadStatus = useT('lead.status');
+  const tLeadChannel = useT('lead.channel');
+  const tSla = useT('lead.sla');
+  const tClassification = useT('client.classification');
+
+  const safeT = (translate: ReturnType<typeof useT>, key: string) => {
+    try {
+      return translate(key as never);
+    } catch {
+      return key;
+    }
+  };
 
   const classificationData = (clientStats.data?.byClassification ?? []).map(
     (row) => ({
-      name:
-        CLASSIFICATION_LABELS[row.classification as ClientClassification] ??
-        row.classification,
+      name: safeT(tClassification, row.classification),
       value: row.count,
       classification: row.classification as ClientClassification,
     }),
   );
 
   const statusData = (stats.data?.byStatus ?? []).map((row) => ({
-    name: STATUS_LABELS[row.status as LeadStatus] ?? row.status,
+    name: safeT(tLeadStatus, row.status),
     value: row.count,
     status: row.status as LeadStatus,
   }));
   const channelData = (stats.data?.byChannel ?? []).map((row) => ({
-    name: CHANNEL_LABELS[row.channel as LeadChannel] ?? row.channel,
+    name: safeT(tLeadChannel, row.channel),
     count: row.count,
   }));
   const slaData = (stats.data?.bySla ?? []).map((row) => ({
-    name: SLA_LABELS[row.slaStatus as SLAStatus] ?? row.slaStatus,
+    name: safeT(tSla, row.slaStatus),
     value: row.count,
     slaStatus: row.slaStatus as SLAStatus,
   }));
@@ -104,25 +117,36 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-abak-blue">
+        <h1 className="font-display text-display-md text-primary">
           {t('dashboard.title')}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           {t('dashboard.subtitle')}
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label={t('dashboard.kpi.totalLeads')} value={total} />
-        <KpiCard label={t('dashboard.kpi.newToday')} value={today} highlight />
-        <KpiCard label={t('dashboard.kpi.overdueSla')} value={overdue} danger />
-        <KpiCard
+      {/* Hero KPIs — volume + outcome. The two numbers that matter most. */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <HeroKpiCard
+          label={t('dashboard.kpi.totalLeads')}
+          value={total}
+          caption={
+            today > 0
+              ? `+${today} ${t('dashboard.kpi.newTodaySuffix')}`
+              : undefined
+          }
+        />
+        <HeroKpiCard
           label={t('dashboard.kpi.conversionRate')}
           value={conversionRate}
+          caption={`${qualified} / ${total} ${t('dashboard.kpi.qualifiedSuffix')}`}
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Secondary KPIs — six small tiles, evenly weighted */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <KpiCard label={t('dashboard.kpi.newToday')} value={today} highlight />
+        <KpiCard label={t('dashboard.kpi.overdueSla')} value={overdue} danger />
         <KpiCard
           label={t('dashboard.kpi.totalClients')}
           value={clientStats.data?.total ?? '—'}
@@ -204,15 +228,19 @@ export default function DashboardPage() {
                 <BarChart data={channelData}>
                   <XAxis
                     dataKey="name"
-                    fontSize={11}
+                    fontSize={13}
                     interval={0}
                     angle={-20}
                     textAnchor="end"
                     height={60}
                   />
-                  <YAxis fontSize={11} allowDecimals={false} />
+                  <YAxis fontSize={13} allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#236382" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="count"
+                    fill={BRAND_NAVY}
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -322,13 +350,13 @@ export default function DashboardPage() {
                     >
                       {lead.leadNumber}
                     </Link>
-                    <span className="ml-3 font-medium">{lead.contactName}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      · {CHANNEL_LABELS[lead.channel]}
+                    <span className="ms-3 font-medium">{lead.contactName}</span>
+                    <span className="ms-2 text-xs text-muted-foreground">
+                      · {safeT(tLeadChannel, lead.channel)}
                     </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {STATUS_LABELS[lead.status]}
+                    {safeT(tLeadStatus, lead.status)}
                   </span>
                 </li>
               ))}
@@ -353,20 +381,55 @@ function KpiCard({
 }) {
   return (
     <Card>
-      <CardContent className="py-5">
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <CardContent className="py-4">
+        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
         <div
           className={
             danger
-              ? 'mt-1 text-2xl font-semibold text-rose-600'
+              ? 'num mt-1 text-xl font-semibold text-destructive'
               : highlight
-                ? 'mt-1 text-2xl font-semibold text-abak-gold'
-                : 'mt-1 text-2xl font-semibold text-abak-blue'
+                ? 'num mt-1 text-xl font-semibold text-warning'
+                : 'num mt-1 text-xl font-semibold text-primary'
           }
         >
           {value}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HeroKpiCard({
+  label,
+  value,
+  caption,
+}: {
+  label: string;
+  value: number | string;
+  caption?: string;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="relative py-6">
+        {/* Subtle copper hairline anchors the hero tier */}
+        <span
+          aria-hidden
+          className="absolute inset-y-6 start-0 w-[3px] rounded-full bg-secondary/60"
+        />
+        <div className="ps-4">
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div className="num font-display mt-2 text-display-md text-primary">
+            {value}
+          </div>
+          {caption && (
+            <div className="num mt-1 text-xs text-muted-foreground">
+              {caption}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

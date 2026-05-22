@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,11 +23,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCloseFollowUp } from '@/lib/hooks/use-clients';
-import {
-  CLOSE_OUTCOMES,
-  CLOSE_OUTCOME_LABELS,
-  type CloseOutcome,
-} from '@/lib/types/client';
+import { CLOSE_OUTCOMES, type CloseOutcome } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 export function CloseFollowUpDialog({
   open,
@@ -39,6 +37,8 @@ export function CloseFollowUpDialog({
   followUpId: string;
   clientId: string;
 }) {
+  const t = useTranslations('clients.closeFollowUpDialog');
+  const outcomeLabel = useEnumLabel('closeOutcome');
   const [outcome, setOutcome] = useState<CloseOutcome | ''>('');
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
@@ -58,21 +58,21 @@ export function CloseFollowUpDialog({
   function validate(): boolean {
     const next: Record<string, string> = {};
     if (!outcome) {
-      next.outcome = 'يجب اختيار نتيجة الإغلاق';
+      next.outcome = t('outcomeRequired');
     }
     if (outcome === 'COMPLETED') {
       if (note.trim().length < 10) {
-        next.note = 'ملاحظة الإغلاق يجب أن تكون 10 أحرف على الأقل';
+        next.note = t('noteMinLength');
       }
     }
     if (outcome === 'RESCHEDULED') {
       if (!newDueAt) {
-        next.newDueAt = 'تاريخ الإعادة مطلوب';
+        next.newDueAt = t('newDueRequired');
       }
     }
     if (outcome === 'CANCELLED') {
       if (!reason.trim()) {
-        next.reason = 'سبب الإلغاء مطلوب';
+        next.reason = t('cancelReasonRequired');
       }
     }
     setErrors(next);
@@ -90,13 +90,13 @@ export function CloseFollowUpDialog({
         newDueAt: newDueAt ? new Date(newDueAt).toISOString() : undefined,
         reason: reason.trim() || undefined,
       });
-      toast.success('تم إغلاق المتابعة بنجاح');
+      toast.success(t('closed'));
       reset();
       onOpenChange(false);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'فشل إغلاق المتابعة';
+          ?.response?.data?.message ?? t('closeFailed');
       toast.error(
         Array.isArray(message) ? message.join(', ') : String(message),
       );
@@ -112,17 +112,14 @@ export function CloseFollowUpDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>إغلاق المتابعة</DialogTitle>
-          <DialogDescription>
-            اختر نتيجة الإغلاق وأدخل التفاصيل المطلوبة.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('notePlaceholder')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Outcome selector */}
           <div className="space-y-2">
             <Label>
-              نتيجة الإغلاق <span className="text-destructive">*</span>
+              {t('outcome')} <span className="text-destructive">*</span>
             </Label>
             <Select
               value={outcome}
@@ -132,12 +129,12 @@ export function CloseFollowUpDialog({
               }}
             >
               <SelectTrigger aria-invalid={Boolean(errors.outcome)}>
-                <SelectValue placeholder="اختر النتيجة" />
+                <SelectValue placeholder={t('selectOutcome')} />
               </SelectTrigger>
               <SelectContent>
                 {CLOSE_OUTCOMES.map((o) => (
                   <SelectItem key={o} value={o}>
-                    {CLOSE_OUTCOME_LABELS[o]}
+                    {outcomeLabel(o)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -147,22 +144,21 @@ export function CloseFollowUpDialog({
             )}
           </div>
 
-          {/* COMPLETED: outcome note (min 10 chars) */}
           {outcome === 'COMPLETED' && (
             <div className="space-y-2">
               <Label htmlFor="note">
-                ملاحظة النتيجة <span className="text-destructive">*</span>
+                {t('note')} <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="note"
                 rows={3}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="اكتب ملاحظات تفصيلية عن نتيجة المتابعة (10 أحرف على الأقل)"
+                placeholder={t('notePlaceholder')}
                 aria-invalid={Boolean(errors.note)}
               />
               <p className="text-xs text-muted-foreground">
-                {note.trim().length} / 10 أحرف
+                {note.trim().length} / 10
               </p>
               {errors.note && (
                 <p className="text-xs text-destructive">{errors.note}</p>
@@ -170,11 +166,10 @@ export function CloseFollowUpDialog({
             </div>
           )}
 
-          {/* RESCHEDULED: new due date */}
           {outcome === 'RESCHEDULED' && (
             <div className="space-y-2">
               <Label htmlFor="newDueAt">
-                تاريخ الإعادة <span className="text-destructive">*</span>
+                {t('newDueAt')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="newDueAt"
@@ -189,18 +184,17 @@ export function CloseFollowUpDialog({
             </div>
           )}
 
-          {/* CANCELLED: reason */}
           {outcome === 'CANCELLED' && (
             <div className="space-y-2">
               <Label htmlFor="reason">
-                سبب الإلغاء <span className="text-destructive">*</span>
+                {t('cancelReason')} <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="reason"
                 rows={3}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="اكتب سبب إلغاء هذه المتابعة"
+                placeholder={t('cancelReasonPlaceholder')}
                 aria-invalid={Boolean(errors.reason)}
               />
               {errors.reason && (
@@ -209,20 +203,19 @@ export function CloseFollowUpDialog({
             </div>
           )}
 
-          {/* CLIENT_NOT_REACHABLE: informational note */}
           {outcome === 'CLIENT_NOT_REACHABLE' && (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              سيتم إنشاء متابعة جديدة تلقائياً بعد 3 أيام.
+              {t('autoRescheduleHint')}
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            إلغاء
+            {t('cancel')}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending || !outcome}>
-            {mutation.isPending ? 'جاري الإغلاق…' : 'تأكيد الإغلاق'}
+            {mutation.isPending ? t('submitting') : t('submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

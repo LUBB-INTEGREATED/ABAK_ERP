@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -41,6 +42,7 @@ import { CommunicationsLog } from '@/components/leads/communications-log';
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const tLead = useTranslations('leadDetail');
   const id = params.id;
   const { data: lead, isLoading, isError, error } = useLead(id);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -128,7 +130,7 @@ export default function LeadDetailPage() {
             variant="secondary"
             onClick={() => setConvertOpen(true)}
           >
-            <Repeat2 className="mr-2 h-4 w-4" /> تحويل إلى عميل
+            <Repeat2 className="me-2 h-4 w-4" /> {tLead('convertToClient')}
           </Button>
         )}
         {lead.clientId && (

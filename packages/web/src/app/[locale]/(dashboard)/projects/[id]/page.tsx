@@ -132,8 +132,7 @@ export default function ProjectDetailPage({
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
           <div className="min-w-0 flex-1">
             <p className="font-semibold">
-              تحذير: تقدم المشروع يتجاوز المبالغ المحصلة — يُرجى مراجعة جدول
-              الدفعات
+              {t('projectDetail.progressWarning')}
             </p>
             {project.financialRiskFlaggedAt && (
               <p className="mt-0.5 text-sm text-rose-700">

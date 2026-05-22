@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
+import { ar as arLocale } from 'date-fns/locale';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -44,13 +46,8 @@ import {
   useClientFollowUps,
   useClientNotes,
 } from '@/lib/hooks/use-clients';
-import {
-  FOLLOW_UP_TYPE_LABELS,
-  INTERACTION_TYPE_LABELS,
-  NOTE_TAG_LABELS,
-  type Client,
-  type NoteTag,
-} from '@/lib/types/client';
+import { type Client, type NoteTag } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 import { ClassifyDialog } from './classify-dialog';
 import { EditClientDialog } from './edit-dialog';
 import { InteractionDialog } from './interaction-dialog';
@@ -65,9 +62,15 @@ const NOTE_BADGE: Record<NoteTag, string> = {
   OPPORTUNITY: 'bg-abak-gold/20 text-abak-gold',
 };
 
+function useDateLocale() {
+  const locale = useLocale();
+  return locale === 'ar' ? arLocale : undefined;
+}
+
 export default function ClientDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const t = useTranslations('clients.detail');
   const id = params.id;
   const { data: client, isLoading, isError, error } = useClient(id);
   const archive = useArchiveClient(id);
@@ -93,7 +96,7 @@ export default function ClientDetailPage() {
         <BackLink />
         <Card>
           <CardContent className="py-10 text-center text-destructive">
-            {error instanceof Error ? error.message : 'Client not found.'}
+            {error instanceof Error ? error.message : t('notFound')}
           </CardContent>
         </Card>
       </div>
@@ -103,12 +106,12 @@ export default function ClientDetailPage() {
   async function onArchive() {
     try {
       await archive.mutateAsync();
-      toast.success('Client archived');
+      toast.success(t('archived'));
       router.push('/clients');
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to archive';
+          ?.response?.data?.message ?? t('archiveFailed');
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
   }
@@ -136,10 +139,10 @@ export default function ClientDetailPage() {
                 {client.contactName}
               </h1>
               <div className="mt-1 text-sm text-muted-foreground">
-                {client.companyName ?? 'Individual contact'}
+                {client.companyName ?? t('individualContact')}
                 {client.classificationManual && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-abak-gold">
-                    <BadgeCheck className="h-3.5 w-3.5" /> Locked
+                  <span className="ms-2 inline-flex items-center gap-1 text-abak-gold">
+                    <BadgeCheck className="h-3.5 w-3.5" /> {t('locked')}
                   </span>
                 )}
               </div>
@@ -153,7 +156,7 @@ export default function ClientDetailPage() {
             <ClientStatusBadge status={client.status} size="md" />
             {client.satisfactionScore !== null && (
               <Badge variant="outline">
-                Satisfaction {client.satisfactionScore}
+                {t('satisfaction', { score: client.satisfactionScore })}
               </Badge>
             )}
           </div>
@@ -162,14 +165,14 @@ export default function ClientDetailPage() {
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Pencil className="me-2 h-4 w-4" /> {t('edit')}
         </Button>
         <Button
           size="sm"
           variant="outline"
           onClick={() => setClassifyOpen(true)}
         >
-          Reclassify
+          {t('reclassify')}
         </Button>
         <Button
           size="sm"
@@ -177,25 +180,25 @@ export default function ClientDetailPage() {
           className="text-destructive"
           onClick={() => setDeleteOpen(true)}
         >
-          <Trash2 className="mr-2 h-4 w-4" /> Archive
+          <Trash2 className="me-2 h-4 w-4" /> {t('archive')}
         </Button>
       </div>
 
       <Tabs defaultValue="profile">
         <TabsList className="w-full flex-wrap">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="profile">{t('tabProfile')}</TabsTrigger>
           <TabsTrigger value="interactions">
-            Interactions
+            {t('tabInteractions')}
             {client._count?.interactions
               ? ` (${client._count.interactions})`
               : ''}
           </TabsTrigger>
           <TabsTrigger value="follow-ups">
-            Follow-ups
+            {t('tabFollowUps')}
             {client._count?.followUps ? ` (${client._count.followUps})` : ''}
           </TabsTrigger>
           <TabsTrigger value="notes">
-            Notes
+            {t('tabNotes')}
             {client._count?.notes ? ` (${client._count.notes})` : ''}
           </TabsTrigger>
         </TabsList>
@@ -249,22 +252,19 @@ export default function ClientDetailPage() {
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archive client?</DialogTitle>
-            <DialogDescription>
-              The client stays in the database but disappears from the active
-              list. Interactions and follow-ups stay intact for audit.
-            </DialogDescription>
+            <DialogTitle>{t('archiveTitle')}</DialogTitle>
+            <DialogDescription>{t('archiveDescription')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
+              {t('archiveCancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={onArchive}
               disabled={archive.isPending}
             >
-              {archive.isPending ? 'Archiving…' : 'Archive'}
+              {archive.isPending ? t('archiving') : t('archive')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -274,97 +274,106 @@ export default function ClientDetailPage() {
 }
 
 function BackLink() {
+  const t = useTranslations('clients.detail');
   return (
     <Link
       href="/clients"
       className="inline-flex items-center gap-1 text-sm text-abak-blue hover:underline"
     >
-      <ArrowLeft className="h-4 w-4" /> Back to clients
+      <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t('backToList')}
     </Link>
   );
 }
 
 function ProfileTab({ client }: { client: Client }) {
+  const t = useTranslations('clients.detail');
+  const locale = useLocale();
+  const dateLocale = useDateLocale();
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+
   const manager = client.accountManager
     ? [client.accountManager.firstName, client.accountManager.lastName]
         .filter(Boolean)
         .join(' ') || client.accountManager.email
-    : 'Unassigned';
+    : t('unassigned');
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Contact</CardTitle>
+          <CardTitle className="text-base">{t('cardContact')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <Row icon={Phone} label="Phone" value={client.phone} />
-          <Row label="Alt phone" value={client.alternatePhone} />
-          <Row icon={Mail} label="Email" value={client.email} />
-          <Row icon={Globe} label="Website" value={client.website} />
+          <Row icon={Phone} label={t('phone')} value={client.phone} />
+          <Row label={t('altPhone')} value={client.alternatePhone} />
+          <Row icon={Mail} label={t('email')} value={client.email} />
+          <Row icon={Globe} label={t('website')} value={client.website} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Address</CardTitle>
+          <CardTitle className="text-base">{t('cardAddress')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <Row icon={MapPin} label="Line 1" value={client.addressLine1} />
-          <Row label="Line 2" value={client.addressLine2} />
-          <Row label="City" value={client.city} />
-          <Row label="Region" value={client.region} />
-          <Row label="Country" value={client.country} />
-          <Row label="Postal" value={client.postalCode} />
+          <Row icon={MapPin} label={t('line1')} value={client.addressLine1} />
+          <Row label={t('line2')} value={client.addressLine2} />
+          <Row label={t('city')} value={client.city} />
+          <Row label={t('region')} value={client.region} />
+          <Row label={t('country')} value={client.country} />
+          <Row label={t('postal')} value={client.postalCode} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Company</CardTitle>
+          <CardTitle className="text-base">{t('cardCompany')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <Row
-            label="Commercial registration"
+            label={t('commercialRegLabel')}
             value={client.commercialRegistration}
           />
-          <Row label="Tax ID" value={client.taxId} />
+          <Row label={t('taxIdLabel')} value={client.taxId} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
+          <CardTitle className="text-base">{t('cardAccount')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <Row label="Account manager" value={manager} />
+          <Row label={t('accountManager')} value={manager} />
           <Row
             icon={BadgeDollarSign}
-            label="Lifetime value"
-            value={`${client.lifetimeValue.toLocaleString()} SAR`}
+            label={t('lifetimeValueLabel')}
+            value={`${client.lifetimeValue.toLocaleString(numLocale)} SAR`}
           />
           <Row
-            label="Credit limit"
+            label={t('creditLimitLabel')}
             value={
               client.creditLimit !== null
-                ? `${client.creditLimit.toLocaleString()} SAR`
+                ? `${client.creditLimit.toLocaleString(numLocale)} SAR`
                 : null
             }
           />
-          <Row label="Payment terms" value={client.paymentTerms} />
+          <Row label={t('paymentTermsLabel')} value={client.paymentTerms} />
           <Row
-            label="Last interaction"
+            label={t('lastInteraction')}
             value={
               client.lastInteractionAt
                 ? formatDistanceToNow(new Date(client.lastInteractionAt), {
                     addSuffix: true,
+                    locale: dateLocale,
                   })
                 : null
             }
           />
           <Row
-            label="Created"
-            value={format(new Date(client.createdAt), 'PPp')}
+            label={t('createdAt')}
+            value={format(new Date(client.createdAt), 'PPp', {
+              locale: dateLocale,
+            })}
           />
         </CardContent>
       </Card>
@@ -379,44 +388,52 @@ function InteractionsTab({
   clientId: string;
   onAdd: () => void;
 }) {
+  const t = useTranslations('clients.detail');
+  const interactionTypeLabel = useEnumLabel('interactionType');
+  const directionLabel = useEnumLabel('interactionDirection');
+  const dateLocale = useDateLocale();
   const { data, isLoading } = useClientInteractions(clientId);
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button size="sm" onClick={onAdd}>
-          <MessageSquare className="mr-2 h-4 w-4" /> Log interaction
+          <MessageSquare className="me-2 h-4 w-4" /> {t('logInteraction')}
         </Button>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
+      )}
       {!isLoading && data?.data.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No interactions logged yet.
+          {t('noInteractionsLogged')}
         </p>
       )}
-      <ol className="relative space-y-3 border-l pl-4">
+      <ol className="relative space-y-3 border-s ps-4">
         {data?.data.map((interaction) => (
           <li key={interaction.id} className="relative">
-            <span className="absolute -left-[23px] top-2 h-3 w-3 rounded-full bg-abak-blue" />
+            <span className="absolute -start-[23px] top-2 h-3 w-3 rounded-full bg-abak-blue" />
             <Card>
               <CardContent className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-medium">{interaction.subject}</div>
                     <div className="text-xs text-muted-foreground">
-                      {INTERACTION_TYPE_LABELS[interaction.type]}
+                      {interactionTypeLabel(interaction.type)}
                       {interaction.direction
-                        ? ` · ${interaction.direction}`
+                        ? ` · ${directionLabel(interaction.direction)}`
                         : ''}
                       {interaction.durationMinutes
                         ? ` · ${interaction.durationMinutes}m`
                         : ''}
                       {' · '}
-                      {format(new Date(interaction.occurredAt), 'PPp')}
+                      {format(new Date(interaction.occurredAt), 'PPp', {
+                        locale: dateLocale,
+                      })}
                     </div>
                   </div>
                   {interaction.author && (
                     <span className="text-xs text-muted-foreground">
-                      by{' '}
+                      {t('by')}{' '}
                       {[
                         interaction.author.firstName,
                         interaction.author.lastName,
@@ -434,13 +451,19 @@ function InteractionsTab({
                   interaction.nextAction) && (
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     {interaction.location && (
-                      <div>Location: {interaction.location}</div>
+                      <div>
+                        {t('location')}: {interaction.location}
+                      </div>
                     )}
                     {interaction.outcome && (
-                      <div>Outcome: {interaction.outcome}</div>
+                      <div>
+                        {t('outcomeLabel')}: {interaction.outcome}
+                      </div>
                     )}
                     {interaction.nextAction && (
-                      <div>Next: {interaction.nextAction}</div>
+                      <div>
+                        {t('nextAction')}: {interaction.nextAction}
+                      </div>
                     )}
                   </div>
                 )}
@@ -460,6 +483,9 @@ function FollowUpsTab({
   clientId: string;
   onAdd: () => void;
 }) {
+  const t = useTranslations('clients.detail');
+  const followUpTypeLabel = useEnumLabel('followUpType');
+  const dateLocale = useDateLocale();
   const { data, isLoading } = useClientFollowUps(clientId);
   const [closingId, setClosingId] = useState<string | null>(null);
 
@@ -467,13 +493,15 @@ function FollowUpsTab({
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button size="sm" onClick={onAdd}>
-          <CalendarCheck className="mr-2 h-4 w-4" /> Schedule follow-up
+          <CalendarCheck className="me-2 h-4 w-4" /> {t('scheduleFollowUp')}
         </Button>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
+      )}
       {!isLoading && data?.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          No follow-ups scheduled.
+          {t('noFollowUpsScheduled')}
         </p>
       )}
       <ul className="space-y-2">
@@ -489,11 +517,15 @@ function FollowUpsTab({
                       <span className="font-medium">{followUp.title}</span>
                       <FollowUpStatusBadge status={followUp.status} />
                       <Badge variant="outline">
-                        {FOLLOW_UP_TYPE_LABELS[followUp.type]}
+                        {followUpTypeLabel(followUp.type)}
                       </Badge>
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Due {format(new Date(followUp.dueAt), 'PPp')}
+                      {t('due', {
+                        date: format(new Date(followUp.dueAt), 'PPp', {
+                          locale: dateLocale,
+                        }),
+                      })}
                       {followUp.assignedTo && (
                         <>
                           {' · '}
@@ -513,7 +545,7 @@ function FollowUpsTab({
                     )}
                     {followUp.outcome && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Outcome: {followUp.outcome}
+                        {t('outcomeLabel')}: {followUp.outcome}
                       </p>
                     )}
                   </div>
@@ -523,7 +555,7 @@ function FollowUpsTab({
                       variant="outline"
                       onClick={() => setClosingId(followUp.id)}
                     >
-                      إغلاق
+                      {t('close')}
                     </Button>
                   )}
                 </CardContent>
@@ -552,17 +584,22 @@ function NotesTab({
   clientId: string;
   onAdd: () => void;
 }) {
+  const t = useTranslations('clients.detail');
+  const noteTagLabel = useEnumLabel('noteTag');
+  const dateLocale = useDateLocale();
   const { data, isLoading } = useClientNotes(clientId);
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button size="sm" onClick={onAdd}>
-          <StickyNote className="mr-2 h-4 w-4" /> Add note
+          <StickyNote className="me-2 h-4 w-4" /> {t('addNote')}
         </Button>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && (
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
+      )}
       {!isLoading && data?.length === 0 && (
-        <p className="text-sm text-muted-foreground">No notes yet.</p>
+        <p className="text-sm text-muted-foreground">{t('noNotesYet')}</p>
       )}
       <ul className="space-y-3">
         {data?.map((note) => (
@@ -573,11 +610,12 @@ function NotesTab({
                   <Badge
                     className={cn('border-transparent', NOTE_BADGE[note.tag])}
                   >
-                    {NOTE_TAG_LABELS[note.tag]}
+                    {noteTagLabel(note.tag)}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(note.createdAt), {
                       addSuffix: true,
+                      locale: dateLocale,
                     })}
                     {note.author &&
                       ` · ${
@@ -612,7 +650,7 @@ function Row({
         {Icon && <Icon className="h-3.5 w-3.5" />}
         {label}
       </span>
-      <span className="text-right font-medium">
+      <span className="text-end font-medium">
         {value && value !== '' ? value : '—'}
       </span>
     </div>

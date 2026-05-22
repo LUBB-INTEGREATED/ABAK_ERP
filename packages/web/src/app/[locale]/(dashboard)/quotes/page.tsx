@@ -1,8 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { ar as arLocale } from 'date-fns/locale';
 import { FileText, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -29,10 +31,10 @@ import { cn } from '@/lib/utils';
 import { useQuotes, useQuoteStats } from '@/lib/hooks/use-quotes';
 import {
   QUOTE_STATUSES,
-  QUOTE_STATUS_LABELS,
   type Quote,
   type QuoteStatus,
 } from '@/lib/types/quote';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 const ALL = '__all__';
 
@@ -52,6 +54,11 @@ function kpi(label: string, value: string | number) {
 }
 
 export default function QuotesListPage() {
+  const t = useTranslations('quoteList');
+  const locale = useLocale();
+  const quoteStatusLabel = useEnumLabel('quoteStatus');
+  const numLocale = locale === 'ar' ? 'ar-SA' : 'en-US';
+  const dateLocale = locale === 'ar' ? arLocale : undefined;
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<QuoteStatus | undefined>();
   const filter = useMemo(
@@ -73,37 +80,36 @@ export default function QuotesListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-abak-blue">Quotes</h1>
-          <p className="text-sm text-muted-foreground">
-            Draft, approve, send, and accept client proposals.
-          </p>
+          <h1 className="text-2xl font-bold text-abak-blue">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={() => refetch()}
             disabled={isFetching}
+            aria-label={t('refresh')}
+            title={t('refresh')}
           >
             <RefreshCcw
-              className={cn('mr-2 h-4 w-4', isFetching && 'animate-spin')}
+              className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
-            Refresh
           </Button>
           <Button asChild size="sm">
-            <Link href="/quotes/new">New quote</Link>
+            <Link href="/quotes/new">{t('newQuote')}</Link>
           </Button>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-        {kpi('Total quotes', stats.data?.total ?? '—')}
-        {kpi('Pending approval', stats.data?.pendingApproval ?? '—')}
-        {kpi('Accepted', stats.data?.acceptedCount ?? '—')}
+        {kpi(t('kpiTotal'), stats.data?.total ?? '—')}
+        {kpi(t('kpiPending'), stats.data?.pendingApproval ?? '—')}
+        {kpi(t('kpiAccepted'), stats.data?.acceptedCount ?? '—')}
         {kpi(
-          'Accepted value',
+          t('kpiAcceptedValue'),
           stats.data
-            ? `${Math.round(stats.data.acceptedValue).toLocaleString()} SAR`
+            ? `${Math.round(stats.data.acceptedValue).toLocaleString(numLocale)} SAR`
             : '—',
         )}
       </div>
@@ -112,17 +118,17 @@ export default function QuotesListPage() {
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
           <div className="min-w-[240px] flex-1">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Search
+              {t('search')}
             </label>
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Quote number, title, client name…"
+              placeholder={t('searchPlaceholder')}
             />
           </div>
           <div className="w-48">
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Status
+              {t('status')}
             </label>
             <Select
               value={status ?? ALL}
@@ -131,13 +137,13 @@ export default function QuotesListPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
+                <SelectValue placeholder={t('allStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All statuses</SelectItem>
+                <SelectItem value={ALL}>{t('allStatuses')}</SelectItem>
                 {QUOTE_STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {QUOTE_STATUS_LABELS[s]}
+                    {quoteStatusLabel(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -155,16 +161,15 @@ export default function QuotesListPage() {
         loading={<TableSkeleton rows={6} cols={7} />}
         empty={{
           icon: FileText,
-          title: 'No quotes yet',
-          description:
-            'Quotes are created from RFQs, or directly from a client card.',
-          action: { label: 'New quote', href: '/quotes/new' },
+          title: t('noQuotes'),
+          description: t('noQuotesDesc'),
+          action: { label: t('newQuote'), href: '/quotes/new' },
         }}
         emptyFiltered={{
           icon: FileText,
-          title: 'No matches',
-          description: 'Try widening the search or clearing the status filter.',
-          action: { label: 'Clear filters', onClick: clearFilters },
+          title: t('noMatches'),
+          description: t('noMatchesDesc'),
+          action: { label: t('clearFilters'), onClick: clearFilters },
         }}
       >
         <Card>
@@ -172,18 +177,23 @@ export default function QuotesListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Quote #</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Prepared by</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>{t('quoteNumber')}</TableHead>
+                  <TableHead>{t('client')}</TableHead>
+                  <TableHead>{t('titleCol')}</TableHead>
+                  <TableHead>{t('total')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('preparedBy')}</TableHead>
+                  <TableHead>{t('created')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data?.data.map((quote) => (
-                  <QuoteRow key={quote.id} quote={quote} />
+                  <QuoteRow
+                    key={quote.id}
+                    quote={quote}
+                    numLocale={numLocale}
+                    dateLocale={dateLocale}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -194,7 +204,15 @@ export default function QuotesListPage() {
   );
 }
 
-function QuoteRow({ quote }: { quote: Quote }) {
+function QuoteRow({
+  quote,
+  numLocale,
+  dateLocale,
+}: {
+  quote: Quote;
+  numLocale: string;
+  dateLocale: typeof arLocale | undefined;
+}) {
   const prep = quote.preparedBy
     ? [quote.preparedBy.firstName, quote.preparedBy.lastName]
         .filter(Boolean)
@@ -217,13 +235,16 @@ function QuoteRow({ quote }: { quote: Quote }) {
         </div>
       </TableCell>
       <TableCell>{quote.title}</TableCell>
-      <TableCell>{quote.totalAmount.toLocaleString()} SAR</TableCell>
+      <TableCell>{quote.totalAmount.toLocaleString(numLocale)} SAR</TableCell>
       <TableCell>
         <QuoteStatusBadge status={quote.status} />
       </TableCell>
       <TableCell className="text-sm">{prep}</TableCell>
       <TableCell className="text-sm text-muted-foreground">
-        {formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true })}
+        {formatDistanceToNow(new Date(quote.createdAt), {
+          addSuffix: true,
+          locale: dateLocale,
+        })}
       </TableCell>
     </TableRow>
   );

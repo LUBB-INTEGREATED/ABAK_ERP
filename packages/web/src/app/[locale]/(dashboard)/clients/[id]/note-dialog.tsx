@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAddNote } from '@/lib/hooks/use-clients';
-import { NOTE_TAGS, NOTE_TAG_LABELS, type NoteTag } from '@/lib/types/client';
+import { NOTE_TAGS, type NoteTag } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 export function NoteDialog({
   open,
@@ -32,25 +34,27 @@ export function NoteDialog({
   onOpenChange: (open: boolean) => void;
   clientId: string;
 }) {
+  const t = useTranslations('clients.noteDialog');
+  const tagLabel = useEnumLabel('noteTag');
   const [body, setBody] = useState('');
   const [tag, setTag] = useState<NoteTag>('GENERAL');
   const mutation = useAddNote(clientId);
 
   async function submit() {
     if (!body.trim()) {
-      toast.error('Note body is required');
+      toast.error(t('bodyRequired'));
       return;
     }
     try {
       await mutation.mutateAsync({ body: body.trim(), tag });
-      toast.success('Note added');
+      toast.success(t('added'));
       onOpenChange(false);
       setBody('');
       setTag('GENERAL');
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to save';
+          ?.response?.data?.message ?? t('failed');
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
   }
@@ -59,15 +63,13 @@ export function NoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add note</DialogTitle>
-          <DialogDescription>
-            Tag important facts so account managers find them quickly.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Tag</Label>
+            <Label>{t('tag')}</Label>
             <Select
               value={tag}
               onValueChange={(value) => setTag(value as NoteTag)}
@@ -76,16 +78,16 @@ export function NoteDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {NOTE_TAGS.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {NOTE_TAG_LABELS[t]}
+                {NOTE_TAGS.map((tagValue) => (
+                  <SelectItem key={tagValue} value={tagValue}>
+                    {tagLabel(tagValue)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="body">Note</Label>
+            <Label htmlFor="body">{t('body')}</Label>
             <Textarea
               id="body"
               rows={5}
@@ -97,10 +99,10 @@ export function NoteDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Add note'}
+            {mutation.isPending ? t('saving') : t('submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

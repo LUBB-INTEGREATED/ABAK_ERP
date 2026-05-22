@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,18 +26,12 @@ import { useAddInteraction } from '@/lib/hooks/use-clients';
 import {
   INTERACTION_DIRECTIONS,
   INTERACTION_TYPES,
-  INTERACTION_TYPE_LABELS,
   type InteractionDirection,
   type InteractionType,
 } from '@/lib/types/client';
+import { useEnumLabel } from '@/lib/i18n/enum-labels';
 
 type InteractionVisibility = 'TEAM' | 'MANAGER_ONLY' | 'PRIVATE';
-
-const VISIBILITY_LABELS: Record<InteractionVisibility, string> = {
-  TEAM: 'الفريق',
-  MANAGER_ONLY: 'المدير فقط',
-  PRIVATE: 'خاص',
-};
 
 const VISIBILITY_OPTIONS: InteractionVisibility[] = [
   'TEAM',
@@ -53,6 +48,10 @@ export function InteractionDialog({
   onOpenChange: (open: boolean) => void;
   clientId: string;
 }) {
+  const t = useTranslations('clients.interactionDialog');
+  const interactionTypeLabel = useEnumLabel('interactionType');
+  const directionLabel = useEnumLabel('interactionDirection');
+
   const [type, setType] = useState<InteractionType>('CALL');
   const [direction, setDirection] = useState<InteractionDirection | undefined>(
     'OUTBOUND',
@@ -68,7 +67,7 @@ export function InteractionDialog({
 
   async function submit() {
     if (subject.trim().length < 2) {
-      toast.error('Subject is required');
+      toast.error(t('subjectRequired'));
       return;
     }
     try {
@@ -83,7 +82,7 @@ export function InteractionDialog({
         outcome: outcome.trim() || undefined,
         nextAction: nextAction.trim() || undefined,
       });
-      toast.success('Interaction logged');
+      toast.success(t('logged'));
       onOpenChange(false);
       setSubject('');
       setSummary('');
@@ -95,7 +94,7 @@ export function InteractionDialog({
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to log';
+          ?.response?.data?.message ?? t('logFailed');
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
   }
@@ -104,15 +103,13 @@ export function InteractionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Log an interaction</DialogTitle>
-          <DialogDescription>
-            Every call, meeting, and message lands on the 360° timeline.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>{t('type')}</Label>
             <Select
               value={type}
               onValueChange={(value) => setType(value as InteractionType)}
@@ -121,16 +118,16 @@ export function InteractionDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {INTERACTION_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {INTERACTION_TYPE_LABELS[t]}
+                {INTERACTION_TYPES.map((tValue) => (
+                  <SelectItem key={tValue} value={tValue}>
+                    {interactionTypeLabel(tValue)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Direction</Label>
+            <Label>{t('direction')}</Label>
             <Select
               value={direction ?? 'OUTBOUND'}
               onValueChange={(value) =>
@@ -143,14 +140,14 @@ export function InteractionDialog({
               <SelectContent>
                 {INTERACTION_DIRECTIONS.map((d) => (
                   <SelectItem key={d} value={d}>
-                    {d === 'INBOUND' ? 'Inbound' : 'Outbound'}
+                    {directionLabel(d)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>الظهور</Label>
+            <Label>{t('visibility')}</Label>
             <Select
               value={visibility}
               onValueChange={(value) =>
@@ -163,14 +160,14 @@ export function InteractionDialog({
               <SelectContent>
                 {VISIBILITY_OPTIONS.map((v) => (
                   <SelectItem key={v} value={v}>
-                    {VISIBILITY_LABELS[v]}
+                    {t(`visibility${v}` as never)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="md:col-span-2 space-y-2">
-            <Label htmlFor="subject">Subject</Label>
+            <Label htmlFor="subject">{t('subject')}</Label>
             <Input
               id="subject"
               value={subject}
@@ -178,7 +175,7 @@ export function InteractionDialog({
             />
           </div>
           <div className="md:col-span-2 space-y-2">
-            <Label htmlFor="summary">Summary</Label>
+            <Label htmlFor="summary">{t('summary')}</Label>
             <Textarea
               id="summary"
               value={summary}
@@ -187,7 +184,7 @@ export function InteractionDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="duration">Duration (minutes)</Label>
+            <Label htmlFor="duration">{t('duration')}</Label>
             <Input
               id="duration"
               type="number"
@@ -196,7 +193,7 @@ export function InteractionDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">{t('location')}</Label>
             <Input
               id="location"
               value={location}
@@ -204,7 +201,7 @@ export function InteractionDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="outcome">Outcome</Label>
+            <Label htmlFor="outcome">{t('outcome')}</Label>
             <Input
               id="outcome"
               value={outcome}
@@ -212,7 +209,7 @@ export function InteractionDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nextAction">Next action</Label>
+            <Label htmlFor="nextAction">{t('nextAction')}</Label>
             <Input
               id="nextAction"
               value={nextAction}
@@ -223,10 +220,10 @@ export function InteractionDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Log'}
+            {mutation.isPending ? t('saving') : t('submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

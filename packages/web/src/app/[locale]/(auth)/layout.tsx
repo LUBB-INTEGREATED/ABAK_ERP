@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
-import Providers from '@/components/providers';
 import { Link } from '@/i18n/navigation';
 import { LanguageSwitcher } from '@/components/language-switcher';
 
@@ -14,11 +13,7 @@ export default async function AuthLayout({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return (
-    <Providers>
-      <AuthChrome>{children}</AuthChrome>
-    </Providers>
-  );
+  return <AuthChrome>{children}</AuthChrome>;
 }
 
 function AuthChrome({ children }: { children: React.ReactNode }) {

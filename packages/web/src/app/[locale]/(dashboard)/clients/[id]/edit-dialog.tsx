@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,7 @@ export function EditClientDialog({
   onOpenChange: (open: boolean) => void;
   client: Client;
 }) {
+  const t = useTranslations('clients.editDialog');
   const [contactName, setContactName] = useState(client.contactName);
   const [companyName, setCompanyName] = useState(client.companyName ?? '');
   const [phone, setPhone] = useState(client.phone);
@@ -67,12 +69,12 @@ export function EditClientDialog({
 
     try {
       await mutation.mutateAsync(body);
-      toast.success('Client updated');
+      toast.success(t('updated'));
       onOpenChange(false);
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? 'Failed to save';
+          ?.response?.data?.message ?? t('failed');
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
   }
@@ -81,69 +83,79 @@ export function EditClientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit {client.clientNumber}</DialogTitle>
-          <DialogDescription>
-            Update contact, address, and account details.
-          </DialogDescription>
+          <DialogTitle>
+            {t('title', { clientNumber: client.clientNumber })}
+          </DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Field
             id="contactName"
-            label="Contact name"
+            label={t('contactName')}
             value={contactName}
             onChange={setContactName}
           />
           <Field
             id="companyName"
-            label="Company"
+            label={t('company')}
             value={companyName}
             onChange={setCompanyName}
           />
-          <Field id="phone" label="Phone" value={phone} onChange={setPhone} />
+          <Field
+            id="phone"
+            label={t('phone')}
+            value={phone}
+            onChange={setPhone}
+          />
           <Field
             id="email"
-            label="Email"
+            label={t('email')}
             type="email"
             value={email}
             onChange={setEmail}
           />
           <Field
             id="website"
-            label="Website"
+            label={t('website')}
             value={website}
             onChange={setWebsite}
           />
           <Field
             id="addressLine1"
-            label="Address"
+            label={t('address')}
             value={addressLine1}
             onChange={setAddressLine1}
           />
-          <Field id="city" label="City" value={city} onChange={setCity} />
+          <Field id="city" label={t('city')} value={city} onChange={setCity} />
           <Field
             id="region"
-            label="Region"
+            label={t('region')}
             value={region}
             onChange={setRegion}
           />
-          <Field id="taxId" label="Tax ID" value={taxId} onChange={setTaxId} />
+          <Field
+            id="taxId"
+            label={t('taxId')}
+            value={taxId}
+            onChange={setTaxId}
+          />
           <Field
             id="cr"
-            label="Commercial reg."
+            label={t('commercialReg')}
             value={commercialRegistration}
             onChange={setCommercialRegistration}
           />
           <Field
             id="creditLimit"
-            label="Credit limit (SAR)"
+            label={t('creditLimit')}
             type="number"
             value={creditLimit}
             onChange={setCreditLimit}
           />
           <Field
             id="paymentTerms"
-            label="Payment terms"
+            label={t('paymentTerms')}
             value={paymentTerms}
             onChange={setPaymentTerms}
           />
@@ -151,10 +163,10 @@ export function EditClientDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Save changes'}
+            {mutation.isPending ? t('saving') : t('save')}
           </Button>
         </DialogFooter>
       </DialogContent>
