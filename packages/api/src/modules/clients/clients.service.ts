@@ -15,6 +15,7 @@ import {
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
 import type {
   ClientFilterDto,
   CreateClientDto,
@@ -103,8 +104,13 @@ export class ClientsService {
     });
   }
 
-  async findAll(filter: ClientFilterDto) {
+  async findAll(filter: ClientFilterDto, scopeCtx?: ScopeContext) {
     const where: Prisma.ClientWhereInput = { deletedAt: null };
+    // Row-level scope: non-ALL viewers see only clients they manage.
+    const clientScope = ownerScopeFilter(scopeCtx, 'accountManagerId');
+    if (Object.keys(clientScope).length) {
+      where.AND = [clientScope as Prisma.ClientWhereInput];
+    }
     if (filter.classification) where.classification = filter.classification;
     if (filter.status) where.status = filter.status;
     if (filter.accountManagerId)

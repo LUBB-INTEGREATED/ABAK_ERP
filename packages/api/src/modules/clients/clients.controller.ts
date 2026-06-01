@@ -13,6 +13,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ClassificationService } from './classification.service';
 import { ClientsService } from './clients.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 import {
   ClientFilterDto,
   CreateClientDto,
@@ -56,8 +58,12 @@ export class ClientsController {
 
   @Get()
   @ApiOperation({ summary: 'List clients with filters + pagination' })
-  findAll(@Query() filter: ClientFilterDto) {
-    return this.clients.findAll(filter);
+  findAll(
+    @Query() filter: ClientFilterDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.findAll(filter, { user, scope });
   }
 
   @Get('stats')

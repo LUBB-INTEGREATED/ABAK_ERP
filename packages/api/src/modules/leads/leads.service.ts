@@ -9,6 +9,7 @@ import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AssignmentService } from './assignment.service';
+import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
 import type { CreateLeadDto } from './dto/create-lead.dto';
 import type { LeadFilterDto } from './dto/lead-filter.dto';
@@ -175,7 +176,7 @@ export class LeadsService {
     });
   }
 
-  async findAll(filter: LeadFilterDto) {
+  async findAll(filter: LeadFilterDto, scopeCtx?: ScopeContext) {
     const where: Prisma.LeadWhereInput = {
       deletedAt: null,
     };
@@ -216,6 +217,9 @@ export class LeadsService {
         { email: { contains: search, mode: 'insensitive' } },
       ];
     }
+
+    // Row-level scope: non-ALL viewers (e.g. Sales Rep) see only their own leads.
+    Object.assign(where, ownerScopeFilter(scopeCtx, 'assignedToId'));
 
     const page = filter.page ?? 1;
     const limit = filter.limit ?? 50;

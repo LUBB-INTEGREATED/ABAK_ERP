@@ -22,6 +22,8 @@ import {
 } from './dto';
 import { QuotesService } from './quotes.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 
 @ApiTags('quotes')
 @ApiBearerAuth('JWT-auth')
@@ -41,8 +43,12 @@ export class QuotesController {
 
   @Get('quotes')
   @ApiOperation({ summary: 'List quotes with filters and pagination' })
-  findAll(@Query() filter: QuoteFilterDto) {
-    return this.quotes.findAll(filter);
+  findAll(
+    @Query() filter: QuoteFilterDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:view') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.findAll(filter, { user, scope });
   }
 
   @Get('quotes/stats')

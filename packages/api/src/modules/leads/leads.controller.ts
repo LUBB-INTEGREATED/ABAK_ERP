@@ -14,6 +14,8 @@ import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 import {
   AssignLeadDto,
   CreateLeadDto,
@@ -55,8 +57,12 @@ export class LeadsController {
 
   @Get()
   @ApiOperation({ summary: 'List leads with filters and pagination' })
-  findAll(@Query() filter: LeadFilterDto) {
-    return this.leads.findAll(filter);
+  findAll(
+    @Query() filter: LeadFilterDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:view') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.findAll(filter, { user, scope });
   }
 
   @Get('stats')

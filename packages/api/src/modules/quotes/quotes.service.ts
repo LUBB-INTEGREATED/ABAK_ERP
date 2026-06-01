@@ -21,6 +21,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import type {
   AcceptRejectQuoteDto,
@@ -188,8 +189,13 @@ export class QuotesService {
     });
   }
 
-  async findAll(filter: QuoteFilterDto) {
+  async findAll(filter: QuoteFilterDto, scopeCtx?: ScopeContext) {
     const where: Prisma.QuoteWhereInput = { deletedAt: null };
+    // Row-level scope: non-ALL viewers see only quotes they prepared.
+    const quoteScope = ownerScopeFilter(scopeCtx, 'preparedById');
+    if (Object.keys(quoteScope).length) {
+      where.AND = [quoteScope as Prisma.QuoteWhereInput];
+    }
     if (filter.status) where.status = filter.status;
     if (filter.clientId) where.clientId = filter.clientId;
     if (filter.preparedById) where.preparedById = filter.preparedById;
