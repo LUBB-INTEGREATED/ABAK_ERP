@@ -7,30 +7,19 @@ import {
   Post,
   Query,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { UserRole } from '@prisma/client';
 import type { ReportFilters } from './report-definition.interface';
 import { CreateSavedReportDto } from './dto';
 import { ReportsService } from './reports.service';
 
-const REPORT_ROLES = [
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-  UserRole.SALES_MANAGER,
-  UserRole.FINANCE_MANAGER,
-  UserRole.SALES_REPRESENTATIVE,
-];
-
 @ApiTags('reports')
 @Controller('reports')
-@UseGuards(RolesGuard)
-@Roles(...REPORT_ROLES)
+@RequirePermission('reports:view')
 export class ReportsController {
   constructor(private readonly service: ReportsService) {}
 
@@ -81,6 +70,7 @@ export class ReportsController {
   }
 
   @Get(':code/export')
+  @RequirePermission('reports:export')
   @ApiOperation({ summary: 'Export a report as CSV' })
   async export(
     @Param('code') code: string,

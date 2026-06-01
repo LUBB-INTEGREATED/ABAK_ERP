@@ -6,13 +6,10 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   type CreateLicenceDto,
   LicencesService,
@@ -21,6 +18,7 @@ import {
 
 @ApiTags('project-licences')
 @Controller('projects/:projectId/licences')
+@RequirePermission('project:view')
 export class LicencesController {
   constructor(private readonly licences: LicencesService) {}
 
@@ -34,6 +32,7 @@ export class LicencesController {
   }
 
   @Post()
+  @RequirePermission('project:manage_licences')
   @ApiOperation({ summary: 'Create a new licence record on this project.' })
   create(
     @Param('projectId') projectId: string,
@@ -44,6 +43,7 @@ export class LicencesController {
   }
 
   @Patch(':licenceId')
+  @RequirePermission('project:manage_licences')
   @ApiOperation({
     summary:
       'Update licence (status, dates, notes, dependency wiring). Status → ISSUED cascades to unblock dependent phases.',
@@ -57,6 +57,7 @@ export class LicencesController {
   }
 
   @Delete(':licenceId')
+  @RequirePermission('project:manage_licences')
   @ApiOperation({ summary: 'Soft delete a licence record.' })
   remove(
     @Param('projectId') projectId: string,
@@ -77,8 +78,7 @@ export class PhaseLicenceOverrideController {
   constructor(private readonly licences: LicencesService) {}
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('project:licence_override')
   @ApiOperation({
     summary:
       'CEO override: allow a phase to start before its blocking licences are issued. Justification ≥ 20 chars required and is permanently logged.',
@@ -98,6 +98,7 @@ export class PhaseLicenceOverrideController {
   }
 
   @Delete()
+  @RequirePermission('project:manage_licences')
   @ApiOperation({
     summary:
       'Clear a CEO override (mistake, or licence is now issued so override no longer needed).',

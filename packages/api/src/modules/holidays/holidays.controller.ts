@@ -7,12 +7,9 @@ import {
   Post,
   Put,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { UpsertHolidayDto } from './dto/upsert-holiday.dto';
 import { HolidaysService } from './holidays.service';
 
@@ -28,24 +25,21 @@ export class HolidaysController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequirePermission('settings:manage_holidays')
   @ApiOperation({ summary: 'Create public holiday' })
   create(@Body() dto: UpsertHolidayDto) {
     return this.service.create(dto);
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequirePermission('settings:manage_holidays')
   @ApiOperation({ summary: 'Update public holiday' })
   update(@Param('id') id: string, @Body() dto: UpsertHolidayDto) {
     return this.service.update(id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @RequirePermission('settings:manage_holidays')
   @ApiOperation({ summary: 'Delete public holiday' })
   remove(@Param('id') id: string) {
     return this.service.remove(id);

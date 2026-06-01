@@ -6,13 +6,11 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PaymentValidationStatus, UserRole } from '@prisma/client';
+import { PaymentValidationStatus } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   CreateInvoiceDto,
   ListInvoicesDto,
@@ -25,8 +23,7 @@ import { FinanceService } from './finance.service';
 
 @ApiTags('finance')
 @Controller('finance')
-@UseGuards(RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.FINANCE_MANAGER)
+@RequirePermission('finance:view')
 export class FinanceController {
   constructor(private readonly service: FinanceService) {}
 
@@ -47,6 +44,7 @@ export class FinanceController {
   }
 
   @Patch('commercial-confirmations/:id/validate')
+  @RequirePermission('finance:validate_payment')
   @ApiOperation({
     summary:
       'Finance validates the commercial confirmation. On VALIDATED, the PO is minted (BR-12).',
@@ -68,6 +66,7 @@ export class FinanceController {
   }
 
   @Post('invoices')
+  @RequirePermission('finance:manage_invoice')
   @ApiOperation({ summary: 'Create an invoice from a PO' })
   createInvoice(
     @Body() dto: CreateInvoiceDto,
@@ -85,6 +84,7 @@ export class FinanceController {
   }
 
   @Post('payments')
+  @RequirePermission('finance:manage_invoice')
   @ApiOperation({ summary: 'Log a received payment (requires validation)' })
   recordPayment(
     @Body() dto: RecordPaymentDto,
@@ -105,6 +105,7 @@ export class FinanceController {
   }
 
   @Patch('commissions/:id/approve')
+  @RequirePermission('finance:manage_invoice')
   @ApiOperation({ summary: 'Approve an ACCRUING commission for payout' })
   approveCommission(
     @Param('id') id: string,
@@ -114,6 +115,7 @@ export class FinanceController {
   }
 
   @Patch('commissions/:id/mark-paid')
+  @RequirePermission('finance:manage_invoice')
   @ApiOperation({ summary: 'Mark an APPROVED commission as PAID' })
   markCommissionPaid(
     @Param('id') id: string,
@@ -124,6 +126,7 @@ export class FinanceController {
   }
 
   @Patch('payments/:id/validate')
+  @RequirePermission('finance:validate_payment')
   @ApiOperation({
     summary:
       'Validate or reject a payment (BR-17). Auto-updates invoice/PO + closure gate.',

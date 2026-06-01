@@ -27,15 +27,18 @@ import {
   UpdateTaskDto,
 } from './dto';
 import { ProjectsService } from './projects.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @ApiTags('projects')
 @Controller()
+@RequirePermission('project:view')
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
   // Projects ------------------------------------------------------
 
   @Post('projects')
+  @RequirePermission('project:convert')
   @ApiOperation({ summary: 'Create a project from a purchase order' })
   create(@Body() dto: CreateProjectDto, @CurrentUser('id') actorId: string) {
     return this.service.create(dto, actorId);
@@ -85,12 +88,14 @@ export class ProjectsController {
   }
 
   @Patch('projects/:id')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Update project basics' })
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return this.service.update(id, dto);
   }
 
   @Patch('projects/:id/status')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Transition project status' })
   transitionStatus(
     @Param('id') id: string,
@@ -102,12 +107,14 @@ export class ProjectsController {
   // Phases --------------------------------------------------------
 
   @Post('projects/:id/phases')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Add a phase to a project' })
   addPhase(@Param('id') id: string, @Body() dto: CreatePhaseDto) {
     return this.service.addPhase(id, dto);
   }
 
   @Patch('projects/:id/phases/:phaseId')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Update phase' })
   updatePhase(
     @Param('id') id: string,
@@ -118,6 +125,7 @@ export class ProjectsController {
   }
 
   @Patch('projects/:id/phases/:phaseId/reassign-owner')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Reassign phase owner (BR-13, requires reason)' })
   reassignOwner(
     @Param('id') id: string,
@@ -128,6 +136,7 @@ export class ProjectsController {
   }
 
   @Patch('projects/:id/phases/:phaseId/complete')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Mark phase complete (BR-14 — evidence required)' })
   completePhase(
     @Param('id') id: string,
@@ -139,6 +148,7 @@ export class ProjectsController {
   }
 
   @Patch('projects/:id/phases/:phaseId/adjust-progress')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'PM manual progress override' })
   adjustProgress(
     @Param('id') id: string,
@@ -151,6 +161,7 @@ export class ProjectsController {
   // Tasks ---------------------------------------------------------
 
   @Post('projects/:id/phases/:phaseId/tasks')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Add a task to a phase' })
   addTask(
     @Param('id') id: string,
@@ -161,12 +172,14 @@ export class ProjectsController {
   }
 
   @Patch('tasks/:taskId')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Update task' })
   updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto) {
     return this.service.updateTask(taskId, dto);
   }
 
   @Patch('tasks/:taskId/status')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Transition task status (dependency-aware)' })
   transitionTaskStatus(
     @Param('taskId') taskId: string,
@@ -176,6 +189,7 @@ export class ProjectsController {
   }
 
   @Post('tasks/:taskId/dependencies')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Add a dependency (cycle-detected)' })
   addDependency(
     @Param('taskId') taskId: string,
@@ -185,6 +199,7 @@ export class ProjectsController {
   }
 
   @Delete('tasks/:taskId/dependencies/:blockerId')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Remove a dependency' })
   removeDependency(
     @Param('taskId') taskId: string,
@@ -196,12 +211,14 @@ export class ProjectsController {
   // Closure -------------------------------------------------------
 
   @Post('projects/:id/initiate-closure')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Initiate project closure (status → CLOSING)' })
   initiateClosure(@Param('id') id: string, @CurrentUser('id') actorId: string) {
     return this.service.initiateClosure(id, actorId);
   }
 
   @Patch('projects/:id/closure-checklist')
+  @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Flip a closure gate (role-gated per PART 7)' })
   setClosureGate(
     @Param('id') id: string,

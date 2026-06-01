@@ -21,16 +21,19 @@ import {
   UpdateQuoteDto,
 } from './dto';
 import { QuotesService } from './quotes.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @ApiTags('quotes')
 @ApiBearerAuth('JWT-auth')
 @Controller()
+@RequirePermission('quote:view')
 export class QuotesController {
   constructor(private readonly quotes: QuotesService) {}
 
   // Quotes ---------------------------------------------------------
 
   @Post('quotes')
+  @RequirePermission('quote:build')
   @ApiOperation({ summary: 'Create a DRAFT quote with items and milestones' })
   create(@Body() dto: CreateQuoteDto, @CurrentUser('id') actorId: string) {
     return this.quotes.create(dto, actorId);
@@ -57,12 +60,14 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id')
+  @RequirePermission('quote:build')
   @ApiOperation({ summary: 'Update a DRAFT quote' })
   update(@Param('id') id: string, @Body() dto: UpdateQuoteDto) {
     return this.quotes.update(id, dto);
   }
 
   @Delete('quotes/:id')
+  @RequirePermission('quote:build')
   @ApiOperation({ summary: 'Soft-delete a DRAFT quote' })
   remove(@Param('id') id: string) {
     return this.quotes.softDelete(id);
@@ -71,6 +76,7 @@ export class QuotesController {
   // Lifecycle ------------------------------------------------------
 
   @Patch('quotes/:id/submit')
+  @RequirePermission('quote:submit_approval')
   @ApiOperation({
     summary:
       'Submit a DRAFT quote — auto-creates approvals based on configured thresholds',
@@ -80,6 +86,7 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id/send')
+  @RequirePermission('quote:send')
   @ApiOperation({
     summary: 'Send an APPROVED quote (flips to SENT, stamps sentAt)',
   })
@@ -88,6 +95,7 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id/in-discussion')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({
     summary: 'Mark a SENT quote as IN_DISCUSSION (client reviewing)',
   })
@@ -96,6 +104,7 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id/in-negotiation')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({
     summary: 'Mark a SENT/IN_DISCUSSION quote as IN_NEGOTIATION',
   })
@@ -104,6 +113,7 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id/accept')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({
     summary:
       'Mark quote WON — records a CommercialConfirmation in PENDING state. PO is minted only after Finance validates (BR-12).',
@@ -119,6 +129,7 @@ export class QuotesController {
   // 1-click conversion: Won Quote → live Project (Department Manager flow).
   // 2026-05-21 process correction — see docs/CORRECTED_CLIENT_JOURNEY.md §G.
   @Post('quotes/:id/convert-to-project')
+  @RequirePermission('project:convert')
   @ApiOperation({
     summary:
       'Convert a Won quote to a live Project in one click. Auto-validates the commercial confirmation, mints the PO, creates the Project + default phases.',
@@ -133,12 +144,14 @@ export class QuotesController {
   }
 
   @Patch('quotes/:id/reject')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({ summary: 'Mark quote as REJECTED with optional reason' })
   reject(@Param('id') id: string, @Body() dto: AcceptRejectQuoteDto) {
     return this.quotes.reject(id, dto);
   }
 
   @Patch('quotes/:id/postpone')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({
     summary:
       'Mark quote POSTPONED — BR-10: follow-up date required, max 30 days',
@@ -152,6 +165,7 @@ export class QuotesController {
   }
 
   @Post('quotes/:id/revise')
+  @RequirePermission('quote:build')
   @ApiOperation({
     summary:
       'Create a new revision. Parent quote is locked to REVISED (BR-08).',
@@ -163,6 +177,7 @@ export class QuotesController {
   // Approvals ------------------------------------------------------
 
   @Patch('quotes/:id/approvals/:approvalId')
+  @RequirePermission('quote:approve')
   @ApiOperation({ summary: 'Approve or reject a pending approval' })
   decideApproval(
     @Param('id') id: string,
@@ -174,6 +189,7 @@ export class QuotesController {
   }
 
   @Post('quotes/:id/approvals/:approvalId/request-revision')
+  @RequirePermission('quote:approve')
   @ApiOperation({
     summary:
       'Approver requests revisions — quote flips to IN_REVISION with the comment recorded on the approval (M4-015).',
@@ -196,6 +212,7 @@ export class QuotesController {
   }
 
   @Patch('purchase-orders/:id/status')
+  @RequirePermission('finance:manage_invoice')
   @ApiOperation({
     summary: 'Update PO status (ACTIVE / COMPLETED / CANCELLED)',
   })

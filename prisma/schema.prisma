@@ -72,9 +72,16 @@ model User {
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
 
+  // --- RBAC v2: department membership + data-roles ---
+  departmentId      String?
+  department        Department?      @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  managedDepartment Department?      @relation("DepartmentManager")
+  roleAssignments   RoleAssignment[]
+
   @@index([email])
   @@index([role])
   @@index([status])
+  @@index([departmentId])
   @@map("users")
 }
 
@@ -127,9 +134,10 @@ model ServiceCategory {
   order       Int     @default(0)
   isActive    Boolean @default(true)
 
-  services       Service[]
-  rfqAssignments RfqAssignment[]
-  quoteItems     QuoteItem[]
+  services        Service[]
+  rfqAssignments  RfqAssignment[]
+  quoteItems      QuoteItem[]
+  departmentLinks DepartmentService[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2079,4 +2087,125 @@ enum LicenceStatus {
   ISSUED
   /// Authority rejected the application. Remediation = new linked licence.
   REJECTED
+}
+
+// ============================================
+// RBAC v2 — permission-based access control
+// Design: docs/architecture/abak-rbac-design.md
+// Roles are DATA (composed from a fixed Permission catalog), not the
+// legacy `UserRole` enum (kept above during migration, dropped later).
+// ============================================
+
+/// Data-scope applied to a scopeable permission within a role.
+enum Scope {
+  OWN
+  DEPARTMENT
+  ALL
+}
+
+enum DeptType {
+  TECHNICAL
+  SALES
+  FINANCE
+  HR
+  EXECUTIVE
+  SUPPORT
+}
+
+/// Fixed catalog of every action the system can gate. Developer-owned,
+/// seeded; each key (e.g. "rfq:price_section") maps to a guarded action.
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  module      String
+  action      String
+  description String?
+  scopeable   Boolean @default(false)
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+/// A named bundle of permissions. Admin-owned data — created/edited freely.
+model Role {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  nameAr       String?
+  description  String?
+  isSystem     Boolean @default(false)
+  isAssignable Boolean @default(true)
+
+  permissions RolePermission[]
+  assignments RoleAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  scope        Scope      @default(ALL)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+/// User <-> Role. A user may hold many roles; effective permissions = union.
+model RoleAssignment {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("role_assignments")
+}
+
+/// First-class org unit (distinct from ServiceCategory = price list).
+/// Admin-manageable: create / rename / activate / deactivate / set manager.
+model Department {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  nameAr   String?
+  type     DeptType @default(TECHNICAL)
+  isActive Boolean  @default(true)
+  order    Int      @default(0)
+
+  /// One of THIS department's own engineers; keeps engineer powers and
+  /// additionally gets the manager bundle. @unique => manages at most one dept.
+  managerId String? @unique
+  manager   User?   @relation("DepartmentManager", fields: [managerId], references: [id])
+
+  members  User[]              @relation("DepartmentMembers")
+  services DepartmentService[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@map("departments")
+}
+
+/// Technical departments link to one or more billable services.
+model DepartmentService {
+  departmentId      String
+  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  serviceCategoryId String
+  serviceCategory   ServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+
+  @@id([departmentId, serviceCategoryId])
+  @@index([serviceCategoryId])
+  @@map("department_services")
 }

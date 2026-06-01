@@ -16,13 +16,16 @@ import { DispatchRfqDto } from './dto/dispatch-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
 import { RfqOutcomeDto } from './dto/rfq-outcome.dto';
 import { RfqsService } from './rfqs.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @ApiTags('rfqs')
 @Controller('rfqs')
+@RequirePermission('rfq:view')
 export class RfqsController {
   constructor(private readonly service: RfqsService) {}
 
   @Post()
+  @RequirePermission('rfq:request')
   @ApiOperation({ summary: 'Create RFQ from READY_FOR_RFQ opportunity' })
   create(@Body() dto: CreateRfqDto, @CurrentUser('id') actorId: string) {
     return this.service.create(dto, actorId);
@@ -47,6 +50,7 @@ export class RfqsController {
   }
 
   @Patch(':id/assign-coordinator')
+  @RequirePermission('rfq:assign_pricers')
   @ApiOperation({ summary: 'Assign primary RFQ coordinator' })
   assignCoordinator(
     @Param('id') id: string,
@@ -56,6 +60,7 @@ export class RfqsController {
   }
 
   @Patch(':id/assign-contributor')
+  @RequirePermission('rfq:assign_pricers')
   @ApiOperation({ summary: 'Assign technical or financial contributor' })
   assignContributor(
     @Param('id') id: string,
@@ -65,30 +70,35 @@ export class RfqsController {
   }
 
   @Patch(':id/start-preparation')
+  @RequirePermission('rfq:price_section')
   @ApiOperation({ summary: 'Transition ASSIGNED → IN_PREPARATION' })
   startPreparation(@Param('id') id: string) {
     return this.service.startPreparation(id);
   }
 
   @Post(':id/submit-for-approval')
+  @RequirePermission('quote:submit_approval')
   @ApiOperation({ summary: 'Submit linked Quote for approvals' })
   submitForApproval(@Param('id') id: string) {
     return this.service.submitForApproval(id);
   }
 
   @Post(':id/dispatch')
+  @RequirePermission('quote:send')
   @ApiOperation({ summary: 'Dispatch quote to client (WhatsApp/Email)' })
   dispatch(@Param('id') id: string, @Body() dto: DispatchRfqDto) {
     return this.service.dispatch(id, dto);
   }
 
   @Post(':id/outcome')
+  @RequirePermission('quote:set_outcome')
   @ApiOperation({ summary: 'Record RFQ outcome (WON/LOST/POSTPONED)' })
   recordOutcome(@Param('id') id: string, @Body() dto: RfqOutcomeDto) {
     return this.service.recordOutcome(id, dto);
   }
 
   @Post(':id/cancel')
+  @RequirePermission('rfq:request')
   @ApiOperation({ summary: 'Cancel RFQ (non-terminal only)' })
   cancel(@Param('id') id: string) {
     return this.service.cancel(id);

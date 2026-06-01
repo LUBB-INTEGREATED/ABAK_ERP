@@ -9,6 +9,7 @@ import { LocaleMiddleware } from '../common/middleware/locale.middleware';
 import { AuditModule } from '../modules/audit/audit.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
+import { PermissionGuard } from '../modules/auth/guards/permission.guard';
 import { ClientsModule } from '../modules/clients/clients.module';
 import { EscalationModule } from '../modules/escalation/escalation.module';
 import { FilesModule } from '../modules/files/files.module';
@@ -60,7 +61,11 @@ import { AppService } from './app.service';
     ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

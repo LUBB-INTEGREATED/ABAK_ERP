@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   AssignLeadDto,
   CreateLeadDto,
@@ -27,6 +28,7 @@ import { SlaService } from './sla.service';
 @ApiTags('leads')
 @ApiBearerAuth('JWT-auth')
 @Controller('leads')
+@RequirePermission('leads:view')
 export class LeadsController {
   constructor(
     private readonly leads: LeadsService,
@@ -35,6 +37,7 @@ export class LeadsController {
   ) {}
 
   @Post('recompute-sla')
+  @RequirePermission('leads:edit')
   @ApiOperation({
     summary:
       'Recompute SLA status for every open lead (cron runs automatically every 30 minutes)',
@@ -44,6 +47,7 @@ export class LeadsController {
   }
 
   @Post()
+  @RequirePermission('leads:create')
   @ApiOperation({ summary: 'Create a new lead' })
   create(@Body() dto: CreateLeadDto, @CurrentUser('id') actorId: string) {
     return this.leads.create(dto, actorId);
@@ -115,18 +119,21 @@ export class LeadsController {
   }
 
   @Patch(':id')
+  @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Update lead fields' })
   update(@Param('id') id: string, @Body() dto: UpdateLeadDto) {
     return this.leads.update(id, dto);
   }
 
   @Patch(':id/assign')
+  @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Assign the lead to a user' })
   assign(@Param('id') id: string, @Body() dto: AssignLeadDto) {
     return this.leads.assign(id, dto);
   }
 
   @Patch(':id/auto-assign')
+  @RequirePermission('leads:edit')
   @ApiOperation({
     summary:
       'Pick an assignee using the configured auto-assign strategy and apply it',
@@ -136,12 +143,14 @@ export class LeadsController {
   }
 
   @Patch(':id/status')
+  @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Transition lead status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
     return this.leads.updateStatus(id, dto);
   }
 
   @Delete(':id')
+  @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Soft delete (archive) the lead' })
   remove(@Param('id') id: string) {
     return this.leads.softDelete(id);
@@ -160,6 +169,7 @@ export class LeadsController {
   }
 
   @Post(':id/interactions')
+  @RequirePermission('comms:log')
   @ApiOperation({
     summary:
       'Log a communication entry (call / meeting / WhatsApp / etc.) on this lead.',

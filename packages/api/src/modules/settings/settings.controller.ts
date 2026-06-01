@@ -6,25 +6,16 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { UpdateSettingDto } from './dto/update-setting.dto';
 import { SettingsService } from './settings.service';
 
 @ApiTags('admin-settings')
 @Controller('admin/settings')
-@UseGuards(RolesGuard)
-@Roles(
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-  UserRole.SALES_MANAGER,
-  UserRole.FINANCE_MANAGER,
-)
+@RequirePermission('settings:view')
 export class SettingsController {
   constructor(private readonly service: SettingsService) {}
 
@@ -47,6 +38,7 @@ export class SettingsController {
   }
 
   @Patch(':key')
+  @RequirePermission('settings:manage')
   @ApiOperation({ summary: 'Update a setting value' })
   update(
     @Param('key') key: string,
@@ -57,6 +49,7 @@ export class SettingsController {
   }
 
   @Post(':key/reset')
+  @RequirePermission('settings:manage')
   @ApiOperation({ summary: 'Reset setting to default value' })
   reset(
     @Param('key') key: string,

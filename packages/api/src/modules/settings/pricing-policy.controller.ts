@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   PricingPolicyService,
   type UpdatePricingPolicyDto,
@@ -11,8 +9,7 @@ import {
 
 @ApiTags('admin-pricing-policy')
 @Controller('admin/pricing-policy')
-@UseGuards(RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.SALES_MANAGER)
+@RequirePermission('settings:view')
 export class PricingPolicyController {
   constructor(private readonly service: PricingPolicyService) {}
 
@@ -26,6 +23,7 @@ export class PricingPolicyController {
   }
 
   @Put()
+  @RequirePermission('settings:manage_pricing_policy')
   @ApiOperation({
     summary:
       'Replace the PricingPolicy. Only Sales Manager / Admin / CEO roles.',

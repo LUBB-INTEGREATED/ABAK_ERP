@@ -1,0 +1,26 @@
+no,fullName,firstName,lastName,email,technicalRole,jobTitle,department,productPersona,appRole,testFocus,gap
+1,النظام / معلومات الشركة,abak engineering,consulting,info@abak.com.sa,System,نظام / حساب عام,الإدارة التنفيذية,System / Company account,VIEWER,System identity; avoid using as human actor,OK
+2,عبد الغني الموفق,Abdulghani,Almuwafiq,abdulghani.almuwafiq@abak.com.sa,User,مستخدم,القسم المعماري,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+3,عبدالله محسن,Abdullah Mohsen,Abdullah,abdullah.mohsen@abak.com.sa,Super Admin,مدير قسم ال IT وتطوير الاعمال,الإدارة التنفيذية,CEO / Super Admin,SUPER_ADMIN,"Admin, all modules, approvals, settings",OK
+4,أحمد البيطار,Ahmad,Albitter,a.albittar@abak.com.sa,User,مستخدم,القسم المعماري,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+6,أحمد العبيري — محاسبة,Ahmed,Elibairy,accounting@abak.com.sa,Accountant,مسؤول قسم,الإدارة المالية,Finance Officer,FINANCE_MANAGER,"Payments, invoices, finance validation",OK
+7,أكرم عبدالله,Akram,Abdullah,akram@abak.com.sa,Administrator,مدير قسم,إدارة الخدمات البيئية,Department Manager,ADMIN,"Department triage, reports, admin workflows",OK
+8,علاء احمد,Alaa,Ahmed,alaa.ahmed@abak.com.sa,User,مستخدم,قسم المساحة,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+9,أمين النهاري,Ameen,Alnhari,ameen@abak.com.sa,User,مسؤول قسم,قسم الإشراف والهندسة المدنية,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+11,ضحى العوام,Duha,Al-awam,hr@abak.com.sa,HR Manager,مدير قسم,إدارة الموارد البشرية,HR/Admin Viewer,VIEWER,Non-MVP/support access check,No HR role in current UserRole enum
+12,غادة العتيبي,Ghadah,Alotaibi,ghadah@abak.com.sa,User,مستخدم,قسم التسويق والمبيعات,Sales Person,SALES_REPRESENTATIVE,Lead/RFQ request/client communication,OK
+13,هيثم محمدي,Haitham,Mohamady,haitham@abak.com.sa,Administrator,مدير قسم,قسم التسويق والمبيعات,Department Manager,ADMIN,"Department triage, reports, admin workflows",OK
+14,هاشم علي,Hashim,Ali,hashim.ali@abak.com.sa,User,مستخدم,القسم المعماري,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+15,حسن صلاح,Hassan,Salah,hassan@abak.com.sa,Administrator,مدير قسم المعماري ومدير مكتب إدارة المشاريع,إدارة جميع الاقسام الفنية,Department Manager,ADMIN,"Department triage, reports, admin workflows",OK
+16,خالد الخبيري,Khaled,Elkhabery,khaled@abak.com.sa,User,مستخدم,القسم المعماري,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+18,مسفر القحطاني,Mesfer,Alqahtani,mesfer@abak.com.sa,Administrator,رئيس مجلس الإدارة,الإدارة التنفيذية,Sales/Business Manager or Main Manager,ADMIN,"Department triage, reports, admin workflows",OK
+20,محمد العطيات — علاقات عملاء,Mohammed,Alatiyyat,client.relations2@abak.com.sa,User,مستخدم,قسم التسويق والمبيعات,Sales Person,SALES_REPRESENTATIVE,Lead/RFQ request/client communication,OK
+21,محمد العياف,Mohammed,Alayaf,m.alayaf@abak.com.sa,Administrator,الرئيس التنفيذي,الإدارة التنفيذية,Sales/Business Manager or Main Manager,ADMIN,"Department triage, reports, admin workflows",OK
+22,محمد ضيف الله,Mohammed,Deifallah,mohammed.deifallah@abak.com.sa,User,مستخدم,قسم المساحة,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+23,مصطفى حلمي,Mostafa,Helmy,mostafa@abak.com.sa,User,مستخدم,قسم التسويق والمبيعات,Sales Person,SALES_REPRESENTATIVE,Lead/RFQ request/client communication,OK
+25,عمر ربابعة,Omar,Rababah,omar@abak.com.sa,User,مدير قسم,قسم السلامة والأمن الصناعي,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+26,أسامة الصامت,Osamah,Alsamet,osamah.alsamet@abak.com.sa,User,مستخدم,القسم المعماري,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER
+28,رحمة طارق — علاقات عملاء,Rahma,Tareq,client.relations1@abak.com.sa,Client Relations,مستخدم,قسم التسويق والمبيعات,Sales Person / Client Relations,SALES_REPRESENTATIVE,"Lead capture, follow-ups, quote dispatch",OK
+29,صالح الشهري,Saleh,Alshehri,salshehri@abak.com.sa,User,المدير التنفيذي — تطوير الأعمال,الإدارة التنفيذية,Executive Viewer,VIEWER,Dashboard/report visibility,OK
+30,سلوى سعد,Salwa,Saad,salwa@abak.com.sa,User,مستخدم,قسم التسويق والمبيعات,Sales Person,SALES_REPRESENTATIVE,Lead/RFQ request/client communication,OK
+32,وليد بن عابد,Waleed,bin Abid,w.abid@abak.com.sa,User,مستخدم,قسم السلامة والأمن الصناعي,Department Engineer / Pricer,TECHNICAL_MANAGER,"RFQ pricing, project tasks, licence dependencies",Coarse role: app lacks separate DEPARTMENT_ENGINEER/MANAGER

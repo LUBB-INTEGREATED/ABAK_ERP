@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ClassificationService } from './classification.service';
 import { ClientsService } from './clients.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   ClientFilterDto,
   CreateClientDto,
@@ -29,6 +30,7 @@ import {
 @ApiTags('clients')
 @ApiBearerAuth('JWT-auth')
 @Controller('clients')
+@RequirePermission('clients:view')
 export class ClientsController {
   constructor(
     private readonly clients: ClientsService,
@@ -36,6 +38,7 @@ export class ClientsController {
   ) {}
 
   @Post('reclassify')
+  @RequirePermission('clients:edit')
   @ApiOperation({
     summary:
       'Trigger the classification sweep (cron runs every night at 02:00)',
@@ -45,6 +48,7 @@ export class ClientsController {
   }
 
   @Post()
+  @RequirePermission('clients:create')
   @ApiOperation({ summary: 'Create a client (optionally convert a lead)' })
   create(@Body() dto: CreateClientDto, @CurrentUser('id') actorId: string) {
     return this.clients.create(dto, actorId);
@@ -71,12 +75,14 @@ export class ClientsController {
   }
 
   @Patch(':id')
+  @RequirePermission('clients:edit')
   @ApiOperation({ summary: 'Update client fields' })
   update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
     return this.clients.update(id, dto);
   }
 
   @Patch(':id/classify')
+  @RequirePermission('clients:edit')
   @ApiOperation({
     summary: 'Change classification (optionally lock from auto)',
   })
@@ -85,6 +91,7 @@ export class ClientsController {
   }
 
   @Delete(':id')
+  @RequirePermission('clients:edit')
   @ApiOperation({ summary: 'Archive the client (soft delete)' })
   archive(@Param('id') id: string) {
     return this.clients.archive(id);
@@ -102,6 +109,7 @@ export class ClientsController {
   }
 
   @Post(':id/interactions')
+  @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Log an interaction for the client' })
   addInteraction(
     @Param('id') id: string,
@@ -112,6 +120,7 @@ export class ClientsController {
   }
 
   @Patch(':id/interactions/:interactionId')
+  @RequirePermission('comms:log')
   @ApiOperation({
     summary: 'Edit an interaction (locked after 24h — manager override only)',
   })
@@ -125,6 +134,7 @@ export class ClientsController {
   }
 
   @Delete(':id/interactions/:interactionId')
+  @RequirePermission('comms:log')
   @ApiOperation({
     summary:
       'Delete an interaction (locked after 24h — managers + admins only)',
@@ -138,6 +148,7 @@ export class ClientsController {
   }
 
   @Post(':id/reassign')
+  @RequirePermission('clients:edit')
   @ApiOperation({
     summary: 'Reassign client account manager (BR-19 — reason required)',
   })
@@ -158,6 +169,7 @@ export class ClientsController {
   }
 
   @Post(':id/follow-ups')
+  @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Schedule a follow-up for the client' })
   createFollowUp(
     @Param('id') id: string,
@@ -168,6 +180,7 @@ export class ClientsController {
   }
 
   @Patch('follow-ups/:followUpId')
+  @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Update a follow-up (status, assignee, outcome)' })
   updateFollowUp(
     @Param('followUpId') followUpId: string,
@@ -185,6 +198,7 @@ export class ClientsController {
   }
 
   @Post(':id/notes')
+  @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Add a note to the client' })
   createNote(
     @Param('id') id: string,
@@ -195,6 +209,7 @@ export class ClientsController {
   }
 
   @Delete('notes/:noteId')
+  @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Delete a note' })
   deleteNote(@Param('noteId') noteId: string) {
     return this.clients.deleteNote(noteId);

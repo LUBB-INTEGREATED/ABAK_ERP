@@ -1,14 +1,11 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { EscalationService } from './escalation.service';
 
 @ApiTags('escalation')
 @Controller('admin/escalation')
-@UseGuards(RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+@RequirePermission('settings:view')
 export class EscalationController {
   constructor(private readonly service: EscalationService) {}
 

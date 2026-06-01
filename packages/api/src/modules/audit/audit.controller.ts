@@ -1,14 +1,11 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { AuditService } from './audit.service';
 
 @ApiTags('admin-audit')
 @Controller('admin/audit')
-@UseGuards(RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+@RequirePermission('audit:view')
 export class AuditController {
   constructor(private readonly service: AuditService) {}
 

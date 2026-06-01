@@ -7,12 +7,9 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   CreateServiceCategoryDto,
   CreateServiceDto,
@@ -43,24 +40,21 @@ export class ServicesController {
   }
 
   @Post('services')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @RequirePermission('services:manage')
   @ApiOperation({ summary: 'Create a service (admin only)' })
   create(@Body() dto: CreateServiceDto) {
     return this.services.create(dto);
   }
 
   @Patch('services/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @RequirePermission('services:manage')
   @ApiOperation({ summary: 'Update a service (admin only)' })
   update(@Param('id') id: string, @Body() dto: UpdateServiceDto) {
     return this.services.update(id, dto);
   }
 
   @Delete('services/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @RequirePermission('services:manage')
   @ApiOperation({ summary: 'Deactivate a service (admin only)' })
   deactivate(@Param('id') id: string) {
     return this.services.deactivate(id);
@@ -73,16 +67,14 @@ export class ServicesController {
   }
 
   @Post('service-categories')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @RequirePermission('services:manage')
   @ApiOperation({ summary: 'Create a category (admin only)' })
   createCategory(@Body() dto: CreateServiceCategoryDto) {
     return this.services.createCategory(dto);
   }
 
   @Patch('service-categories/:id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @RequirePermission('services:manage')
   @ApiOperation({ summary: 'Update a category (admin only)' })
   updateCategory(
     @Param('id') id: string,

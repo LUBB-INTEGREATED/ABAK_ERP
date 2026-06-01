@@ -1,0 +1,164 @@
+// =====================================================================
+// ABAK ERP — RBAC v2 schema additions (Phase 1 foundation)
+// DRAFT for review — NOT yet wired into prisma/schema.prisma.
+// Pairs with docs/architecture/abak-rbac-design.md (v2).
+// Conventions match the existing schema: cuid ids, @@map snake_case,
+// createdAt/updatedAt, explicit @relation names.
+// =====================================================================
+
+// ---- Enums ----------------------------------------------------------
+
+enum Scope {
+  OWN        // record.ownerId == user.id
+  DEPARTMENT // record.departmentId == user.departmentId (managers see whole dept)
+  ALL        // no filter
+}
+
+enum DeptType {
+  TECHNICAL
+  SALES
+  FINANCE
+  HR
+  EXECUTIVE
+  SUPPORT
+}
+
+// NOTE on naming: the existing `enum UserRole` (SUPER_ADMIN, ADMIN, …) is KEPT
+// as a legacy, nullable column on User during migration, then dropped in a
+// follow-up once everyone is mapped to data-roles. That collision is why the
+// user↔role join model is `RoleAssignment`, not `UserRole`.
+
+// ---- Permission catalog (fixed vocabulary; seeded, developer-owned) -
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique          // e.g. "rfq:price_section"
+  module      String                   // "rfq"
+  action      String                   // "price_section"
+  description String?
+  scopeable   Boolean @default(false)  // can be limited to own / department / all
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+// ---- Roles (data; admin-owned, editable) ----------------------------
+
+model Role {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  nameAr       String?
+  description  String?
+  isSystem     Boolean @default(false) // locked from deletion (e.g. Super Admin)
+  isAssignable Boolean @default(true)  // false = retired, hidden from pickers
+
+  permissions RolePermission[]
+  assignments RoleAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  scope        Scope      @default(ALL) // ignored for non-scopeable permissions
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model RoleAssignment {
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId]) // a user may hold many roles (decision §11.4)
+  @@index([roleId])
+  @@map("role_assignments")
+}
+
+// ---- Departments (first-class org units; admin-manageable) ----------
+
+model Department {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  nameAr   String?
+  type     DeptType @default(TECHNICAL)
+  isActive Boolean  @default(true) // Haya Mudun + Khibrah seed as false
+  order    Int      @default(0)
+
+  // one of THIS department's own engineers; keeps engineer powers and
+  // additionally gets the manager bundle (assign pricers, lead pricer, convert).
+  managerId String?
+  manager   User?   @relation("DepartmentManager", fields: [managerId], references: [id])
+
+  members  User[]              @relation("DepartmentMembers")
+  services DepartmentService[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+  @@map("departments")
+}
+
+// Technical departments link to one or more billable services (price list).
+// Sales / Finance / HR / Executive / IT link to none.
+model DepartmentService {
+  departmentId      String
+  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  serviceCategoryId String
+  serviceCategory   ServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
+
+  @@id([departmentId, serviceCategoryId])
+  @@index([serviceCategoryId])
+  @@map("department_services")
+}
+
+// =====================================================================
+// CHANGES TO EXISTING MODELS (shown as additions, not full rewrites)
+// =====================================================================
+
+// model User {
+//   ... existing fields ...
+//   role  UserRole @default(SALES_REPRESENTATIVE)   // KEEP nullable during migration, drop later
+//   departmentId      String?
+//   department        Department?      @relation("DepartmentMembers", fields: [departmentId], references: [id])
+//   managedDepartment Department?      @relation("DepartmentManager")
+//   roleAssignments   RoleAssignment[]
+//   @@index([departmentId])
+// }
+
+// model ServiceCategory {
+//   ... existing fields ...
+//   departmentLinks DepartmentService[]
+// }
+
+// model RfqAssignment / QuoteItem {
+//   // `departmentId` currently references ServiceCategory (schema doubles it as "department").
+//   // Phase 1: add a real Department FK (or resolve via DepartmentService) so a section
+//   // carries BOTH its org department and its billable service. Migrate existing rows.
+// }
+
+// =====================================================================
+// SEED OUTLINE (Phase 1)
+// 1. Permissions: insert the catalog from design doc §3 (one row per key).
+// 2. Departments: 11 from the v4 sheet; Haya Mudun + Khibrah isActive=false;
+//    set managerId per design §8 (Alaa = Surveying).
+// 3. Roles: 8 templates from §6 (Super Admin isSystem=true).
+// 4. RolePermission: wire each template's keys + scope per §6.
+// 5. RoleAssignment: assign the 25 users per §8 (Hassan = Engineer + Technical Director).
+// 6. Backfill User.departmentId; one-time map legacy UserRole enum -> data-role.
+// =====================================================================

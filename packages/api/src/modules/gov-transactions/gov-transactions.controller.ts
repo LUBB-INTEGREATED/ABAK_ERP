@@ -21,9 +21,11 @@ import {
   WeeklyStatusUpdateDto,
 } from './dto';
 import { GovTransactionsService } from './gov-transactions.service';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 @ApiTags('gov-transactions')
 @Controller('gov-transactions')
+@RequirePermission('gov:view')
 export class GovTransactionsController {
   constructor(private readonly service: GovTransactionsService) {}
 
@@ -40,6 +42,7 @@ export class GovTransactionsController {
   }
 
   @Post()
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Create a gov transaction (BR-15)' })
   create(
     @Body() dto: CreateGovTransactionDto,
@@ -61,12 +64,14 @@ export class GovTransactionsController {
   }
 
   @Patch(':id')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Update gov transaction' })
   update(@Param('id') id: string, @Body() dto: UpdateGovTransactionDto) {
     return this.service.update(id, dto);
   }
 
   @Patch(':id/status')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Transition status' })
   transitionStatus(
     @Param('id') id: string,
@@ -76,6 +81,7 @@ export class GovTransactionsController {
   }
 
   @Post(':id/visits')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Log PRO visit (must be same day — BR-16)' })
   logVisit(
     @Param('id') id: string,
@@ -86,12 +92,14 @@ export class GovTransactionsController {
   }
 
   @Post(':id/comments')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Log authority comment' })
   logComment(@Param('id') id: string, @Body() dto: LogCommentDto) {
     return this.service.logComment(id, dto);
   }
 
   @Patch('comments/:commentId/respond')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Respond to an authority comment' })
   respondToComment(
     @Param('commentId') commentId: string,
@@ -102,6 +110,7 @@ export class GovTransactionsController {
   }
 
   @Post(':id/documents')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Attach a document' })
   uploadDocument(
     @Param('id') id: string,
@@ -112,6 +121,7 @@ export class GovTransactionsController {
   }
 
   @Post(':id/weekly-status-update')
+  @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Mark weekly status update' })
   weeklyStatusUpdate(
     @Param('id') id: string,
