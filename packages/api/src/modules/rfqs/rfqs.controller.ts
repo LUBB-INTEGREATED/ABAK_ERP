@@ -17,6 +17,8 @@ import { ListRfqsDto } from './dto/list-rfqs.dto';
 import { RfqOutcomeDto } from './dto/rfq-outcome.dto';
 import { RfqsService } from './rfqs.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 
 @ApiTags('rfqs')
 @Controller('rfqs')
@@ -39,8 +41,12 @@ export class RfqsController {
 
   @Get()
   @ApiOperation({ summary: 'List RFQs (paged, filterable)' })
-  list(@Query() query: ListRfqsDto) {
-    return this.service.list(query);
+  list(
+    @Query() query: ListRfqsDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.list(query, { user, scope });
   }
 
   @Get(':id')

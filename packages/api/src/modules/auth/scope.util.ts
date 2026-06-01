@@ -47,3 +47,39 @@ export function departmentScopeFilter(
   }
   return { [fields.ownerField]: ctx.user.id };
 }
+
+/**
+ * RFQs are relation-scoped (engineers have no owner column). A non-ALL viewer
+ * sees their originated RFQs (OWN, e.g. Sales Rep) or RFQs assigned to them
+ * (DEPARTMENT, engineers). Whole-department visibility for managers needs the
+ * ServiceCategory<->Department link populated (RfqAssignment.departmentId points
+ * at ServiceCategory today) — follow-up.
+ */
+export function rfqScopeFilter(
+  ctx: ScopeContext | undefined,
+): Record<string, unknown> {
+  if (!ctx?.scope || ctx.scope === 'ALL') return {};
+  if (ctx.scope === 'DEPARTMENT') {
+    return { assignments: { some: { assigneeId: ctx.user.id } } };
+  }
+  return { originalSalesRepId: ctx.user.id };
+}
+
+/**
+ * Projects have no department column. A non-ALL viewer (e.g. Engineer) sees
+ * projects they are involved in: PM, a phase owner, or a task assignee.
+ * Whole-department visibility for managers is a follow-up.
+ */
+export function projectScopeFilter(
+  ctx: ScopeContext | undefined,
+): Record<string, unknown> {
+  if (!ctx?.scope || ctx.scope === 'ALL') return {};
+  const uid = ctx.user.id;
+  return {
+    OR: [
+      { pmId: uid },
+      { phases: { some: { ownerId: uid } } },
+      { phases: { some: { tasks: { some: { assigneeId: uid } } } } },
+    ],
+  };
+}

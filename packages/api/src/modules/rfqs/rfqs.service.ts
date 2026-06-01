@@ -16,6 +16,7 @@ import { CreateRfqDto } from './dto/create-rfq.dto';
 import { DispatchRfqDto } from './dto/dispatch-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
 import { RfqOutcomeDto, RfqOutcomeValue } from './dto/rfq-outcome.dto';
+import { rfqScopeFilter, type ScopeContext } from '../auth/scope.util';
 
 const RFQ_DETAIL_INCLUDE = {
   client: true,
@@ -97,7 +98,7 @@ export class RfqsService {
     });
   }
 
-  async list(query: ListRfqsDto) {
+  async list(query: ListRfqsDto, scopeCtx?: ScopeContext) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
@@ -126,6 +127,13 @@ export class RfqsService {
           }
         : {}),
     };
+
+    // Row-level scope: engineers see RFQs assigned to them; Sales Reps see the
+    // RFQs they originated; ALL viewers (managers/admin) are unrestricted.
+    const rfqScope = rfqScopeFilter(scopeCtx);
+    if (Object.keys(rfqScope).length) {
+      where.AND = [rfqScope as Prisma.RfqWhereInput];
+    }
 
     const [total, data] = await this.prisma.$transaction([
       this.prisma.rfq.count({ where }),

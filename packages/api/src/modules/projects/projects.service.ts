@@ -25,6 +25,7 @@ import {
   UpdateTaskDto,
 } from './dto';
 import { DEFAULT_PHASE_TEMPLATE } from './phase-template';
+import { projectScopeFilter, type ScopeContext } from '../auth/scope.util';
 
 const PROJECT_DETAIL_INCLUDE = {
   client: { select: { id: true, contactName: true, companyName: true } },
@@ -163,7 +164,7 @@ export class ProjectsService {
     });
   }
 
-  async list(query: ListProjectsDto) {
+  async list(query: ListProjectsDto, scopeCtx?: ScopeContext) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
@@ -187,6 +188,14 @@ export class ProjectsService {
           }
         : {}),
     };
+
+    // Row-level scope: engineers see projects they are involved in (PM, phase
+    // owner, or task assignee); ALL viewers (Technical Director/Exec/admin) are
+    // unrestricted.
+    const projectScope = projectScopeFilter(scopeCtx);
+    if (Object.keys(projectScope).length) {
+      where.AND = [projectScope as Prisma.ProjectWhereInput];
+    }
 
     const [total, data] = await this.prisma.$transaction([
       this.prisma.project.count({ where }),

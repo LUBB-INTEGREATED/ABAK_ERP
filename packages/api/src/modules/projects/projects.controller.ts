@@ -28,6 +28,8 @@ import {
 } from './dto';
 import { ProjectsService } from './projects.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 
 @ApiTags('projects')
 @Controller()
@@ -77,8 +79,12 @@ export class ProjectsController {
 
   @Get('projects')
   @ApiOperation({ summary: 'List projects' })
-  list(@Query() query: ListProjectsDto) {
-    return this.service.list(query);
+  list(
+    @Query() query: ListProjectsDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.list(query, { user, scope });
   }
 
   @Get('projects/:id')
