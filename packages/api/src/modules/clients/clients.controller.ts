@@ -76,15 +76,24 @@ export class ClientsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Fetch a client 360° view' })
-  findOne(@Param('id') id: string) {
-    return this.clients.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.findOne(id, { user, scope });
   }
 
   @Patch(':id')
   @RequirePermission('clients:edit')
   @ApiOperation({ summary: 'Update client fields' })
-  update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
-    return this.clients.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateClientDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.update(id, dto, { user, scope });
   }
 
   @Patch(':id/classify')
@@ -92,15 +101,24 @@ export class ClientsController {
   @ApiOperation({
     summary: 'Change classification (optionally lock from auto)',
   })
-  classify(@Param('id') id: string, @Body() dto: UpdateClassificationDto) {
-    return this.clients.classify(id, dto);
+  classify(
+    @Param('id') id: string,
+    @Body() dto: UpdateClassificationDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.classify(id, dto, { user, scope });
   }
 
   @Delete(':id')
   @RequirePermission('clients:edit')
   @ApiOperation({ summary: 'Archive the client (soft delete)' })
-  archive(@Param('id') id: string) {
-    return this.clients.archive(id);
+  archive(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.archive(id, { user, scope });
   }
 
   // Interactions ---------------------------------------------------
@@ -110,8 +128,10 @@ export class ClientsController {
   listInteractions(
     @Param('id') id: string,
     @Query() filter: InteractionFilterDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
   ) {
-    return this.clients.listInteractions(id, filter);
+    return this.clients.listInteractions(id, filter, { user, scope });
   }
 
   @Post(':id/interactions')
@@ -121,8 +141,10 @@ export class ClientsController {
     @Param('id') id: string,
     @Body() dto: CreateInteractionDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.addInteraction(id, dto, actorId);
+    return this.clients.addInteraction(id, dto, actorId, { user, scope });
   }
 
   @Patch(':id/interactions/:interactionId')
@@ -135,8 +157,13 @@ export class ClientsController {
     @Param('interactionId') interactionId: string,
     @Body() dto: UpdateInteractionDto,
     @CurrentUser() actor: { id: string; role: string },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.updateInteraction(id, interactionId, dto, actor);
+    return this.clients.updateInteraction(id, interactionId, dto, actor, {
+      user,
+      scope,
+    });
   }
 
   @Delete(':id/interactions/:interactionId')
@@ -149,8 +176,13 @@ export class ClientsController {
     @Param('id') id: string,
     @Param('interactionId') interactionId: string,
     @CurrentUser() actor: { id: string; role: string },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.deleteInteraction(id, interactionId, actor);
+    return this.clients.deleteInteraction(id, interactionId, actor, {
+      user,
+      scope,
+    });
   }
 
   @Post(':id/reassign')
@@ -162,16 +194,22 @@ export class ClientsController {
     @Param('id') id: string,
     @Body() dto: ReassignClientDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:edit') scope: PermissionScope | undefined,
   ) {
-    return this.clients.reassign(id, dto, actorId);
+    return this.clients.reassign(id, dto, actorId, { user, scope });
   }
 
   // Follow-ups -----------------------------------------------------
 
   @Get(':id/follow-ups')
   @ApiOperation({ summary: 'List follow-ups for a client' })
-  listFollowUps(@Param('id') id: string) {
-    return this.clients.listFollowUps(id);
+  listFollowUps(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.listFollowUps(id, { user, scope });
   }
 
   @Post(':id/follow-ups')
@@ -181,8 +219,10 @@ export class ClientsController {
     @Param('id') id: string,
     @Body() dto: CreateFollowUpDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.createFollowUp(id, dto, actorId);
+    return this.clients.createFollowUp(id, dto, actorId, { user, scope });
   }
 
   @Patch('follow-ups/:followUpId')
@@ -199,8 +239,12 @@ export class ClientsController {
 
   @Get(':id/notes')
   @ApiOperation({ summary: 'List client notes' })
-  listNotes(@Param('id') id: string) {
-    return this.clients.listNotes(id);
+  listNotes(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.listNotes(id, { user, scope });
   }
 
   @Post(':id/notes')
@@ -210,8 +254,10 @@ export class ClientsController {
     @Param('id') id: string,
     @Body() dto: CreateNoteDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.createNote(id, dto, actorId);
+    return this.clients.createNote(id, dto, actorId, { user, scope });
   }
 
   @Delete('notes/:noteId')

@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
+  FileSearch,
   Pencil,
   Repeat2,
   Trash2,
@@ -37,6 +38,7 @@ import { StatusDialog } from './status-dialog';
 import { AssignDialog } from './assign-dialog';
 import { EditDialog } from './edit-dialog';
 import { ConvertLeadDialog } from './convert-dialog';
+import { RequestRfqDialog } from './request-rfq-dialog';
 import { CommunicationsLog } from '@/components/leads/communications-log';
 
 export default function LeadDetailPage() {
@@ -50,6 +52,7 @@ export default function LeadDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [rfqOpen, setRfqOpen] = useState(false);
   const deleteMutation = useDeleteLead(id);
 
   if (isLoading) {
@@ -112,7 +115,14 @@ export default function LeadDetailPage() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => setStatusOpen(true)}>
+        {!['DISQUALIFIED', 'TENDER_WON', 'TENDER_LOST'].includes(
+          lead.status,
+        ) && (
+          <Button size="sm" onClick={() => setRfqOpen(true)}>
+            <FileSearch className="mr-2 h-4 w-4" /> Request RFQ
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={() => setStatusOpen(true)}>
           <ArrowRight className="mr-2 h-4 w-4" /> Change status
         </Button>
         <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
@@ -122,17 +132,18 @@ export default function LeadDetailPage() {
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="mr-2 h-4 w-4" /> Edit
         </Button>
-        {!['DISQUALIFIED', 'TENDER_WON', 'TENDER_LOST'].includes(
-          lead.status,
-        ) && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setConvertOpen(true)}
-          >
-            <Repeat2 className="me-2 h-4 w-4" /> {tLead('convertToClient')}
-          </Button>
-        )}
+        {!lead.clientId &&
+          !['DISQUALIFIED', 'TENDER_WON', 'TENDER_LOST'].includes(
+            lead.status,
+          ) && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setConvertOpen(true)}
+            >
+              <Repeat2 className="me-2 h-4 w-4" /> {tLead('convertToClient')}
+            </Button>
+          )}
         {lead.clientId && (
           <Button size="sm" variant="outline" asChild>
             <Link href={`/clients/${lead.clientId}`}>Open client →</Link>
@@ -249,6 +260,7 @@ export default function LeadDetailPage() {
         onOpenChange={setConvertOpen}
         lead={lead}
       />
+      <RequestRfqDialog open={rfqOpen} onOpenChange={setRfqOpen} lead={lead} />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

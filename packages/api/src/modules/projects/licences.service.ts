@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,6 +8,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { LicenceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  isUnrestricted,
+  projectScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 
 /**
  * Government licence tracking on a project.
@@ -53,8 +59,8 @@ export class LicencesService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async list(projectId: string) {
-    await this.assertProjectExists(projectId);
+  async list(projectId: string, scopeCtx?: ScopeContext) {
+    await this.assertProjectInScope(projectId, scopeCtx);
     return this.prisma.licence.findMany({
       where: { projectId, deletedAt: null },
       orderBy: { appliedDate: 'desc' },
@@ -66,8 +72,13 @@ export class LicencesService {
     });
   }
 
-  async create(projectId: string, dto: CreateLicenceDto, actorId: string) {
-    await this.assertProjectExists(projectId);
+  async create(
+    projectId: string,
+    dto: CreateLicenceDto,
+    actorId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.assertProjectInScope(projectId, scopeCtx);
 
     const licence = await this.prisma.licence.create({
       data: {
@@ -98,11 +109,17 @@ export class LicencesService {
     return licence;
   }
 
-  async update(projectId: string, licenceId: string, dto: UpdateLicenceDto) {
+  async update(
+    projectId: string,
+    licenceId: string,
+    dto: UpdateLicenceDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const existing = await this.prisma.licence.findFirst({
       where: { id: licenceId, projectId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException('Licence not found');
+    await this.assertProjectInScope(projectId, scopeCtx);
 
     const data: Prisma.LicenceUpdateInput = {
       ...(dto.name !== undefined && { name: dto.name }),
@@ -179,6 +196,7 @@ export class LicencesService {
     phaseId: string,
     dto: { justification: string },
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
     if (!dto.justification || dto.justification.trim().length < 20) {
       throw new BadRequestException(
@@ -190,6 +208,7 @@ export class LicencesService {
       include: { licenceDependencies: { select: { id: true, status: true } } },
     });
     if (!phase) throw new NotFoundException('Phase not found');
+    await this.assertProjectInScope(projectId, scopeCtx);
     const hasBlockingLicence = phase.licenceDependencies.some(
       (l) => l.status !== LicenceStatus.ISSUED,
     );
@@ -216,11 +235,16 @@ export class LicencesService {
    * issued so override is no longer needed). Anyone with project access
    * can clear — it only restores the default block behaviour.
    */
-  async clearPhaseLicenceOverride(projectId: string, phaseId: string) {
+  async clearPhaseLicenceOverride(
+    projectId: string,
+    phaseId: string,
+    scopeCtx?: ScopeContext,
+  ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException('Phase not found');
+    await this.assertProjectInScope(projectId, scopeCtx);
     if (!phase.licenceOverrideAt) {
       throw new BadRequestException('No override set on this phase.');
     }
@@ -236,11 +260,16 @@ export class LicencesService {
     return updated;
   }
 
-  async softDelete(projectId: string, licenceId: string) {
+  async softDelete(
+    projectId: string,
+    licenceId: string,
+    scopeCtx?: ScopeContext,
+  ) {
     const existing = await this.prisma.licence.findFirst({
       where: { id: licenceId, projectId, deletedAt: null },
     });
     if (!existing) throw new NotFoundException('Licence not found');
+    await this.assertProjectInScope(projectId, scopeCtx);
 
     const licence = await this.prisma.licence.update({
       where: { id: licenceId },
@@ -313,12 +342,35 @@ export class LicencesService {
     }
   }
 
-  private async assertProjectExists(projectId: string) {
+  /**
+   * Licences/overrides are children of a project; scope by the PARENT project
+   * using the relation-based projectScopeFilter. First confirm the project
+   * exists (404), then — for a non-ALL actor — confirm they are involved in it
+   * (PM / phase owner / task assignee / dept); otherwise 403. No-op for
+   * ALL / absent scope beyond the existence check.
+   */
+  private async assertProjectInScope(
+    projectId: string,
+    scopeCtx?: ScopeContext,
+  ) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: { id: true },
     });
     if (!project) throw new NotFoundException('Project not found');
+    if (isUnrestricted(scopeCtx)) return;
+    const ok = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        ...(projectScopeFilter(scopeCtx) as Prisma.ProjectWhereInput),
+      },
+      select: { id: true },
+    });
+    if (!ok) {
+      throw new ForbiddenException(
+        'You do not have permission to access this resource',
+      );
+    }
   }
 
   /**

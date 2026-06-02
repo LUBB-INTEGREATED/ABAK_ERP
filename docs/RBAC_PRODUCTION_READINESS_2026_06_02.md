@@ -20,9 +20,12 @@ remaining enforcement gaps**, verified every piece I could without the cloud DB,
 - **My edits add zero new type errors** (proven against the baseline).
 - **What you must do tomorrow** (≈15 min): deploy the branch, run the migration + the two seeds with
   `ABAK_TEST_USER_PASSWORD=Password123!`, then execute the test plan. Steps in the **Runbook** below.
-- **Two things could not be run in the automation sandbox** (wrong-CPU native binaries): the Prisma
-  engine and `nx`. So the live DB seed, `nx build`, and HTTP-level tests must be run on your machine /
-  the VPS. Everything is staged and documented so that's a copy-paste exercise.
+- **The automation sandbox can't reach your local Docker DB** (it's an isolated VM — no `docker`, can't
+  see `localhost:5435`) and can't run the **Prisma engine** / **nx** (their native binaries are built
+  for macOS, not the sandbox's Linux). So the live seed, `nx build`, and HTTP tests run on your machine.
+  **But I did validate against a real Postgres** (pglite/WASM): all **29 migrations apply cleanly from
+  scratch**, and the new **`scripts/rbac_verify.sql`** executes correctly — so the live DB checks are a
+  copy-paste exercise (Step 2.5).
 
 ---
 
@@ -104,6 +107,15 @@ Re-run any time: `node scripts/rbac_verify.js` from the repo root (Node ≥ 18, 
 `tsc -p packages/api/tsconfig.app.json --noEmit` was run with and without my changes. **My four edited
 files produce zero type errors.** There are ~31 pre-existing type errors in _unrelated_ modules
 (gov-transactions, reports definitions, projects/rfqs `groupBy`, notifications, leads DTOs) — see §3.2.
+
+### 2.3 DB migration chain + live verifier — validated against a real Postgres
+
+Using pglite (a WASM Postgres that needs no native binary), I applied **all 29 migration files in order
+into a fresh database — they apply cleanly**, confirming a new environment can be built from the
+migrations. I then ran the new **`scripts/rbac_verify.sql`** against that real schema: it executes with
+no errors and every column/join resolves (validated against the actual migration DDL). On an empty DB
+its count checks correctly report "not seeded yet"; the invariant checks (manager-is-member, legacy
+`role` column present) pass. Run it on your seeded DB via Step 2.5 — every row should turn `PASS`.
 
 ---
 
@@ -194,19 +206,27 @@ git commit -m "feat(rbac): manager-designation unlock + gate rfq-assignments & p
 
 ### Step 1 — install, generate client, migrate
 
+**Environment:** DB is **local Docker Postgres** — `docker-compose.yml` service `abak-db`, and `.env`
+points at `localhost:5435` (the `.env.example` 5433 is stale). `DATABASE_URL` is already in `.env`, so
+the commands below don't need it inline.
+
 ```bash
+docker ps                      # confirm the `abak-db` container is up
 pnpm install --frozen-lockfile
 pnpm prisma:generate
-# Apply the RBAC v2 migration (20260601182720_rbac_v2) to the testing DB:
-DATABASE_URL=<testing-db-url> pnpm prisma migrate deploy
+pnpm prisma migrate deploy     # you said migrations are already applied — this is a safe no-op re-check
 ```
 
 ### Step 2 — seed roles + the 25 real users _(order matters)_
 
+> Migrations create the tables; they do **not** populate RBAC data. If `rbac_verify.sql` (Step 2.5)
+> shows zeros, you still need to run these. Use the project's seed tsconfig — a bare `npx ts-node`
+> trips on the root `nodenext` config.
+
 ```bash
-export ABAK_TEST_USER_PASSWORD='Password123!'   # MUST match the login page's default for quick-login
-DATABASE_URL=<testing-db-url> npx ts-node prisma/seed-abak-real-users.ts   # 25 users
-DATABASE_URL=<testing-db-url> npx ts-node prisma/seed-rbac.ts              # 49 perms, 8 roles, 12 depts, assignments, managers
+export ABAK_TEST_USER_PASSWORD='Password123!'   # MUST match the login page's quick-login default
+npx ts-node --project tsconfig.seed.json prisma/seed-abak-real-users.ts   # 25 users
+npx ts-node --project tsconfig.seed.json prisma/seed-rbac.ts              # 49 perms, 8 roles, 12 depts, assignments, managers
 ```
 
 Expect: `Upserted 25 Abak test users.` then
@@ -214,6 +234,16 @@ Expect: `Upserted 25 Abak test users.` then
 
 > ⚠️ If you pick a different `ABAK_TEST_USER_PASSWORD`, the login page's one-click demo buttons (which
 > send `Password123!`) won't work — testers would have to type the password. Easiest: use `Password123!`.
+
+### Step 2.5 — verify the seeded DB (pure SQL, 5 sec)
+
+```bash
+docker exec -i abak-db psql -U abak -d abak_erp -f - < scripts/rbac_verify.sql
+```
+
+Every row should read `PASS`. This checks the test plan's S1–S6 against the live data (49 permissions,
+8 roles, 12 departments incl. 2 inactive, 9 managers, 25 users, `hassan@` = 2 roles, every manager is a
+member of the dept they manage, legacy `role` column retained). All-zero actuals = seeds not run yet.
 
 ### Step 3 — build & restart
 
@@ -284,7 +314,8 @@ guard-rail cases (§6 / G1–G5) **N/A** (Phase 2).
 
 **Added:**
 
-- `scripts/rbac_verify.js` — offline RBAC verifier (41 checks, no DB needed).
+- `scripts/rbac_verify.js` — offline RBAC verifier (logic + seed integrity, no DB needed).
+- `scripts/rbac_verify.sql` — live DB verifier (test plan S1–S6) via `docker exec`; no Prisma/nx needed.
 - `docs/RBAC_PRODUCTION_READINESS_2026_06_02.md` — this document.
 
 **Already staged by the prior session (review & keep):** `packages/api/src/main.ts` (CORS list),

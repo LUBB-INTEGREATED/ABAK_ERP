@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ABAK ERP — RBAC & Role-Journey Test Checklist</title>
+<style>
+  :root{
+    --blue:#236382; --blue-d:#19495f; --gold:#A78B42; --ink:#1B1B1B; --bg:#F4F2EF;
+    --card:#ffffff; --line:#e4e0d8; --muted:#6b7280;
+    --pass:#1f9d57; --pass-bg:#e8f7ee; --fail:#d23b3b; --fail-bg:#fdecec;
+    --na:#7a818c; --na-bg:#eef0f2; --untested:#cfd5dc;
+    --blocker:#b91c1c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--ink);line-height:1.5;font-size:14px}
+  a{color:var(--blue)}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 18px 80px}
+
+  header.top{background:linear-gradient(180deg,var(--blue),var(--blue-d));color:#fff;
+       border-bottom:3px solid var(--gold)}
+  .top-in{max-width:1060px;margin:0 auto;padding:18px}
+  .top h1{margin:0;font-size:20px;letter-spacing:.3px}
+  .top .sub{opacity:.9;font-size:12.5px;margin-top:3px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .meta label{display:flex;flex-direction:column;font-size:11px;opacity:.85;gap:3px}
+  .meta input{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;
+       border-radius:6px;padding:6px 8px;font-size:13px;min-width:170px}
+  .meta input::placeholder{color:rgba(255,255,255,.6)}
+
+  .bar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line);
+       box-shadow:0 1px 6px rgba(0,0,0,.05)}
+  .bar-in{max-width:1060px;margin:0 auto;padding:10px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .progress{flex:1;min-width:220px}
+  .ptrack{height:10px;background:#eceef1;border-radius:99px;overflow:hidden;display:flex}
+  .ptrack i{display:block;height:100%}
+  .ppass{background:var(--pass)} .pfail{background:var(--fail)} .pna{background:var(--na)}
+  .pcounts{font-size:12px;color:var(--muted);margin-top:5px;display:flex;gap:12px;flex-wrap:wrap}
+  .pcounts b{color:var(--ink)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:99px;vertical-align:middle;margin-right:4px}
+  .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  button.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 10px;font-size:12.5px;
+       cursor:pointer;color:var(--ink)}
+  button.btn:hover{border-color:var(--blue);color:var(--blue)}
+  button.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  button.btn.primary:hover{background:var(--blue-d);color:#fff}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:4px 11px;font-size:12px;cursor:pointer}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  section.sec{background:var(--card);border:1px solid var(--line);border-radius:11px;margin-top:16px;overflow:hidden}
+  .sec-h{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;user-select:none}
+  .sec-h:hover{background:#faf9f7}
+  .sec-h .tg{color:var(--muted);font-size:13px;width:14px}
+  .sec-h h2{margin:0;font-size:15px;flex:1}
+  .sec-h .mini{font-size:11.5px;color:var(--muted);background:#f1f3f5;border-radius:99px;padding:2px 9px}
+  .sec-b{padding:4px 16px 14px;display:none}
+  .sec.open .sec-b{display:block}
+  .sec.open .sec-h .tg{transform:none}
+  .note{font-size:12.5px;color:var(--muted);margin:6px 2px 10px;padding:8px 10px;background:#faf8f4;border:1px dashed var(--line);border-radius:8px}
+  pre{background:#0f1b22;color:#e8eef1;border-radius:8px;padding:10px 12px;overflow:auto;font-size:12px;margin:8px 0}
+
+  .item{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin:8px 0;background:#fff}
+  .item.s-pass{border-left:4px solid var(--pass)} .item.s-fail{border-left:4px solid var(--fail)}
+  .item.s-na{border-left:4px solid var(--na)} .item.s-untested{border-left:4px solid var(--untested)}
+  .item-top{display:flex;gap:10px;align-items:flex-start}
+  .id{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;font-weight:700;
+      color:#fff;background:var(--blue);border-radius:5px;padding:2px 7px;white-space:nowrap;margin-top:1px}
+  .id.j{background:var(--gold)} .id.s0{background:#5b6470}
+  .txt{flex:1}
+  .txt .t{font-weight:600}
+  .txt .x{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .txt .accts{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px}
+  .acct{font-family:ui-monospace,monospace;font-size:10.5px;background:#eef3f5;color:var(--blue-d);
+        border:1px solid #dce6ea;border-radius:5px;padding:1px 6px}
+  .acts{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;align-items:center}
+  .sbtn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;font-weight:600}
+  .sbtn[data-s=pass].on{background:var(--pass);color:#fff;border-color:var(--pass)}
+  .sbtn[data-s=fail].on{background:var(--fail);color:#fff;border-color:var(--fail)}
+  .sbtn[data-s=na].on{background:var(--na);color:#fff;border-color:var(--na)}
+  select.sev{font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--line)}
+  input.notes{flex:1;min-width:160px;font-size:12.5px;padding:5px 8px;border:1px solid var(--line);border-radius:6px}
+  .hidden{display:none!important}
+  table.ref{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  table.ref th,table.ref td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  table.ref th{background:#f3f1ed}
+  code{background:#f2efe9;padding:1px 5px;border-radius:4px;font-size:12px}
+  footer{margin-top:26px;color:var(--muted);font-size:12px;text-align:center}
+  @media print{
+    .bar,.controls,.meta,.acts,header.top .sub{display:none!important}
+    .sec-b{display:block!important} .item{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <h1>ABAK ERP — RBAC &amp; Role-Journey Test Checklist</h1>
+    <div class="sub">Permission-based access control · pairs with <code>abak-rbac-test-plan.md</code> &amp; <code>abak-role-journey-testing-pack.md</code> · password for all test users = <b>Password123!</b></div>
+    <div class="meta">
+      <label>Tester<input id="m_tester" placeholder="your name" /></label>
+      <label>Environment<input id="m_env" placeholder="local docker / staging / VPS" /></label>
+      <label>Date<input id="m_date" type="date" /></label>
+      <label>Build / commit<input id="m_build" placeholder="git short sha" /></label>
+    </div>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="progress">
+      <div class="ptrack" id="ptrack"><i class="ppass" style="width:0"></i><i class="pfail" style="width:0"></i><i class="pna" style="width:0"></i></div>
+      <div class="pcounts" id="pcounts"></div>
+    </div>
+    <div class="controls">
+      <span class="chip active" data-f="all">All</span>
+      <span class="chip" data-f="untested">Untested</span>
+      <span class="chip" data-f="pass">Pass</span>
+      <span class="chip" data-f="fail">Fail</span>
+      <span class="chip" data-f="na">N/A</span>
+      <button class="btn" id="expandAll">Expand all</button>
+      <button class="btn" id="collapseAll">Collapse</button>
+      <button class="btn primary" id="exportMd">Export report</button>
+      <button class="btn" id="exportJson">Backup</button>
+      <button class="btn" id="importJson">Restore</button>
+      <button class="btn" id="resetAll">Reset</button>
+      <input type="file" id="importFile" accept="application/json" class="hidden" />
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="app"></div>
+
+<footer>
+  ABAK Engineering Consultants — أباك للاستشارات الهندسية · progress saved in this browser (localStorage). Use <b>Backup</b> to share results across testers.
+</footer>
+
+<script>
+/* ---------- Test suite data ---------- */
+const ACCOUNTS = [
+  ["Super Admin","abdullah.mohsen@abak.com.sa","IT · ✓ manager"],
+  ["Executive","mesfer@ · m.alayaf@ · salshehri@","Executive"],
+  ["Sales Manager","haitham@abak.com.sa","Sales · ✓ manager"],
+  ["Sales Rep","ghadah@ · mostafa@ · salwa@ · client.relations1@ · client.relations2@","Sales"],
+  ["Engineer","abdulghani.almuwafiq@ · a.albittar@ · hashim.ali@ · khaled@ · osamah.alsamet@ · mohammed.deifallah@ · w.abid@","their dept"],
+  ["Engineer + Technical Director","hassan@abak.com.sa","Architecture · ✓ manager"],
+  ["Engineer + dept manager","alaa.ahmed@ (Surveying) · ameen@ (Supervision) · omar@ (Safety) · akram@ (Environmental)","✓ manager"],
+  ["Finance Officer","accounting@abak.com.sa","Finance · ✓ manager"],
+  ["Viewer","hr@abak.com.sa · info@abak.com.sa","HR / system"]
+];
+
+const SUITE = [
+  { id:"pf", title:"0 · Pre-flight / environment setup", cls:"s0", mini:"do this first",
+    note:"Migrations create tables but do NOT populate RBAC data — you must run both seeds. Use <code>ABAK_TEST_USER_PASSWORD=Password123!</code> so the login page quick-login works.",
+    items:[
+      {id:"PF1", t:"Docker DB is up", x:"docker ps shows the abak-db container (Postgres, localhost:5435)"},
+      {id:"PF2", t:"Install + Prisma client generated", x:"pnpm install --frozen-lockfile && pnpm prisma:generate"},
+      {id:"PF3", t:"Migrations applied", x:"pnpm prisma migrate deploy — no pending migrations"},
+      {id:"PF4", t:"Seed users", x:"npx ts-node --project tsconfig.seed.json prisma/seed-abak-real-users.ts → 'Upserted 25 Abak test users.'"},
+      {id:"PF5", t:"Seed RBAC", x:"npx ts-node --project tsconfig.seed.json prisma/seed-rbac.ts → 'RBAC seed complete — 49 permissions, 8 roles, 12 departments, 25 user assignments.'"},
+      {id:"PF6", t:"DB verifier all-PASS", x:"docker exec -i abak-db psql -U abak -d abak_erp -f - < scripts/rbac_verify.sql → every row PASS"},
+      {id:"PF7", t:"API + Web build & run", x:"pnpm nx build api && pnpm nx build web; services restarted; login page loads"},
+      {id:"PF8", t:"Quick-login works", x:"Login page demo buttons sign in (password Password123! matches the seed)"}
+    ]},
+
+  { id:"engine", title:"1 · Permission engine (§2)", mini:"E1–E6",
+    items:[
+      {id:"E1", t:"User with no roles hits any guarded route", x:"Deny (deny-by-default)"},
+      {id:"E2", t:"Required key absent from the user's union", x:"Deny"},
+      {id:"E3", t:"Two roles grant the same key at different scopes", x:"Widest scope wins (DEPARTMENT beats OWN)"},
+      {id:"E4", t:"hassan@ (Engineer + Technical Director)", x:"Has Engineer keys AND Technical Director keys; technical actions resolve at ALL", a:["hassan@abak.com.sa"]},
+      {id:"E5", t:"Permission set cached at login", x:"Changing a role takes effect after token refresh / re-login"},
+      {id:"E6", t:"Non-scopeable permission (users:manage)", x:"Scope ignored; pure allow/deny"}
+    ]},
+
+  { id:"tmpl", title:"2 · Template allow / deny spot-checks (§3)", mini:"8 templates",
+    items:[
+      {id:"T-SA", t:"Super Admin", x:"ALLOW users:manage, settings:manage, anything · DENY (nothing)", a:["abdullah.mohsen@abak.com.sa"]},
+      {id:"T-EX", t:"Executive", x:"ALLOW quote:approve, project:licence_override, all *:view · DENY users:manage, settings:manage", a:["m.alayaf@abak.com.sa"]},
+      {id:"T-SM", t:"Sales Manager", x:"ALLOW quote:approve(mid), settings:manage_pricing_policy, sales CRUD(ALL) · DENY users:manage, project:convert*, finance:validate_payment", a:["haitham@abak.com.sa"]},
+      {id:"T-SR", t:"Sales Rep", x:"ALLOW own leads:create, quote:send · DENY another rep's lead, quote:approve, any RFQ pricing", a:["ghadah@abak.com.sa"]},
+      {id:"T-EN", t:"Engineer", x:"ALLOW own-dept rfq:price_section, project:manage_tasks · DENY another dept's section, rfq:assign_pricers (unless manager), settings:*", a:["w.abid@abak.com.sa"]},
+      {id:"T-TD", t:"Technical Director", x:"ALLOW act across all technical depts, departments:manage · DENY users:manage, settings:manage", a:["hassan@abak.com.sa"]},
+      {id:"T-FO", t:"Finance Officer", x:"ALLOW finance:validate_payment, finance:closure_gate · DENY quote:approve, rfq:price_section, sales CRUD", a:["accounting@abak.com.sa"]},
+      {id:"T-VW", t:"Viewer", x:"ALLOW *:view (read) · DENY any create / edit / approve / manage", a:["hr@abak.com.sa"]}
+    ]},
+
+  { id:"scope", title:"3 · Department scope (§4)", mini:"D1–D7",
+    items:[
+      {id:"D1", t:"omar@ prices a Safety RFQ section", x:"Allow", a:["omar@abak.com.sa"]},
+      {id:"D2", t:"omar@ tries to price an Architecture section", x:"Deny (cross-department)", a:["omar@abak.com.sa"]},
+      {id:"D3", t:"abdulghani@ (Architecture) views projects", x:"Sees only Architecture-scoped work", a:["abdulghani.almuwafiq@abak.com.sa"]},
+      {id:"D4", t:"omar@ is Safety's managerId → views Safety work", x:"Sees the whole Safety department", a:["omar@abak.com.sa"]},
+      {id:"D5", t:"hassan@ (Technical Director) views technical work", x:"Sees ALL technical departments", a:["hassan@abak.com.sa"]},
+      {id:"D6", t:"ghadah@ (Sales Rep) views leads", x:"Sees only her OWN leads", a:["ghadah@abak.com.sa"]},
+      {id:"D7", t:"haitham@ (Sales Manager) views pipeline", x:"Sees the WHOLE sales pipeline", a:["haitham@abak.com.sa"]}
+    ]},
+
+  { id:"mgr", title:"4 · Manager designation (§5)", mini:"M1–M6",
+    note:"Manager actions (rfq:assign_pricers, rfq:set_lead_pricer, project:convert) are unlocked by Department.managerId in the guard — newly implemented. M6 (cross-dept manager deny) is a known follow-up (RfqAssignment↔Department reconciliation) — mark N/A if the finer check isn't wired yet.",
+    items:[
+      {id:"M1", t:"omar@ (= Safety managerId) assigns pricers / sets Lead Pricer / converts a Won quote", x:"Allow, Safety only", a:["omar@abak.com.sa"]},
+      {id:"M2", t:"w.abid@ (Engineer, Safety, NOT manager) tries the same", x:"Deny", a:["w.abid@abak.com.sa"]},
+      {id:"M3", t:"ameen@ (sole engineer AND manager of Supervision)", x:"Can both price a section AND assign/convert", a:["ameen@abak.com.sa"]},
+      {id:"M4", t:"Move Safety's managerId from omar@ to w.abid@", x:"Manager powers move with it; omar@ loses them"},
+      {id:"M5", t:"Try to set a user as manager of a second department", x:"Blocked by managerId @unique"},
+      {id:"M6", t:"Manager of dept A tries manager actions in dept B", x:"Deny (known follow-up — may be N/A this round)"}
+    ]},
+
+  { id:"ctrl", title:"5 · Controller gating (§7)", mini:"C1–C3 + new gates",
+    items:[
+      {id:"C1", t:"hr@ (Viewer) POSTs to /leads", x:"Deny (no leads:create)", a:["hr@abak.com.sa"]},
+      {id:"C2", t:"Any authenticated user GETs /users", x:"Deny unless users:view"},
+      {id:"C3", t:"Already-gated admin/finance/reports/settings/holidays/audit endpoints", x:"Still enforce (no regression)"},
+      {id:"C4", t:"NEW: /rfqs/:id/assignments now gated", x:"Non-manager POST assignment → 403; manager → allowed", a:["w.abid@abak.com.sa","omar@abak.com.sa"]},
+      {id:"C5", t:"NEW: /pipeline gated", x:"User without pipeline:view → 403 on GET /pipeline; Sales Rep/Manager → allowed"}
+    ]},
+
+  { id:"seed", title:"6 · Seed / migration verification (§8)", mini:"S1–S6 · auto via rbac_verify.sql",
+    note:"Fastest path: run scripts/rbac_verify.sql (PF6) — it checks S1–S6 in one shot. Tick these off from its output.",
+    items:[
+      {id:"S1", t:"Users with a department + ≥1 role", x:"25 / 25"},
+      {id:"S2", t:"Departments", x:"12 (2 inactive: Haya Mudun, Khibrah)"},
+      {id:"S3", t:"Managers set", x:"9; each manager's departmentId == the department they manage"},
+      {id:"S4", t:"Permissions / roles seeded", x:"49 permissions, 8 role templates"},
+      {id:"S5", t:"Legacy UserRole enum column", x:"Still present (migration not yet dropped)"},
+      {id:"S6", t:"hassan@ role count", x:"2 (Engineer + Technical Director)", a:["hassan@abak.com.sa"]}
+    ]},
+
+  { id:"guard", title:"7 · Guard-rails (§6) — Phase 2", mini:"G1–G5 · mostly N/A",
+    note:"Role-CRUD (roles:manage) and the role-builder UI are Phase 2 — no endpoint exists yet, so G1–G4 can't be executed this round. Default them to N/A. G5 (audit log) does exist and is testable.",
+    items:[
+      {id:"G1", t:"Delete the Super Admin role (isSystem=true)", x:"Blocked — N/A (Phase 2, no endpoint)"},
+      {id:"G2", t:"Delete a role that still has assignments", x:"Blocked — N/A (Phase 2)"},
+      {id:"G3", t:"Remove the last user holding users:manage", x:"Blocked/warned — N/A (Phase 2)"},
+      {id:"G4", t:"An admin removes their own users:manage", x:"Confirmation required — N/A (Phase 2)"},
+      {id:"G5", t:"All role/permission changes written to the audit log", x:"Audit entry exists for any change made"}
+    ]},
+
+  { id:"j1", title:"Journey 1 · Sales Person", cls:"j", mini:"ghadah@ / client.relations*",
+    items:[
+      {id:"J1-1", t:"Happy path", x:"Login → create lead → add client → log comms → schedule follow-up → move pipeline → request RFQ (Arch+Survey+Safety) → attach docs → send quote → log negotiation → mark Won/Lost/Postponed", a:["ghadah@abak.com.sa"]},
+      {id:"J1-2", t:"Sales remains client thread-of-record", x:"Communication timeline stays complete; follow-up due/overdue shows"},
+      {id:"J1-3", t:"Sales cannot change pricing policy / admin settings", x:"Denied"},
+      {id:"J1-4", t:"Sales cannot bypass department pricing/approval", x:"RFQ requires department scope"}
+    ]},
+
+  { id:"j2", title:"Journey 2 · Sales Manager", cls:"j", mini:"haitham@",
+    items:[
+      {id:"J2-1", t:"Happy path", x:"View pipeline → inspect new/stuck/overdue → open a rep's lead → review comms+follow-ups → check RFQ status → review sent quote/outcome", a:["haitham@abak.com.sa"]},
+      {id:"J2-2", t:"Sees team pipeline, not only own records", x:"Whole-team visibility"},
+      {id:"J2-3", t:"Cannot silently rewrite technical pricing", x:"No audit-trail break"}
+    ]},
+
+  { id:"j3", title:"Journey 3 · Technical Department Manager", cls:"j", mini:"hassan@ / akram@ / omar@",
+    items:[
+      {id:"J3-1", t:"Happy path", x:"Open RFQ → assign Arch/Survey/Safety pricers → select ONE Lead Pricer → track sections → review quote → after Won, Convert to Project", a:["hassan@abak.com.sa","omar@abak.com.sa"]},
+      {id:"J3-2", t:"Exactly one Lead Pricer enforced", x:"Toggling one clears the others"},
+      {id:"J3-3", t:"Convert-to-project not available too early", x:"Only on a Won quote"},
+      {id:"J3-4", t:"Converted project carries depts, line items, docs, payment schedule", x:"Nothing lost on conversion"},
+      {id:"J3-5", t:"FAIL to catch: any user can convert", x:"Non-managers denied convert"}
+    ]},
+
+  { id:"j4", title:"Journey 4 · Department Engineer / Pricer", cls:"j", mini:"technical users",
+    items:[
+      {id:"J4-1", t:"Happy path", x:"Open assigned RFQ → add own-dept pricing items → add methodology/Gantt → request missing doc → request site visit → submit section", a:["a.albittar@abak.com.sa"]},
+      {id:"J4-2", t:"Pricer sees assigned RFQs only", x:"Not other departments' private work (unless manager/admin)"},
+      {id:"J4-3", t:"Doc / site-visit request loops back to Sales and is logged", x:"Request visible to sales person"},
+      {id:"J4-4", t:"After conversion, sees assigned project tasks/phases/licences", x:"Visible and editable where allowed"}
+    ]},
+
+  { id:"j5", title:"Journey 5 · Lead Pricer", cls:"j", mini:"assigned engineer",
+    items:[
+      {id:"J5-1", t:"Happy path", x:"Open multi-dept RFQ → review all sections → request revision → assemble final quote → payment schedule = 100% → submit for approval → track status", a:["abdulghani.almuwafiq@abak.com.sa"]},
+      {id:"J5-2", t:"Lead Pricer can see all sections", x:"Aggregate view"},
+      {id:"J5-3", t:"Payment schedule validation blocks invalid totals", x:"Must total 100%"},
+      {id:"J5-4", t:"Approval chain created from Pricing Policy", x:"Discount/value tiers applied; auditable"}
+    ]},
+
+  { id:"j6", title:"Journey 6 · Finance Officer", cls:"j", mini:"accounting@",
+    items:[
+      {id:"J6-1", t:"Happy path", x:"Open finance queue → review won quote/payment schedule → validate invoice/payment/commercial confirmation → reject invalid with reason → confirm closure gates → check AR ageing", a:["accounting@abak.com.sa"]},
+      {id:"J6-2", t:"Finance cannot mutate sales/technical scope", x:"Denied without permission"},
+      {id:"J6-3", t:"Rejection requires a reason; notifies responsible actor", x:"Reason mandatory + notification"},
+      {id:"J6-4", t:"Closure blocks if finance gates incomplete", x:"Gate enforced"}
+    ]},
+
+  { id:"j7", title:"Journey 7 · Super Admin / CEO", cls:"j", mini:"abdullah.mohsen@",
+    items:[
+      {id:"J7-1", t:"Happy path", x:"Review users/roles → open Pricing Policy → configure discount thresholds → approve/reject high-discount quote → open licence-blocked project → CEO override with justification → review reports → confirm audit trail", a:["abdullah.mohsen@abak.com.sa"]},
+      {id:"J7-2", t:"Policy changes affect new approval chains", x:"New quotes route per updated policy"},
+      {id:"J7-3", t:"Override requires justification + audit record", x:"Justification stored, audited"},
+      {id:"J7-4", t:"Normal users cannot access Super Admin functions", x:"Denied"}
+    ]},
+
+  { id:"j8", title:"Journey 8 · Viewer / HR / Executive Viewer", cls:"j", mini:"hr@ / salshehri@",
+    items:[
+      {id:"J8-1", t:"Happy path (access boundary)", x:"Login → try dashboard/reports → try sales/quote/project → try create/edit/delete → try admin/settings", a:["hr@abak.com.sa","salshehri@abak.com.sa"]},
+      {id:"J8-2", t:"Read-only surfaces only", x:"Cannot create/update/delete operational records"},
+      {id:"J8-3", t:"Cannot approve, assign, or override", x:"All such actions denied"},
+      {id:"J8-4", t:"Clear permission state, not broken/blank pages", x:"Graceful 'no access' (note: nav not yet permission-filtered — 403 expected)"}
+    ]},
+
+  { id:"xrole", title:"8 · Cross-role full script (one pass, multiple logins)", cls:"j", mini:"17 steps end-to-end",
+    items:[
+      {id:"X1", t:"Sales Person: create lead + log comms + request RFQ", x:"", a:["ghadah@abak.com.sa"]},
+      {id:"X2", t:"Sales Manager: review pipeline & RFQ request", x:"", a:["haitham@abak.com.sa"]},
+      {id:"X3", t:"Dept Manager: assign 3 pricers + choose Lead Pricer", x:"", a:["hassan@abak.com.sa"]},
+      {id:"X4", t:"Pricer 1: submit architectural section", x:"", a:["abdulghani.almuwafiq@abak.com.sa"]},
+      {id:"X5", t:"Pricer 2: submit surveying section", x:"", a:["alaa.ahmed@abak.com.sa"]},
+      {id:"X6", t:"Pricer 3: submit safety section or request missing docs", x:"", a:["omar@abak.com.sa"]},
+      {id:"X7", t:"Sales Person: answer missing-doc request", x:"", a:["ghadah@abak.com.sa"]},
+      {id:"X8", t:"Lead Pricer: assemble quote + submit approval", x:"", a:["abdulghani.almuwafiq@abak.com.sa"]},
+      {id:"X9", t:"CEO/Admin: approve exceptional discount if triggered", x:"", a:["abdullah.mohsen@abak.com.sa"]},
+      {id:"X10", t:"Sales Person: send quote and mark Won", x:"", a:["ghadah@abak.com.sa"]},
+      {id:"X11", t:"Dept Manager: convert to project", x:"", a:["hassan@abak.com.sa"]},
+      {id:"X12", t:"Dept Engineer: update project phase/task", x:"", a:["a.albittar@abak.com.sa"]},
+      {id:"X13", t:"Dept Engineer/Manager: add blocking licence", x:"", a:["omar@abak.com.sa"]},
+      {id:"X14", t:"CEO: test override path if needed", x:"", a:["abdullah.mohsen@abak.com.sa"]},
+      {id:"X15", t:"Finance: validate payment / commercial gate", x:"", a:["accounting@abak.com.sa"]},
+      {id:"X16", t:"Project owner/Manager: close project", x:"", a:["hassan@abak.com.sa"]},
+      {id:"X17", t:"Viewer: confirm cannot mutate any workflow", x:"", a:["hr@abak.com.sa"]}
+    ]}
+];
+
+/* ---------- State ---------- */
+const KEY = "abak_rbac_checklist_v1";
+let STATE = load();
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {meta:{},items:{}}; }catch(e){ return {meta:{},items:{}} } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(STATE)); }catch(e){} }
+function itemState(id){ return STATE.items[id] || (STATE.items[id]={status:"",severity:"",notes:""}); }
+
+/* ---------- Render ---------- */
+const app = document.getElementById("app");
+let filter = "all";
+
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+function render(){
+  app.innerHTML = "";
+  // account reference
+  const ref = document.createElement("section");
+  ref.className="sec";
+  ref.innerHTML = `<div class="sec-h"><span class="tg">▸</span><h2>Test accounts (password = Password123!)</h2><span class="mini">${ACCOUNTS.length} templates</span></div>
+    <div class="sec-b"><table class="ref"><tr><th>Template</th><th>Account(s)</th><th>Dept / manager</th></tr>
+    ${ACCOUNTS.map(a=>`<tr><td><b>${esc(a[0])}</b></td><td><span class="acct">${esc(a[1])}</span></td><td>${esc(a[2])}</td></tr>`).join("")}
+    </table></div>`;
+  app.appendChild(ref);
+  ref.querySelector(".sec-h").addEventListener("click",()=>ref.classList.toggle("open"));
+
+  SUITE.forEach(sec=>{
+    const el = document.createElement("section");
+    el.className = "sec open";
+    el.dataset.sec = sec.id;
+    const counts = sec.items.reduce((a,it)=>{const s=itemState(it.id).status||"untested";a[s]=(a[s]||0)+1;return a;},{});
+    const done = (counts.pass||0)+(counts.fail||0)+(counts.na||0);
+    el.innerHTML = `<div class="sec-h"><span class="tg">▾</span><h2>${esc(sec.title)}</h2>
+        <span class="mini">${done}/${sec.items.length} · ${sec.mini||""}</span></div>
+      <div class="sec-b">${sec.note?`<div class="note">${sec.note}</div>`:""}</div>`;
+    const body = el.querySelector(".sec-b");
+    sec.items.forEach(it=>{
+      const st = itemState(it.id);
+      const status = st.status||"untested";
+      const row = document.createElement("div");
+      row.className = "item s-"+status;
+      row.dataset.id = it.id; row.dataset.status = status;
+      row.innerHTML = `
+        <div class="item-top">
+          <span class="id ${sec.cls||""}">${esc(it.id)}</span>
+          <div class="txt">
+            <div class="t">${esc(it.t)}</div>
+            ${it.x?`<div class="x">Expected: ${esc(it.x)}</div>`:""}
+            ${it.a&&it.a.length?`<div class="accts">${it.a.map(x=>`<span class="acct">${esc(x)}</span>`).join("")}</div>`:""}
+          </div>
+        </div>
+        <div class="acts">
+          <button class="sbtn ${status==="pass"?"on":""}" data-s="pass">Pass</button>
+          <button class="sbtn ${status==="fail"?"on":""}" data-s="fail">Fail</button>
+          <button class="sbtn ${status==="na"?"on":""}" data-s="na">N/A</button>
+          <select class="sev ${status==="fail"?"":"hidden"}">
+            ${["","blocker","high","medium","low"].map(v=>`<option value="${v}" ${st.severity===v?"selected":""}>${v?("sev: "+v):"severity…"}</option>`).join("")}
+          </select>
+          <input class="notes" placeholder="notes / actual result / bug link" value="${esc(st.notes)}" />
+        </div>`;
+      // status buttons — update in place so collapsed sections stay collapsed
+      const sev = row.querySelector(".sev");
+      function paint(){
+        const status = st.status||"untested";
+        row.className = "item s-"+status; row.dataset.status = status;
+        row.querySelectorAll(".sbtn").forEach(b=>b.classList.toggle("on", b.dataset.s===st.status));
+        if(sev) sev.classList.toggle("hidden", st.status!=="fail");
+        const done = sec.items.reduce((a,i)=>a+((STATE.items[i.id]||{}).status?1:0),0);
+        const mini = el.querySelector(".sec-h .mini");
+        if(mini) mini.textContent = `${done}/${sec.items.length} · ${sec.mini||""}`;
+      }
+      row.querySelectorAll(".sbtn").forEach(b=>b.addEventListener("click",()=>{
+        const s = b.dataset.s;
+        st.status = (st.status===s)? "" : s;   // toggle off if same
+        if(st.status!=="fail"){ st.severity=""; if(sev) sev.value=""; }
+        save(); paint(); updateProgress(); applyFilter();
+      }));
+      if(sev) sev.addEventListener("change",()=>{ st.severity=sev.value; save(); });
+      const notes = row.querySelector(".notes");
+      notes.addEventListener("input",()=>{ st.notes=notes.value; save(); updateProgress(); });
+      body.appendChild(row);
+    });
+    el.querySelector(".sec-h").addEventListener("click",(e)=>{ el.classList.toggle("open"); });
+    app.appendChild(el);
+  });
+  applyFilter();
+  updateProgress();
+}
+
+function allItems(){ return SUITE.flatMap(s=>s.items.map(i=>i.id)); }
+
+function updateProgress(){
+  const ids = allItems();
+  let pass=0,fail=0,na=0;
+  ids.forEach(id=>{const s=(STATE.items[id]||{}).status; if(s==="pass")pass++;else if(s==="fail")fail++;else if(s==="na")na++;});
+  const total = ids.length, done = pass+fail+na, untested = total-done;
+  const pct = v=> (v/total*100).toFixed(1)+"%";
+  document.querySelector(".ppass").style.width = pct(pass);
+  document.querySelector(".pfail").style.width = pct(fail);
+  document.querySelector(".pna").style.width = pct(na);
+  document.getElementById("pcounts").innerHTML =
+    `<span><b>${done}/${total}</b> done (${(done/total*100).toFixed(0)}%)</span>`+
+    `<span><span class="dot" style="background:var(--pass)"></span><b>${pass}</b> pass</span>`+
+    `<span><span class="dot" style="background:var(--fail)"></span><b>${fail}</b> fail</span>`+
+    `<span><span class="dot" style="background:var(--na)"></span><b>${na}</b> n/a</span>`+
+    `<span><span class="dot" style="background:var(--untested)"></span><b>${untested}</b> untested</span>`;
+}
+
+function applyFilter(){
+  document.querySelectorAll(".item").forEach(row=>{
+    const s = row.dataset.status||"untested";
+    const show = filter==="all" || s===filter;
+    row.classList.toggle("hidden", !show);
+  });
+}
+
+/* ---------- Controls ---------- */
+document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+  document.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
+  c.classList.add("active"); filter=c.dataset.f; applyFilter();
+}));
+document.getElementById("expandAll").onclick=()=>document.querySelectorAll(".sec").forEach(s=>s.classList.add("open"));
+document.getElementById("collapseAll").onclick=()=>document.querySelectorAll(".sec").forEach(s=>s.classList.remove("open"));
+document.getElementById("resetAll").onclick=()=>{ if(confirm("Clear all results and notes on this browser?")){ STATE={meta:STATE.meta,items:{}}; save(); render(); } };
+
+// meta fields
+["tester","env","date","build"].forEach(k=>{
+  const el=document.getElementById("m_"+k);
+  el.value = (STATE.meta&&STATE.meta[k])||"";
+  el.addEventListener("input",()=>{ STATE.meta=STATE.meta||{}; STATE.meta[k]=el.value; save(); });
+});
+
+// export markdown
+document.getElementById("exportMd").onclick=()=>{
+  const m=STATE.meta||{};
+  let out=`# ABAK ERP — RBAC Test Results\n\n`;
+  out+=`- Tester: ${m.tester||"—"}\n- Environment: ${m.env||"—"}\n- Date: ${m.date||"—"}\n- Build: ${m.build||"—"}\n\n`;
+  const ids=allItems(); let p=0,f=0,n=0,u=0;
+  ids.forEach(id=>{const s=(STATE.items[id]||{}).status; if(s==="pass")p++;else if(s==="fail")f++;else if(s==="na")n++;else u++;});
+  out+=`**Summary:** ${p} pass · ${f} fail · ${n} n/a · ${u} untested (of ${ids.length})\n\n`;
+  if(f){ out+=`## ❌ Failures\n\n`;
+    SUITE.forEach(sec=>sec.items.forEach(it=>{const st=STATE.items[it.id]||{}; if(st.status==="fail")
+      out+=`- **${it.id}** ${it.t}${st.severity?` _(severity: ${st.severity})_`:""}\n  - expected: ${it.x||"—"}\n  - notes: ${st.notes||"—"}\n`;}));
+    out+=`\n`;
+  }
+  out+=`## Full results\n\n| ID | Section | Result | Sev | Test | Notes |\n|----|---------|--------|-----|------|-------|\n`;
+  SUITE.forEach(sec=>sec.items.forEach(it=>{const st=STATE.items[it.id]||{};
+    const r={pass:"PASS",fail:"FAIL",na:"N/A"}[st.status]||"—";
+    out+=`| ${it.id} | ${sec.title.replace(/\|/g,"/")} | ${r} | ${st.severity||""} | ${it.t.replace(/\|/g,"/")} | ${(st.notes||"").replace(/\|/g,"/")} |\n`;}));
+  download("abak-rbac-test-results.md", out, "text/markdown");
+};
+// export / import json (backup / restore)
+document.getElementById("exportJson").onclick=()=>download("abak-rbac-checklist-backup.json", JSON.stringify(STATE,null,2), "application/json");
+document.getElementById("importJson").onclick=()=>document.getElementById("importFile").click();
+document.getElementById("importFile").addEventListener("change",e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const r=new FileReader(); r.onload=()=>{ try{ STATE=JSON.parse(r.result); save(); render();
+    ["tester","env","date","build"].forEach(k=>document.getElementById("m_"+k).value=(STATE.meta&&STATE.meta[k])||"");
+    alert("Results restored."); }catch(err){ alert("Could not read that file."); } };
+  r.readAsText(file);
+});
+function download(name,text,type){
+  const b=new Blob([text],{type}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(b); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+
+if(!STATE.meta||!STATE.meta.date){ STATE.meta=STATE.meta||{}; STATE.meta.date=new Date().toISOString().slice(0,10); }
+render();
+</script>
+</body>
+</html>

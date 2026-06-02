@@ -375,6 +375,10 @@ enum LeadStatus {
   ASSIGNED
   IN_PROGRESS
   QUALIFIED
+  // Lead became a client (account created) and an RFQ/opportunity was raised.
+  // Distinct from QUALIFIED so the conversion report can count it. Set by the
+  // convert-to-client and request-RFQ flows; not a manual status transition.
+  CONVERTED
   DISQUALIFIED
   TENDER_PENDING
   TENDER_ACTIVE
@@ -1102,6 +1106,12 @@ model Rfq {
   serviceType  String
   projectScope String
   priority     RfqPriority @default(NORMAL)
+
+  /// ServiceCategory ids the sales rep selected when raising the RFQ. Drives
+  /// department routing/visibility (DepartmentService maps category -> dept ->
+  /// managerId) and lets a routed-but-unassigned RFQ be visible to the dept
+  /// managers who must assign pricers. See requestRfq + rfqs.list DEPARTMENT branch.
+  requestedCategoryIds String[] @default([])
 
   requestedByChannel RfqSource
   brokerName         String?

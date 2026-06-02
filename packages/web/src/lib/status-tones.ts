@@ -171,6 +171,7 @@ export function followUpStatusVariant(s: FollowUpStatus): StatusVariant {
 export function leadStatusVariant(s: LeadStatus): StatusVariant {
   switch (s) {
     case 'QUALIFIED':
+    case 'CONVERTED':
     case 'TENDER_WON':
       return 'success';
     case 'TENDER_LOST':

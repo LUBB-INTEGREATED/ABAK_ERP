@@ -7,6 +7,29 @@ const apiClient = axios.create({
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
+// Single-flight refresh (C1b). The backend's /auth/refresh is single-use and
+// rotating: it deletes the presented refresh token and issues a fresh pair, so
+// two concurrent 401s (e.g. a page firing list + stats together) would each
+// call refresh with the same token — the second send the now-deleted token and
+// gets "Refresh token not found", which used to clearSession() and bounce to
+// /login. Serializing all refreshes behind one shared promise guarantees the
+// rotating token is consumed exactly once per cycle, no matter how many
+// requests 401 at the same moment; the rest await and replay with the new token.
+let refreshPromise: Promise<void> | null = null;
+
+async function refreshOnce(): Promise<void> {
+  if (!refreshPromise) {
+    const { useAuthStore } = await import('./auth');
+    refreshPromise = useAuthStore
+      .getState()
+      .refreshAccessToken()
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
 apiClient.interceptors.request.use(async (config) => {
   if (typeof window !== 'undefined') {
     const { useAuthStore } = await import('./auth');
@@ -36,8 +59,8 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
+        await refreshOnce();
         const { useAuthStore } = await import('./auth');
-        await useAuthStore.getState().refreshAccessToken();
         const { accessToken } = useAuthStore.getState();
         if (accessToken) {
           originalRequest.headers?.set(

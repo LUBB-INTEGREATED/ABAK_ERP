@@ -61,22 +61,35 @@ export class QuotesController {
   @ApiOperation({
     summary: 'Get a quote with items, milestones, approvals, and PO',
   })
-  findOne(@Param('id') id: string) {
-    return this.quotes.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:view') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.findOne(id, { user, scope });
   }
 
   @Patch('quotes/:id')
   @RequirePermission('quote:build')
   @ApiOperation({ summary: 'Update a DRAFT quote' })
-  update(@Param('id') id: string, @Body() dto: UpdateQuoteDto) {
-    return this.quotes.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateQuoteDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.update(id, dto, { user, scope });
   }
 
   @Delete('quotes/:id')
   @RequirePermission('quote:build')
   @ApiOperation({ summary: 'Soft-delete a DRAFT quote' })
-  remove(@Param('id') id: string) {
-    return this.quotes.softDelete(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.softDelete(id, { user, scope });
   }
 
   // Lifecycle ------------------------------------------------------
@@ -87,8 +100,13 @@ export class QuotesController {
     summary:
       'Submit a DRAFT quote — auto-creates approvals based on configured thresholds',
   })
-  submit(@Param('id') id: string, @Body() dto: SubmitQuoteDto) {
-    return this.quotes.submit(id, dto);
+  submit(
+    @Param('id') id: string,
+    @Body() dto: SubmitQuoteDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:submit_approval') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.submit(id, dto, { user, scope });
   }
 
   @Patch('quotes/:id/send')
@@ -96,8 +114,12 @@ export class QuotesController {
   @ApiOperation({
     summary: 'Send an APPROVED quote (flips to SENT, stamps sentAt)',
   })
-  send(@Param('id') id: string) {
-    return this.quotes.send(id);
+  send(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:send') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.send(id, { user, scope });
   }
 
   @Patch('quotes/:id/in-discussion')
@@ -105,8 +127,12 @@ export class QuotesController {
   @ApiOperation({
     summary: 'Mark a SENT quote as IN_DISCUSSION (client reviewing)',
   })
-  setInDiscussion(@Param('id') id: string) {
-    return this.quotes.setFollowUpStatus(id, 'IN_DISCUSSION');
+  setInDiscussion(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:set_outcome') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.setFollowUpStatus(id, 'IN_DISCUSSION', { user, scope });
   }
 
   @Patch('quotes/:id/in-negotiation')
@@ -114,8 +140,12 @@ export class QuotesController {
   @ApiOperation({
     summary: 'Mark a SENT/IN_DISCUSSION quote as IN_NEGOTIATION',
   })
-  setInNegotiation(@Param('id') id: string) {
-    return this.quotes.setFollowUpStatus(id, 'IN_NEGOTIATION');
+  setInNegotiation(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:set_outcome') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.setFollowUpStatus(id, 'IN_NEGOTIATION', { user, scope });
   }
 
   @Patch('quotes/:id/accept')
@@ -128,8 +158,10 @@ export class QuotesController {
     @Param('id') id: string,
     @Body() dto: AcceptWonDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:set_outcome') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.accept(id, dto, actorId);
+    return this.quotes.accept(id, dto, actorId, { user, scope });
   }
 
   // 1-click conversion: Won Quote → live Project (Department Manager flow).
@@ -152,8 +184,13 @@ export class QuotesController {
   @Patch('quotes/:id/reject')
   @RequirePermission('quote:set_outcome')
   @ApiOperation({ summary: 'Mark quote as REJECTED with optional reason' })
-  reject(@Param('id') id: string, @Body() dto: AcceptRejectQuoteDto) {
-    return this.quotes.reject(id, dto);
+  reject(
+    @Param('id') id: string,
+    @Body() dto: AcceptRejectQuoteDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:set_outcome') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.reject(id, dto, { user, scope });
   }
 
   @Patch('quotes/:id/postpone')
@@ -166,8 +203,10 @@ export class QuotesController {
     @Param('id') id: string,
     @Body() dto: { followUpDate: string; notes?: string },
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:set_outcome') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.postpone(id, dto, actorId);
+    return this.quotes.postpone(id, dto, actorId, { user, scope });
   }
 
   @Post('quotes/:id/revise')

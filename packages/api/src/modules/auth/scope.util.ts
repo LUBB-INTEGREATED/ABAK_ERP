@@ -4,6 +4,8 @@
  * key onto `request.permissionScopes`; services use these helpers to translate
  * that scope into a Prisma `where` fragment.
  */
+import { ForbiddenException } from '@nestjs/common';
+
 export type PermissionScope = 'OWN' | 'DEPARTMENT' | 'ALL';
 
 /** Shape of the authenticated user as attached by JwtStrategy. */
@@ -16,6 +18,35 @@ export interface ScopeUser {
 export interface ScopeContext {
   user: ScopeUser;
   scope?: PermissionScope;
+}
+
+/** True when the viewer has no scope restriction (no scope context, or ALL). */
+export function isUnrestricted(ctx: ScopeContext | undefined): boolean {
+  return !ctx?.scope || ctx.scope === 'ALL';
+}
+
+/**
+ * Object-level guard for owner-scoped entities (leads, clients, quotes,
+ * pipeline, finance). Mirrors `ownerScopeFilter` for detail-read and
+ * mutate-by-id: a non-ALL actor may only touch a record they own. Throws
+ * ForbiddenException (403) otherwise. Pass the already-loaded entity so a
+ * truly-missing record still surfaces as 404 from the caller's findOne.
+ *
+ * Note: like `ownerScopeFilter`, DEPARTMENT collapses to OWN for these
+ * entities (they have no department column today); if/when department-wide
+ * visibility is added, update both the list filter and this guard together.
+ */
+export function assertOwnership(
+  ctx: ScopeContext | undefined,
+  entity: Record<string, unknown> | null | undefined,
+  ownerField: string,
+): void {
+  if (!entity || isUnrestricted(ctx)) return;
+  if (entity[ownerField] !== ctx!.user.id) {
+    throw new ForbiddenException(
+      'You do not have permission to access this resource',
+    );
+  }
 }
 
 /**
@@ -62,7 +93,12 @@ export function rfqScopeFilter(
   if (ctx.scope === 'DEPARTMENT') {
     return { assignments: { some: { assigneeId: ctx.user.id } } };
   }
-  return { originalSalesRepId: ctx.user.id };
+  // OWN (e.g. Sales Rep): RFQs they own as the original sales rep, OR raised
+  // themselves. `createdBy` keeps the raiser's visibility even when a manager
+  // raised it on a rep's behalf (originalSalesRepId is the owning salesperson).
+  return {
+    OR: [{ originalSalesRepId: ctx.user.id }, { createdBy: ctx.user.id }],
+  };
 }
 
 /**

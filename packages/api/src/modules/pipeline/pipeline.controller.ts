@@ -11,6 +11,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 import {
   CreateFieldVisitDto,
   CreatePipelineEntryDto,
@@ -31,8 +33,12 @@ export class PipelineController {
 
   @Get('pipeline')
   @ApiOperation({ summary: 'List pipeline entries grouped by stage' })
-  list(@Query() filter: PipelineFilterDto) {
-    return this.pipeline.listEntries(filter);
+  list(
+    @Query() filter: PipelineFilterDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:view') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.listEntries(filter, { user, scope });
   }
 
   @Get('pipeline/stats')
@@ -46,14 +52,21 @@ export class PipelineController {
   @Post('pipeline/entries')
   @RequirePermission('pipeline:move')
   @ApiOperation({ summary: 'Add a lead or client to the pipeline' })
-  create(@Body() dto: CreatePipelineEntryDto) {
-    return this.pipeline.createEntry(dto);
+  create(
+    @Body() dto: CreatePipelineEntryDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.pipeline.createEntry(dto, actorId);
   }
 
   @Get('pipeline/entries/:id')
   @ApiOperation({ summary: 'Fetch a pipeline entry with transition history' })
-  findOne(@Param('id') id: string) {
-    return this.pipeline.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:view') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.findOne(id, { user, scope });
   }
 
   @Patch('pipeline/entries/:id')
@@ -61,8 +74,13 @@ export class PipelineController {
   @ApiOperation({
     summary: 'Update owner, estimated value, probability, close date',
   })
-  update(@Param('id') id: string, @Body() dto: UpdatePipelineEntryDto) {
-    return this.pipeline.updateEntry(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePipelineEntryDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:move') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.updateEntry(id, dto, { user, scope });
   }
 
   @Patch('pipeline/entries/:id/stage')
@@ -72,8 +90,10 @@ export class PipelineController {
     @Param('id') id: string,
     @Body() dto: MoveStageDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:move') scope: PermissionScope | undefined,
   ) {
-    return this.pipeline.moveStage(id, dto, actorId);
+    return this.pipeline.moveStage(id, dto, actorId, { user, scope });
   }
 
   @Delete('pipeline/entries/:id')
@@ -81,16 +101,24 @@ export class PipelineController {
   @ApiOperation({
     summary: 'Remove a pipeline entry (does not delete the lead/client)',
   })
-  remove(@Param('id') id: string) {
-    return this.pipeline.deleteEntry(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:move') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.deleteEntry(id, { user, scope });
   }
 
   // Field visits ---------------------------------------------------
 
   @Get('visits')
   @ApiOperation({ summary: 'List field visits (optionally scoped to a user)' })
-  listVisits(@Query('ownerId') ownerId?: string) {
-    return this.pipeline.listVisits(ownerId);
+  listVisits(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:view') scope: PermissionScope | undefined,
+    @Query('ownerId') ownerId?: string,
+  ) {
+    return this.pipeline.listVisits(ownerId, { user, scope });
   }
 
   @Post('visits')
@@ -108,16 +136,25 @@ export class PipelineController {
   @ApiOperation({
     summary: 'Update a field visit (close it out, add findings)',
   })
-  updateVisit(@Param('id') id: string, @Body() dto: UpdateFieldVisitDto) {
-    return this.pipeline.updateVisit(id, dto);
+  updateVisit(
+    @Param('id') id: string,
+    @Body() dto: UpdateFieldVisitDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:log_visit') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.updateVisit(id, dto, { user, scope });
   }
 
   // Targets --------------------------------------------------------
 
   @Get('team/targets')
   @ApiOperation({ summary: 'List targets (optionally scoped to a user)' })
-  listTargets(@Query('ownerId') ownerId?: string) {
-    return this.pipeline.listTargets(ownerId);
+  listTargets(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:view') scope: PermissionScope | undefined,
+    @Query('ownerId') ownerId?: string,
+  ) {
+    return this.pipeline.listTargets(ownerId, { user, scope });
   }
 
   @Post('team/targets')

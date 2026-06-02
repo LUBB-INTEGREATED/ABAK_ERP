@@ -51,8 +51,12 @@ export class RfqsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get RFQ detail' })
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.findOne(id, { user, scope });
   }
 
   @Patch(':id/assign-coordinator')
@@ -61,8 +65,10 @@ export class RfqsController {
   assignCoordinator(
     @Param('id') id: string,
     @Body() dto: AssignCoordinatorDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
   ) {
-    return this.service.assignCoordinator(id, dto);
+    return this.service.assignCoordinator(id, dto, { user, scope });
   }
 
   @Patch(':id/assign-contributor')
@@ -71,15 +77,21 @@ export class RfqsController {
   assignContributor(
     @Param('id') id: string,
     @Body() dto: AssignContributorDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
   ) {
-    return this.service.assignContributor(id, dto);
+    return this.service.assignContributor(id, dto, { user, scope });
   }
 
   @Patch(':id/start-preparation')
   @RequirePermission('rfq:price_section')
   @ApiOperation({ summary: 'Transition ASSIGNED → IN_PREPARATION' })
-  startPreparation(@Param('id') id: string) {
-    return this.service.startPreparation(id);
+  startPreparation(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:price_section') scope: PermissionScope | undefined,
+  ) {
+    return this.service.startPreparation(id, { user, scope });
   }
 
   @Post(':id/submit-for-approval')
@@ -106,7 +118,11 @@ export class RfqsController {
   @Post(':id/cancel')
   @RequirePermission('rfq:request')
   @ApiOperation({ summary: 'Cancel RFQ (non-terminal only)' })
-  cancel(@Param('id') id: string) {
-    return this.service.cancel(id);
+  cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:request') scope: PermissionScope | undefined,
+  ) {
+    return this.service.cancel(id, { user, scope });
   }
 }

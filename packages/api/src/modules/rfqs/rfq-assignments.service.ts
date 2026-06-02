@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { Prisma, RfqAssignmentStatus, RfqRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RfqsService } from './rfqs.service';
+import type { ScopeContext } from '../auth/scope.util';
 
 /**
  * Per-department pricer assignments on an RFQ + the related doc/site-visit
@@ -56,14 +58,17 @@ export interface UpdateSiteVisitRequestDto {
 
 @Injectable()
 export class RfqAssignmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rfqs: RfqsService,
+  ) {}
 
   // ------------------------------------------------------------
   // Assignments
   // ------------------------------------------------------------
 
-  async listAssignments(rfqId: string) {
-    await this.assertRfqExists(rfqId);
+  async listAssignments(rfqId: string, scopeCtx?: ScopeContext) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     return this.prisma.rfqAssignment.findMany({
       where: { rfqId },
       include: {
@@ -75,11 +80,22 @@ export class RfqAssignmentsService {
     });
   }
 
-  async createAssignment(rfqId: string, dto: CreateAssignmentDto) {
-    await this.assertRfqExists(rfqId);
+  async createAssignment(
+    rfqId: string,
+    dto: CreateAssignmentDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
 
     return this.prisma.$transaction(async (tx) => {
-      if (dto.isLeadPricer) {
+      // D4 — Lead Pricer auto-rule: a single-service RFQ's sole assignee is the
+      // Lead Pricer by default. The first assignment on an RFQ therefore becomes
+      // the Lead Pricer unless the caller says otherwise; for multi-dept RFQs the
+      // Sales Manager re-designates via updateAssignment (single-lead invariant).
+      const existingCount = await tx.rfqAssignment.count({ where: { rfqId } });
+      const isLeadPricer = dto.isLeadPricer ?? existingCount === 0;
+
+      if (isLeadPricer) {
         await tx.rfqAssignment.updateMany({
           where: { rfqId },
           data: { isLeadPricer: false },
@@ -90,7 +106,7 @@ export class RfqAssignmentsService {
           rfqId,
           departmentId: dto.departmentId,
           assigneeId: dto.assigneeId,
-          isLeadPricer: dto.isLeadPricer ?? false,
+          isLeadPricer,
         },
         include: {
           department: { select: { id: true, name: true, nameAr: true } },
@@ -103,7 +119,9 @@ export class RfqAssignmentsService {
     rfqId: string,
     assignmentId: string,
     dto: UpdateAssignmentDto,
+    scopeCtx?: ScopeContext,
   ) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     const existing = await this.prisma.rfqAssignment.findFirst({
       where: { id: assignmentId, rfqId },
     });
@@ -137,7 +155,12 @@ export class RfqAssignmentsService {
     });
   }
 
-  async removeAssignment(rfqId: string, assignmentId: string) {
+  async removeAssignment(
+    rfqId: string,
+    assignmentId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     const existing = await this.prisma.rfqAssignment.findFirst({
       where: { id: assignmentId, rfqId },
     });
@@ -168,8 +191,8 @@ export class RfqAssignmentsService {
   // Document requests (engineer → sales person)
   // ------------------------------------------------------------
 
-  async listDocRequests(rfqId: string) {
-    await this.assertRfqExists(rfqId);
+  async listDocRequests(rfqId: string, scopeCtx?: ScopeContext) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     return this.prisma.rfqDocRequest.findMany({
       where: { rfqId },
       orderBy: { createdAt: 'desc' },
@@ -180,8 +203,9 @@ export class RfqAssignmentsService {
     rfqId: string,
     dto: CreateDocRequestDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
-    await this.assertRfqExists(rfqId);
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     return this.prisma.rfqDocRequest.create({
       data: {
         rfqId,
@@ -196,7 +220,9 @@ export class RfqAssignmentsService {
     requestId: string,
     dto: UpdateDocRequestDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     const existing = await this.prisma.rfqDocRequest.findFirst({
       where: { id: requestId, rfqId },
     });
@@ -222,8 +248,8 @@ export class RfqAssignmentsService {
   // Site visit requests
   // ------------------------------------------------------------
 
-  async listSiteVisitRequests(rfqId: string) {
-    await this.assertRfqExists(rfqId);
+  async listSiteVisitRequests(rfqId: string, scopeCtx?: ScopeContext) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     return this.prisma.rfqSiteVisitRequest.findMany({
       where: { rfqId },
       orderBy: { createdAt: 'desc' },
@@ -234,8 +260,9 @@ export class RfqAssignmentsService {
     rfqId: string,
     dto: CreateSiteVisitRequestDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
-    await this.assertRfqExists(rfqId);
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     return this.prisma.rfqSiteVisitRequest.create({
       data: {
         rfqId,
@@ -255,7 +282,9 @@ export class RfqAssignmentsService {
     rfqId: string,
     requestId: string,
     dto: UpdateSiteVisitRequestDto,
+    scopeCtx?: ScopeContext,
   ) {
+    await this.rfqs.assertCanAccess(rfqId, scopeCtx);
     const existing = await this.prisma.rfqSiteVisitRequest.findFirst({
       where: { id: requestId, rfqId },
     });
@@ -272,17 +301,5 @@ export class RfqAssignmentsService {
       where: { id: requestId },
       data,
     });
-  }
-
-  // ------------------------------------------------------------
-  // Helpers
-  // ------------------------------------------------------------
-
-  private async assertRfqExists(rfqId: string) {
-    const rfq = await this.prisma.rfq.findUnique({
-      where: { id: rfqId },
-      select: { id: true },
-    });
-    if (!rfq) throw new NotFoundException('RFQ not found');
   }
 }

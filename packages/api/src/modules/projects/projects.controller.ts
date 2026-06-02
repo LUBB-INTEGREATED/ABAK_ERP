@@ -89,15 +89,24 @@ export class ProjectsController {
 
   @Get('projects/:id')
   @ApiOperation({ summary: 'Get project detail with phases + tasks' })
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.findOne(id, { user, scope });
   }
 
   @Patch('projects/:id')
   @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Update project basics' })
-  update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
-    return this.service.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
+  ) {
+    return this.service.update(id, dto, { user, scope });
   }
 
   @Patch('projects/:id/status')
@@ -106,8 +115,10 @@ export class ProjectsController {
   transitionStatus(
     @Param('id') id: string,
     @Body() dto: TransitionProjectStatusDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.transitionStatus(id, dto);
+    return this.service.transitionStatus(id, dto, { user, scope });
   }
 
   // Phases --------------------------------------------------------
@@ -115,8 +126,13 @@ export class ProjectsController {
   @Post('projects/:id/phases')
   @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Add a phase to a project' })
-  addPhase(@Param('id') id: string, @Body() dto: CreatePhaseDto) {
-    return this.service.addPhase(id, dto);
+  addPhase(
+    @Param('id') id: string,
+    @Body() dto: CreatePhaseDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
+  ) {
+    return this.service.addPhase(id, dto, { user, scope });
   }
 
   @Patch('projects/:id/phases/:phaseId')
@@ -126,8 +142,10 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('phaseId') phaseId: string,
     @Body() dto: UpdatePhaseDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.updatePhase(id, phaseId, dto);
+    return this.service.updatePhase(id, phaseId, dto, { user, scope });
   }
 
   @Patch('projects/:id/phases/:phaseId/reassign-owner')
@@ -137,8 +155,10 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('phaseId') phaseId: string,
     @Body() dto: ReassignPhaseOwnerDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.reassignPhaseOwner(id, phaseId, dto);
+    return this.service.reassignPhaseOwner(id, phaseId, dto, { user, scope });
   }
 
   @Patch('projects/:id/phases/:phaseId/complete')
@@ -149,8 +169,13 @@ export class ProjectsController {
     @Param('phaseId') phaseId: string,
     @Body() dto: CompletePhaseDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.completePhase(id, phaseId, dto, actorId);
+    return this.service.completePhase(id, phaseId, dto, actorId, {
+      user,
+      scope,
+    });
   }
 
   @Patch('projects/:id/phases/:phaseId/adjust-progress')
@@ -160,8 +185,10 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('phaseId') phaseId: string,
     @Body() dto: AdjustPhaseProgressDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.adjustPhaseProgress(id, phaseId, dto);
+    return this.service.adjustPhaseProgress(id, phaseId, dto, { user, scope });
   }
 
   // Tasks ---------------------------------------------------------
@@ -173,15 +200,22 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('phaseId') phaseId: string,
     @Body() dto: CreateTaskDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.addTask(id, phaseId, dto);
+    return this.service.addTask(id, phaseId, dto, { user, scope });
   }
 
   @Patch('tasks/:taskId')
   @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Update task' })
-  updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto) {
-    return this.service.updateTask(taskId, dto);
+  updateTask(
+    @Param('taskId') taskId: string,
+    @Body() dto: UpdateTaskDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
+  ) {
+    return this.service.updateTask(taskId, dto, { user, scope });
   }
 
   @Patch('tasks/:taskId/status')
@@ -190,8 +224,10 @@ export class ProjectsController {
   transitionTaskStatus(
     @Param('taskId') taskId: string,
     @Body() dto: TransitionTaskStatusDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.transitionTaskStatus(taskId, dto);
+    return this.service.transitionTaskStatus(taskId, dto, { user, scope });
   }
 
   @Post('tasks/:taskId/dependencies')
@@ -200,8 +236,10 @@ export class ProjectsController {
   addDependency(
     @Param('taskId') taskId: string,
     @Body() dto: CreateDependencyDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.addDependency(taskId, dto);
+    return this.service.addDependency(taskId, dto, { user, scope });
   }
 
   @Delete('tasks/:taskId/dependencies/:blockerId')
@@ -210,8 +248,10 @@ export class ProjectsController {
   removeDependency(
     @Param('taskId') taskId: string,
     @Param('blockerId') blockerId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.removeDependency(taskId, blockerId);
+    return this.service.removeDependency(taskId, blockerId, { user, scope });
   }
 
   // Closure -------------------------------------------------------
@@ -219,8 +259,13 @@ export class ProjectsController {
   @Post('projects/:id/initiate-closure')
   @RequirePermission('project:manage_tasks')
   @ApiOperation({ summary: 'Initiate project closure (status → CLOSING)' })
-  initiateClosure(@Param('id') id: string, @CurrentUser('id') actorId: string) {
-    return this.service.initiateClosure(id, actorId);
+  initiateClosure(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
+  ) {
+    return this.service.initiateClosure(id, actorId, { user, scope });
   }
 
   @Patch('projects/:id/closure-checklist')
@@ -230,7 +275,11 @@ export class ProjectsController {
     @Param('id') id: string,
     @Body() dto: ClosureGateDto,
     @CurrentUser() actor: { id: string; role: string },
+    @CurrentScope('project:manage_tasks') scope: PermissionScope | undefined,
   ) {
-    return this.service.setClosureGate(id, dto, actor);
+    return this.service.setClosureGate(id, dto, actor, {
+      user: actor as unknown as ScopeUser,
+      scope,
+    });
   }
 }

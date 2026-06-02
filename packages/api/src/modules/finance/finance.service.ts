@@ -1,3 +1,28 @@
+/**
+ * SCOPE DECISION — finance is a finance-TEAM resource, NOT per-user owner-scoped.
+ *
+ * Investigated the data model: invoices, payments, commercial confirmations and
+ * commissions have NO natural per-user "owner" field that would define an
+ * object-level access boundary:
+ *   - Invoice/Payment/CommercialConfirmation.createdBy is the finance officer who
+ *     ENTERED the record (an audit stamp), not a sales/access owner.
+ *   - validatedById is set DURING validation (the actor mutating now), not a
+ *     pre-existing owner — scoping by it would be circular.
+ *   - Commission.beneficiaryUserId is the sales rep/referral who RECEIVES a
+ *     payout; commissions are explicitly Finance-only (M7-005) and are
+ *     listed/approved/paid by Finance, not by the beneficiary.
+ *
+ * Consequently the list queries here intentionally apply NO ownerScopeFilter
+ * (unlike leads/clients/quotes) — there is no owner column to mirror onto
+ * findOne/by-id mutations. Access is gated wholly by the finance:* permission
+ * keys, and the only role holding them (Finance Officer) is granted ALL scope
+ * (see prisma/seed-rbac.ts). Any Finance Officer must be able to act on records
+ * another officer entered, so a per-user object scope would BREAK the core
+ * finance workflow. Therefore no scopeCtx / assertOwnership is threaded through
+ * this module by design. If finance ever gains a real per-user owner dimension,
+ * revisit and add ownerScopeFilter to the lists + assertOwnership to detail/
+ * mutations together.
+ */
 import {
   BadRequestException,
   Injectable,

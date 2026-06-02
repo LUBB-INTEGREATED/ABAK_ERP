@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 import {
   type CreateLicenceDto,
   LicencesService,
@@ -27,8 +29,12 @@ export class LicencesController {
     summary:
       'List government licences attached to this project (project-scoped Licence model added 2026-05-21).',
   })
-  list(@Param('projectId') projectId: string) {
-    return this.licences.list(projectId);
+  list(
+    @Param('projectId') projectId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:view') scope: PermissionScope | undefined,
+  ) {
+    return this.licences.list(projectId, { user, scope });
   }
 
   @Post()
@@ -38,8 +44,11 @@ export class LicencesController {
     @Param('projectId') projectId: string,
     @Body() dto: CreateLicenceDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_licences')
+    scope: PermissionScope | undefined,
   ) {
-    return this.licences.create(projectId, dto, actorId);
+    return this.licences.create(projectId, dto, actorId, { user, scope });
   }
 
   @Patch(':licenceId')
@@ -52,8 +61,11 @@ export class LicencesController {
     @Param('projectId') projectId: string,
     @Param('licenceId') licenceId: string,
     @Body() dto: UpdateLicenceDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_licences')
+    scope: PermissionScope | undefined,
   ) {
-    return this.licences.update(projectId, licenceId, dto);
+    return this.licences.update(projectId, licenceId, dto, { user, scope });
   }
 
   @Delete(':licenceId')
@@ -62,8 +74,11 @@ export class LicencesController {
   remove(
     @Param('projectId') projectId: string,
     @Param('licenceId') licenceId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_licences')
+    scope: PermissionScope | undefined,
   ) {
-    return this.licences.softDelete(projectId, licenceId);
+    return this.licences.softDelete(projectId, licenceId, { user, scope });
   }
 }
 
@@ -88,12 +103,16 @@ export class PhaseLicenceOverrideController {
     @Param('phaseId') phaseId: string,
     @Body() dto: { justification: string },
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:licence_override')
+    scope: PermissionScope | undefined,
   ) {
     return this.licences.overridePhaseLicenceBlock(
       projectId,
       phaseId,
       dto,
       actorId,
+      { user, scope },
     );
   }
 
@@ -106,7 +125,13 @@ export class PhaseLicenceOverrideController {
   clear(
     @Param('projectId') projectId: string,
     @Param('phaseId') phaseId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:manage_licences')
+    scope: PermissionScope | undefined,
   ) {
-    return this.licences.clearPhaseLicenceOverride(projectId, phaseId);
+    return this.licences.clearPhaseLicenceOverride(projectId, phaseId, {
+      user,
+      scope,
+    });
   }
 }

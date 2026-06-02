@@ -25,7 +25,11 @@ import {
   UpdateTaskDto,
 } from './dto';
 import { DEFAULT_PHASE_TEMPLATE } from './phase-template';
-import { projectScopeFilter, type ScopeContext } from '../auth/scope.util';
+import {
+  isUnrestricted,
+  projectScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 
 const PROJECT_DETAIL_INCLUDE = {
   client: { select: { id: true, contactName: true, companyName: true } },
@@ -225,17 +229,41 @@ export class ProjectsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const project = await this.prisma.project.findUnique({
       where: { id },
       include: PROJECT_DETAIL_INCLUDE,
     });
     if (!project) throw new NotFoundException();
+    await this.assertProjectInScope(id, scopeCtx);
     return project;
   }
 
-  async update(id: string, dto: UpdateProjectDto) {
-    const project = await this.findOne(id);
+  /**
+   * Row-level object guard for detail-read and mutate-by-id. Projects are
+   * relation-scoped (no owner column) so we re-run the list-style
+   * `projectScopeFilter` against the single id: if the scoped query returns
+   * nothing, the actor is not involved (PM / phase owner / task assignee /
+   * dept) and gets a 403. No-op for ALL / absent scope.
+   */
+  private async assertProjectInScope(id: string, scopeCtx?: ScopeContext) {
+    if (isUnrestricted(scopeCtx)) return;
+    const ok = await this.prisma.project.findFirst({
+      where: {
+        id,
+        ...(projectScopeFilter(scopeCtx) as Prisma.ProjectWhereInput),
+      },
+      select: { id: true },
+    });
+    if (!ok) {
+      throw new ForbiddenException(
+        'You do not have permission to access this resource',
+      );
+    }
+  }
+
+  async update(id: string, dto: UpdateProjectDto, scopeCtx?: ScopeContext) {
+    const project = await this.findOne(id, scopeCtx);
     this.assertWritable(project.status);
     const { poId: _poId, ...rest } = dto;
     return this.prisma.project.update({
@@ -253,8 +281,12 @@ export class ProjectsService {
     });
   }
 
-  async transitionStatus(id: string, dto: TransitionProjectStatusDto) {
-    const project = await this.findOne(id);
+  async transitionStatus(
+    id: string,
+    dto: TransitionProjectStatusDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    const project = await this.findOne(id, scopeCtx);
     const next = dto.status;
 
     if (project.status === next) return project;
@@ -302,8 +334,12 @@ export class ProjectsService {
 
   // Phases --------------------------------------------------------
 
-  async addPhase(projectId: string, dto: CreatePhaseDto) {
-    const project = await this.findOne(projectId);
+  async addPhase(
+    projectId: string,
+    dto: CreatePhaseDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    const project = await this.findOne(projectId, scopeCtx);
     this.assertWritable(project.status);
     const owner = await this.prisma.user.findUnique({
       where: { id: dto.ownerId },
@@ -324,12 +360,17 @@ export class ProjectsService {
     });
   }
 
-  async updatePhase(projectId: string, phaseId: string, dto: UpdatePhaseDto) {
+  async updatePhase(
+    projectId: string,
+    phaseId: string,
+    dto: UpdatePhaseDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException();
-    const project = await this.findOne(projectId);
+    const project = await this.findOne(projectId, scopeCtx);
     this.assertWritable(project.status);
     return this.prisma.phase.update({
       where: { id: phaseId },
@@ -349,11 +390,13 @@ export class ProjectsService {
     projectId: string,
     phaseId: string,
     dto: ReassignPhaseOwnerDto,
+    scopeCtx?: ScopeContext,
   ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException();
+    await this.assertProjectInScope(projectId, scopeCtx);
     const owner = await this.prisma.user.findUnique({
       where: { id: dto.ownerId },
     });
@@ -376,11 +419,13 @@ export class ProjectsService {
     phaseId: string,
     dto: CompletePhaseDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException();
+    await this.assertProjectInScope(projectId, scopeCtx);
     if (phase.status === PhaseStatus.COMPLETED) {
       throw new BadRequestException('Phase already completed');
     }
@@ -417,11 +462,13 @@ export class ProjectsService {
     projectId: string,
     phaseId: string,
     dto: AdjustPhaseProgressDto,
+    scopeCtx?: ScopeContext,
   ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException();
+    await this.assertProjectInScope(projectId, scopeCtx);
     const updated = await this.prisma.phase.update({
       where: { id: phaseId },
       data: {
@@ -436,11 +483,17 @@ export class ProjectsService {
 
   // Tasks ---------------------------------------------------------
 
-  async addTask(projectId: string, phaseId: string, dto: CreateTaskDto) {
+  async addTask(
+    projectId: string,
+    phaseId: string,
+    dto: CreateTaskDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const phase = await this.prisma.phase.findFirst({
       where: { id: phaseId, projectId },
     });
     if (!phase) throw new NotFoundException();
+    await this.assertProjectInScope(projectId, scopeCtx);
     return this.prisma.task.create({
       data: {
         projectId,
@@ -456,11 +509,16 @@ export class ProjectsService {
     });
   }
 
-  async updateTask(taskId: string, dto: UpdateTaskDto) {
+  async updateTask(
+    taskId: string,
+    dto: UpdateTaskDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const existing = await this.prisma.task.findUnique({
       where: { id: taskId },
     });
     if (!existing) throw new NotFoundException();
+    await this.assertProjectInScope(existing.projectId, scopeCtx);
     return this.prisma.task.update({
       where: { id: taskId },
       data: {
@@ -475,12 +533,17 @@ export class ProjectsService {
     });
   }
 
-  async transitionTaskStatus(taskId: string, dto: TransitionTaskStatusDto) {
+  async transitionTaskStatus(
+    taskId: string,
+    dto: TransitionTaskStatusDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       include: { blockers: { include: { blocker: true } } },
     });
     if (!task) throw new NotFoundException();
+    await this.assertProjectInScope(task.projectId, scopeCtx);
 
     // Dependency gate: dependent task can't start unless every blocker is DONE.
     if (
@@ -508,7 +571,11 @@ export class ProjectsService {
     return updated;
   }
 
-  async addDependency(taskId: string, dto: CreateDependencyDto) {
+  async addDependency(
+    taskId: string,
+    dto: CreateDependencyDto,
+    scopeCtx?: ScopeContext,
+  ) {
     if (taskId === dto.blockerTaskId) {
       throw new BadRequestException('Task cannot depend on itself');
     }
@@ -517,6 +584,7 @@ export class ProjectsService {
       this.prisma.task.findUnique({ where: { id: dto.blockerTaskId } }),
     ]);
     if (!dependent || !blocker) throw new NotFoundException();
+    await this.assertProjectInScope(dependent.projectId, scopeCtx);
 
     // Cycle check: walk from blocker backwards through its blockers; reject
     // if taskId appears in the chain.
@@ -543,7 +611,19 @@ export class ProjectsService {
     });
   }
 
-  async removeDependency(taskId: string, blockerTaskId: string) {
+  async removeDependency(
+    taskId: string,
+    blockerTaskId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    if (!isUnrestricted(scopeCtx)) {
+      const dependent = await this.prisma.task.findUnique({
+        where: { id: taskId },
+        select: { projectId: true },
+      });
+      if (!dependent) throw new NotFoundException();
+      await this.assertProjectInScope(dependent.projectId, scopeCtx);
+    }
     await this.prisma.taskDependency.delete({
       where: {
         dependentId_blockerId: {
@@ -557,8 +637,8 @@ export class ProjectsService {
 
   // Closure (PART 7) ----------------------------------------------
 
-  async initiateClosure(id: string, actorId: string) {
-    const project = await this.findOne(id);
+  async initiateClosure(id: string, actorId: string, scopeCtx?: ScopeContext) {
+    const project = await this.findOne(id, scopeCtx);
     if (project.status === ProjectStatus.CLOSED) {
       throw new BadRequestException('Project is already closed');
     }
@@ -589,7 +669,9 @@ export class ProjectsService {
     projectId: string,
     dto: ClosureGateDto,
     actor: { id: string; role: string },
+    scopeCtx?: ScopeContext,
   ) {
+    await this.assertProjectInScope(projectId, scopeCtx);
     if (PM_GATES.has(dto.gate) && !this.isPmOrAdmin(actor.role)) {
       throw new ForbiddenException('Only PM / Admin can flip PM gates');
     }

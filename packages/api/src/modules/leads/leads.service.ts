@@ -4,16 +4,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LeadStatus, Prisma, SLAStatus } from '@prisma/client';
+import { LeadStatus, PipelineStage, Prisma, SLAStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AssignmentService } from './assignment.service';
-import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
+import {
+  assertOwnership,
+  ownerScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
 import type { CreateLeadDto } from './dto/create-lead.dto';
 import type { LeadFilterDto } from './dto/lead-filter.dto';
 import type { LogLeadInteractionDto } from './dto/log-interaction.dto';
+import type { RequestRfqDto } from './dto/request-rfq.dto';
 import type { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import type { UpdateLeadDto } from './dto/update-lead.dto';
 
@@ -28,6 +33,10 @@ const ALLOWED_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
   ASSIGNED: [LeadStatus.IN_PROGRESS, LeadStatus.DISQUALIFIED],
   IN_PROGRESS: [LeadStatus.QUALIFIED, LeadStatus.DISQUALIFIED],
   QUALIFIED: [LeadStatus.DISQUALIFIED],
+  // CONVERTED is set by the convert-to-client / request-RFQ flows, not by the
+  // manual status endpoint. It is effectively terminal here; a converted lead
+  // can still be marked lost (DISQUALIFIED) if the deal collapses.
+  CONVERTED: [LeadStatus.DISQUALIFIED],
   DISQUALIFIED: [LeadStatus.QUALIFIED],
   TENDER_PENDING: [LeadStatus.TENDER_ACTIVE, LeadStatus.DISQUALIFIED],
   TENDER_ACTIVE: [LeadStatus.TENDER_SUBMITTED, LeadStatus.DISQUALIFIED],
@@ -45,6 +54,252 @@ export class LeadsService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  /**
+   * One-click "Request RFQ" from a lead (CORRECTED_CLIENT_JOURNEY Activity B).
+   * In one transaction: ensure a client (reuse a duplicate by phone/email, else
+   * create one owned by the sales rep), mark the lead CONVERTED, ensure a
+   * READY_FOR_RFQ pipeline opportunity, and create the RFQ. The owner is the
+   * *owning salesperson* — the client's account manager, else the lead assignee,
+   * else the actor — so the client account manager, the opportunity owner, and
+   * the RFQ's originalSalesRep all line up and the records stay visible to that
+   * salesperson under OWN scope. The selected ServiceCategory ids are persisted
+   * structurally on `rfq.requestedCategoryIds`, which drives department routing
+   * + visibility (see the DEPARTMENT branch of rfqs.list) and the manager
+   * notifications fired after commit.
+   */
+  async requestRfq(
+    leadId: string,
+    dto: RequestRfqDto,
+    actorId: string,
+    scopeCtx?: ScopeContext,
+  ): Promise<{
+    rfqId: string;
+    rfqNumber: string;
+    clientId: string;
+    leadId: string;
+  }> {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id: leadId, deletedAt: null },
+    });
+    if (!lead) throw new NotFoundException(`Lead ${leadId} not found`);
+
+    // Row-level scope: a non-ALL actor (Sales Rep) may only raise an RFQ on a
+    // lead they own. This makes the cross-rep owner mismatch (B1) impossible by
+    // construction — the resolved owner below is the actor in the normal flow.
+    assertOwnership(scopeCtx, lead, 'assignedToId');
+
+    // Resolve department names for the human-readable RFQ scope.
+    const categories = dto.departmentIds.length
+      ? await this.prisma.serviceCategory.findMany({
+          where: { id: { in: dto.departmentIds } },
+          select: { name: true },
+        })
+      : [];
+    const deptNames = categories.map((c) => c.name);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Ensure a client — reuse an existing one (returning client) or create.
+      //    Resolve the owning salesperson as we go: an existing client keeps its
+      //    account manager; a brand-new client is owned by the lead assignee
+      //    (or the actor). ownerId then flows to the opportunity + the RFQ.
+      let clientId = lead.clientId;
+      let ownerId: string;
+      if (clientId) {
+        const current = await tx.client.findUnique({
+          where: { id: clientId },
+          select: { accountManagerId: true },
+        });
+        ownerId = current?.accountManagerId ?? lead.assignedToId ?? actorId;
+      } else {
+        const orConds: Prisma.ClientWhereInput[] = [{ phone: lead.phone }];
+        if (lead.email) orConds.push({ email: lead.email });
+        const existing = await tx.client.findFirst({
+          where: { deletedAt: null, OR: orConds },
+          select: { id: true, accountManagerId: true },
+        });
+        if (existing) {
+          clientId = existing.id;
+          ownerId = existing.accountManagerId ?? lead.assignedToId ?? actorId;
+        } else {
+          ownerId = lead.assignedToId ?? actorId;
+          const lastClient = await tx.client.findFirst({
+            orderBy: { clientNumber: 'desc' },
+            select: { clientNumber: true },
+          });
+          const client = await tx.client.create({
+            data: {
+              clientNumber: nextEntityNumber(
+                'CLIENT',
+                lastClient?.clientNumber,
+              ),
+              contactName: lead.contactName,
+              companyName: lead.companyName,
+              email: lead.email,
+              phone: lead.phone,
+              city: lead.city,
+              accountManagerId: ownerId,
+              createdBy: actorId,
+            },
+            select: { id: true },
+          });
+          clientId = client.id;
+        }
+      }
+
+      // 2. Mark the lead CONVERTED (client created + RFQ raised) in one step.
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: {
+          clientId,
+          status: LeadStatus.CONVERTED,
+          isReturningClient: true,
+          closedAt: new Date(),
+        },
+      });
+
+      // 3. Ensure a READY_FOR_RFQ opportunity (one per lead; one RFQ per opp).
+      const existingOpp = await tx.pipelineEntry.findUnique({
+        where: { leadId: lead.id },
+        include: { rfq: { select: { id: true } } },
+      });
+      if (existingOpp?.rfq) {
+        throw new BadRequestException('An RFQ already exists for this lead.');
+      }
+      const opportunity = existingOpp
+        ? await tx.pipelineEntry.update({
+            where: { id: existingOpp.id },
+            data: {
+              clientId,
+              ownerId: existingOpp.ownerId ?? ownerId,
+              stage: PipelineStage.READY_FOR_RFQ,
+              readyForRfqAt: new Date(),
+              ...(dto.estimatedValue !== undefined
+                ? { estimatedValue: dto.estimatedValue }
+                : {}),
+            },
+            select: { id: true },
+          })
+        : await tx.pipelineEntry.create({
+            data: {
+              leadId: lead.id,
+              clientId,
+              ownerId,
+              stage: PipelineStage.READY_FOR_RFQ,
+              readyForRfqAt: new Date(),
+              estimatedValue: dto.estimatedValue,
+            },
+            select: { id: true },
+          });
+
+      // 4. Create the RFQ, owned by the sales rep.
+      const lastRfq = await tx.rfq.findFirst({
+        orderBy: { createdAt: 'desc' },
+        select: { rfqNumber: true },
+      });
+      const projectScope = deptNames.length
+        ? `${dto.projectScope}\n\n— Requested departments: ${deptNames.join(', ')}`
+        : dto.projectScope;
+      const rfq = await tx.rfq.create({
+        data: {
+          rfqNumber: nextEntityNumber('RFQ', lastRfq?.rfqNumber),
+          opportunityId: opportunity.id,
+          clientId,
+          serviceType: dto.serviceType,
+          projectScope,
+          priority: dto.priority ?? 'NORMAL',
+          requestedByChannel: dto.requestedByChannel ?? 'INTERNAL_REP',
+          originalSalesRepId: ownerId,
+          // Structured service selection — drives department routing + the
+          // manager visibility branch in rfqs.list (D1/D2).
+          requestedCategoryIds: dto.departmentIds,
+          status: 'RECEIVED',
+          createdBy: actorId,
+        },
+        select: { id: true, rfqNumber: true },
+      });
+
+      return {
+        rfqId: rfq.id,
+        rfqNumber: rfq.rfqNumber,
+        clientId,
+        leadId: lead.id,
+      };
+    });
+
+    // Route + notify after commit (best-effort): every department manager whose
+    // department offers one of the selected service categories is alerted so a
+    // freshly-raised, still-unassigned RFQ reaches the people who must assign
+    // pricers. Multi-service RFQs additionally ping the Sales Managers, who
+    // designate the cross-department Lead Pricer.
+    void this.routeRfqToManagers(
+      result.rfqId,
+      result.rfqNumber,
+      dto.departmentIds,
+      deptNames,
+    );
+
+    return result;
+  }
+
+  /** D3 — notify the department managers (and, for multi-service RFQs, the
+   * Sales Managers) that a new RFQ is awaiting pricer assignment. The
+   * ServiceCategory -> Department -> managerId hop is the DepartmentService
+   * join. Best-effort; never blocks the RFQ creation. */
+  private async routeRfqToManagers(
+    rfqId: string,
+    rfqNumber: string,
+    categoryIds: string[],
+    deptNames: string[],
+  ): Promise<void> {
+    if (!categoryIds.length) return;
+    try {
+      const links = await this.prisma.departmentService.findMany({
+        where: { serviceCategoryId: { in: categoryIds } },
+        select: { department: { select: { managerId: true } } },
+      });
+      const managerIds = [
+        ...new Set(
+          links
+            .map((l) => l.department.managerId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const servicesLabel = deptNames.join('، ') || rfqNumber;
+      if (managerIds.length) {
+        await this.notifications.sendToMany(managerIds, {
+          eventCode: 'rfq.received',
+          subject: `طلب تسعير جديد بانتظار التعيين: ${rfqNumber}`,
+          body: `الخدمات المطلوبة: ${servicesLabel}`,
+          deepLink: `/rfqs/${rfqId}`,
+          payload: { rfqId, rfqNumber },
+        });
+      }
+      if (categoryIds.length > 1) {
+        const salesManagers = await this.prisma.user.findMany({
+          where: {
+            role: { in: ['SALES_MANAGER', 'ADMIN', 'SUPER_ADMIN'] },
+            status: 'ACTIVE',
+          },
+          select: { id: true },
+        });
+        if (salesManagers.length) {
+          await this.notifications.sendToMany(
+            salesManagers.map((m) => m.id),
+            {
+              eventCode: 'rfq.multi_dept_received',
+              subject: `طلب تسعير متعدد الأقسام: ${rfqNumber}`,
+              body: `يتطلب تعيين منسّق رئيسي (Lead Pricer) عبر الأقسام: ${servicesLabel}`,
+              deepLink: `/rfqs/${rfqId}`,
+              payload: { rfqId, rfqNumber },
+            },
+          );
+        }
+      }
+    } catch {
+      // best-effort routing — never break RFQ creation on a notification error
+    }
+  }
+
   async create(dto: CreateLeadDto, actorId?: string) {
     const leadNumber = await this.generateLeadNumber();
     const slaHours =
@@ -57,9 +312,13 @@ export class LeadsService {
     const isReturning = await this.detectReturningClient(dto.email, dto.phone);
 
     // When the caller didn't pick an assignee, fall back to the configured
-    // auto-assign strategy.
+    // auto-assign strategy, then to the creator. Defaulting to the creator (A2)
+    // guarantees a rep who creates a lead can see it under OWN scope
+    // ({ assignedToId: self }); an explicit pick or an auto-assign result still
+    // wins. `actorId` is undefined for the public chatbot intake, leaving the
+    // lead in the INCOMING queue as before.
     const effectiveAssigneeId =
-      dto.assignedToId ?? (await this.assignment.pickAssignee()) ?? undefined;
+      dto.assignedToId ?? (await this.assignment.pickAssignee()) ?? actorId;
 
     const data: Prisma.LeadCreateInput = {
       leadNumber,
@@ -155,8 +414,8 @@ export class LeadsService {
     return lead;
   }
 
-  async autoAssign(id: string) {
-    const lead = await this.findOne(id);
+  async autoAssign(id: string, scopeCtx?: ScopeContext) {
+    const lead = await this.findOne(id, scopeCtx);
     const pickedId = await this.assignment.pickAssignee();
     if (!pickedId) {
       throw new BadRequestException(
@@ -253,7 +512,7 @@ export class LeadsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const lead = await this.prisma.lead.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -264,10 +523,12 @@ export class LeadsService {
       },
     });
     if (!lead) throw new NotFoundException(`Lead ${id} not found`);
+    // Object-level scope: a non-ALL actor may only read a lead they own.
+    assertOwnership(scopeCtx, lead, 'assignedToId');
     return lead;
   }
 
-  async findByNumber(leadNumber: string) {
+  async findByNumber(leadNumber: string, scopeCtx?: ScopeContext) {
     const lead = await this.prisma.lead.findFirst({
       where: { leadNumber, deletedAt: null },
       include: {
@@ -278,11 +539,13 @@ export class LeadsService {
       },
     });
     if (!lead) throw new NotFoundException(`Lead ${leadNumber} not found`);
+    // LEAD-YYYY-XXXX is sequential — guard the by-number lookup too.
+    assertOwnership(scopeCtx, lead, 'assignedToId');
     return lead;
   }
 
-  async update(id: string, dto: UpdateLeadDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateLeadDto, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
 
     const { serviceId, assignedToId, tenderDeadline, tenderDetails, ...rest } =
       dto;
@@ -309,8 +572,8 @@ export class LeadsService {
     return this.prisma.lead.update({ where: { id }, data });
   }
 
-  async assign(id: string, dto: AssignLeadDto) {
-    const lead = await this.findOne(id);
+  async assign(id: string, dto: AssignLeadDto, scopeCtx?: ScopeContext) {
+    const lead = await this.findOne(id, scopeCtx);
 
     const user = await this.prisma.user.findUnique({
       where: { id: dto.assignedToId },
@@ -344,8 +607,12 @@ export class LeadsService {
     return updated;
   }
 
-  async updateStatus(id: string, dto: UpdateLeadStatusDto) {
-    const lead = await this.findOne(id);
+  async updateStatus(
+    id: string,
+    dto: UpdateLeadStatusDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    const lead = await this.findOne(id, scopeCtx);
     const allowed = ALLOWED_TRANSITIONS[lead.status];
     if (!allowed.includes(dto.status)) {
       throw new BadRequestException(
@@ -379,8 +646,8 @@ export class LeadsService {
     return this.prisma.lead.update({ where: { id }, data });
   }
 
-  async softDelete(id: string) {
-    await this.findOne(id);
+  async softDelete(id: string, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.lead.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -525,8 +792,8 @@ export class LeadsService {
   // bottleneck. See docs/CORRECTED_CLIENT_JOURNEY.md §A.
   // ============================================================
 
-  async listInteractions(leadId: string) {
-    await this.findOne(leadId);
+  async listInteractions(leadId: string, scopeCtx?: ScopeContext) {
+    await this.findOne(leadId, scopeCtx);
     return this.prisma.interaction.findMany({
       where: { leadId },
       orderBy: { occurredAt: 'desc' },
@@ -542,8 +809,9 @@ export class LeadsService {
     leadId: string,
     dto: LogLeadInteractionDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
-    await this.findOne(leadId);
+    await this.findOne(leadId, scopeCtx);
     const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
     const followUpDate = dto.followUpDate ? new Date(dto.followUpDate) : null;
 

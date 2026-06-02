@@ -30,6 +30,11 @@ export function getAllowedNextStatuses(from: LeadStatus): LeadStatus[] {
       return ['QUALIFIED', 'DISQUALIFIED'];
     case 'QUALIFIED':
       return ['DISQUALIFIED'];
+    // CONVERTED is reached via the convert / request-RFQ flows, not the manual
+    // status dialog; it mirrors the backend state machine (only a collapse to
+    // DISQUALIFIED remains).
+    case 'CONVERTED':
+      return ['DISQUALIFIED'];
     case 'DISQUALIFIED':
       return ['QUALIFIED'];
     case 'TENDER_PENDING':

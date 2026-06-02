@@ -21,6 +21,7 @@ import {
   CreateLeadDto,
   LeadFilterDto,
   LogLeadInteractionDto,
+  RequestRfqDto,
   UpdateLeadDto,
   UpdateLeadStatusDto,
 } from './dto';
@@ -53,6 +54,22 @@ export class LeadsController {
   @ApiOperation({ summary: 'Create a new lead' })
   create(@Body() dto: CreateLeadDto, @CurrentUser('id') actorId: string) {
     return this.leads.create(dto, actorId);
+  }
+
+  @Post(':id/request-rfq')
+  @RequirePermission('rfq:request')
+  @ApiOperation({
+    summary:
+      'Request an RFQ from a lead — auto-qualifies the lead and creates the client (if needed), the READY_FOR_RFQ opportunity, and the RFQ in one step (CORRECTED_CLIENT_JOURNEY Activity B).',
+  })
+  requestRfq(
+    @Param('id') id: string,
+    @Body() dto: RequestRfqDto,
+    @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:request') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.requestRfq(id, dto, actorId, { user, scope });
   }
 
   @Get()
@@ -114,28 +131,46 @@ export class LeadsController {
 
   @Get('number/:leadNumber')
   @ApiOperation({ summary: 'Fetch a lead by its LEAD-YYYY-XXXX number' })
-  findByNumber(@Param('leadNumber') leadNumber: string) {
-    return this.leads.findByNumber(leadNumber);
+  findByNumber(
+    @Param('leadNumber') leadNumber: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:view') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.findByNumber(leadNumber, { user, scope });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Fetch a lead by id' })
-  findOne(@Param('id') id: string) {
-    return this.leads.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:view') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.findOne(id, { user, scope });
   }
 
   @Patch(':id')
   @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Update lead fields' })
-  update(@Param('id') id: string, @Body() dto: UpdateLeadDto) {
-    return this.leads.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLeadDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.update(id, dto, { user, scope });
   }
 
   @Patch(':id/assign')
   @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Assign the lead to a user' })
-  assign(@Param('id') id: string, @Body() dto: AssignLeadDto) {
-    return this.leads.assign(id, dto);
+  assign(
+    @Param('id') id: string,
+    @Body() dto: AssignLeadDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.assign(id, dto, { user, scope });
   }
 
   @Patch(':id/auto-assign')
@@ -144,22 +179,35 @@ export class LeadsController {
     summary:
       'Pick an assignee using the configured auto-assign strategy and apply it',
   })
-  autoAssign(@Param('id') id: string) {
-    return this.leads.autoAssign(id);
+  autoAssign(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.autoAssign(id, { user, scope });
   }
 
   @Patch(':id/status')
   @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Transition lead status' })
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
-    return this.leads.updateStatus(id, dto);
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateLeadStatusDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.updateStatus(id, dto, { user, scope });
   }
 
   @Delete(':id')
   @RequirePermission('leads:edit')
   @ApiOperation({ summary: 'Soft delete (archive) the lead' })
-  remove(@Param('id') id: string) {
-    return this.leads.softDelete(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:edit') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.softDelete(id, { user, scope });
   }
 
   // Communications log (2026-05-21 process correction).
@@ -170,8 +218,12 @@ export class LeadsController {
     summary:
       'List communications-log entries for this lead (reverse chronological).',
   })
-  listInteractions(@Param('id') id: string) {
-    return this.leads.listInteractions(id);
+  listInteractions(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:view') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.listInteractions(id, { user, scope });
   }
 
   @Post(':id/interactions')
@@ -184,7 +236,9 @@ export class LeadsController {
     @Param('id') id: string,
     @Body() dto: LogLeadInteractionDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.leads.logInteraction(id, dto, actorId);
+    return this.leads.logInteraction(id, dto, actorId, { user, scope });
   }
 }

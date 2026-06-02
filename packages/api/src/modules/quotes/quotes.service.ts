@@ -21,7 +21,11 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
+import {
+  assertOwnership,
+  ownerScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import type {
   AcceptRejectQuoteDto,
@@ -245,17 +249,18 @@ export class QuotesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const quote = await this.prisma.quote.findFirst({
       where: { id, deletedAt: null },
       include: QUOTE_INCLUDE,
     });
     if (!quote) throw new NotFoundException('Quote not found');
+    assertOwnership(scopeCtx, quote, 'preparedById');
     return quote;
   }
 
-  async update(id: string, dto: UpdateQuoteDto) {
-    const quote = await this.findOne(id);
+  async update(id: string, dto: UpdateQuoteDto, scopeCtx?: ScopeContext) {
+    const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be edited');
     }
@@ -365,8 +370,8 @@ export class QuotesService {
     });
   }
 
-  async submit(id: string, dto: SubmitQuoteDto) {
-    const quote = await this.findOne(id);
+  async submit(id: string, dto: SubmitQuoteDto, scopeCtx?: ScopeContext) {
+    const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be submitted');
     }
@@ -615,8 +620,9 @@ export class QuotesService {
   async setFollowUpStatus(
     id: string,
     status: 'IN_DISCUSSION' | 'IN_NEGOTIATION',
+    scopeCtx?: ScopeContext,
   ) {
-    const quote = await this.findOne(id);
+    const quote = await this.findOne(id, scopeCtx);
     const ELIGIBLE: QuoteStatus[] = [
       QuoteStatus.SENT,
       QuoteStatus.IN_DISCUSSION,
@@ -634,8 +640,8 @@ export class QuotesService {
     });
   }
 
-  async send(id: string) {
-    const quote = await this.findOne(id);
+  async send(id: string, scopeCtx?: ScopeContext) {
+    const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.APPROVED) {
       throw new BadRequestException('Only APPROVED quotes can be sent');
     }
@@ -676,8 +682,9 @@ export class QuotesService {
       notes?: string;
     } = {},
     actorId?: string,
+    scopeCtx?: ScopeContext,
   ) {
-    const quote = await this.findOne(id);
+    const quote = await this.findOne(id, scopeCtx);
     if (
       quote.status !== QuoteStatus.SENT &&
       quote.status !== QuoteStatus.IN_DISCUSSION &&
@@ -749,8 +756,8 @@ export class QuotesService {
     return this.findOne(id);
   }
 
-  async reject(id: string, dto: AcceptRejectQuoteDto) {
-    const quote = await this.findOne(id);
+  async reject(id: string, dto: AcceptRejectQuoteDto, scopeCtx?: ScopeContext) {
+    const quote = await this.findOne(id, scopeCtx);
     if (
       quote.status !== QuoteStatus.SENT &&
       quote.status !== QuoteStatus.IN_DISCUSSION &&
@@ -782,8 +789,9 @@ export class QuotesService {
     id: string,
     dto: { followUpDate: string; notes?: string },
     actorId?: string,
+    scopeCtx?: ScopeContext,
   ) {
-    const quote = await this.findOne(id);
+    const quote = await this.findOne(id, scopeCtx);
     if (
       quote.status !== QuoteStatus.SENT &&
       quote.status !== QuoteStatus.IN_DISCUSSION &&
@@ -833,8 +841,8 @@ export class QuotesService {
     return this.findOne(id);
   }
 
-  async softDelete(id: string) {
-    const quote = await this.findOne(id);
+  async softDelete(id: string, scopeCtx?: ScopeContext) {
+    const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be deleted');
     }

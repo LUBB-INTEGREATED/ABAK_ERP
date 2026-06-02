@@ -15,7 +15,11 @@ import {
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ownerScopeFilter, type ScopeContext } from '../auth/scope.util';
+import {
+  assertOwnership,
+  ownerScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 import type {
   ClientFilterDto,
   CreateClientDto,
@@ -76,7 +80,11 @@ export class ClientsService {
           classification: dto.classification ?? ClientClassification.NEW,
           creditLimit: dto.creditLimit,
           paymentTerms: dto.paymentTerms,
-          accountManagerId: dto.accountManagerId,
+          // Default the account manager (the OWN-scope owner) to the creator so a
+          // Sales Rep who creates/converts a client can still see it in their own
+          // scoped list. An explicit accountManagerId (e.g. a manager assigning on
+          // someone's behalf) still wins.
+          accountManagerId: dto.accountManagerId ?? actorId,
           createdBy: actorId,
         },
       });
@@ -93,7 +101,9 @@ export class ClientsService {
           where: { id: lead.id },
           data: {
             clientId: client.id,
-            status: LeadStatus.QUALIFIED,
+            // Converting a lead to a client is a CONVERTED outcome (distinct
+            // from QUALIFIED) so the conversion report counts it (E1).
+            status: LeadStatus.CONVERTED,
             closedAt: new Date(),
             isReturningClient: true,
           },
@@ -172,7 +182,7 @@ export class ClientsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const client = await this.prisma.client.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -190,11 +200,13 @@ export class ClientsService {
       },
     });
     if (!client) throw new NotFoundException(`Client ${id} not found`);
+    // Object-level scope: a non-ALL actor may only access clients they manage.
+    assertOwnership(scopeCtx, client, 'accountManagerId');
     return client;
   }
 
-  async update(id: string, dto: UpdateClientDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateClientDto, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
 
     if ((dto.phone || dto.email) && (dto.phone || dto.email)) {
       const duplicate = await this.findDuplicate(dto.phone, dto.email, id);
@@ -218,8 +230,8 @@ export class ClientsService {
     });
   }
 
-  async archive(id: string) {
-    await this.findOne(id);
+  async archive(id: string, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.client.update({
       where: { id },
       data: {
@@ -229,8 +241,12 @@ export class ClientsService {
     });
   }
 
-  async classify(id: string, dto: UpdateClassificationDto) {
-    await this.findOne(id);
+  async classify(
+    id: string,
+    dto: UpdateClassificationDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.client.update({
       where: { id },
       data: {
@@ -281,8 +297,12 @@ export class ClientsService {
 
   // Interactions -------------------------------------------------
 
-  async listInteractions(clientId: string, filter: InteractionFilterDto) {
-    await this.findOne(clientId);
+  async listInteractions(
+    clientId: string,
+    filter: InteractionFilterDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(clientId, scopeCtx);
 
     const where: Prisma.InteractionWhereInput = { clientId };
     if (filter.type) where.type = filter.type;
@@ -327,8 +347,9 @@ export class ClientsService {
     clientId: string,
     dto: CreateInteractionDto,
     actorId?: string,
+    scopeCtx?: ScopeContext,
   ) {
-    await this.findOne(clientId);
+    await this.findOne(clientId, scopeCtx);
 
     // BR-04: when needsFollowUp is true, a follow-up date is mandatory.
     if (dto.needsFollowUp) {
@@ -400,7 +421,11 @@ export class ClientsService {
     interactionId: string,
     dto: UpdateInteractionDto,
     actor: { id: string; role: string },
+    scopeCtx?: ScopeContext,
   ) {
+    // Object-level scope: only an actor who can access the parent client may
+    // edit its interactions (on top of the 24h lock / override checks).
+    await this.findOne(clientId, scopeCtx);
     const interaction = await this.prisma.interaction.findFirst({
       where: { id: interactionId, clientId },
     });
@@ -450,7 +475,9 @@ export class ClientsService {
     clientId: string,
     interactionId: string,
     actor: { id: string; role: string },
+    scopeCtx?: ScopeContext,
   ) {
+    await this.findOne(clientId, scopeCtx);
     const interaction = await this.prisma.interaction.findFirst({
       where: { id: interactionId, clientId },
     });
@@ -470,8 +497,13 @@ export class ClientsService {
   }
 
   // BR-19 — reassigning a client requires a reason and is persisted to history.
-  async reassign(clientId: string, dto: ReassignClientDto, actorId?: string) {
-    const client = await this.findOne(clientId);
+  async reassign(
+    clientId: string,
+    dto: ReassignClientDto,
+    actorId?: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    const client = await this.findOne(clientId, scopeCtx);
     const nextManager = await this.prisma.user.findUnique({
       where: { id: dto.newAccountManagerId },
     });
@@ -541,8 +573,8 @@ export class ClientsService {
 
   // Follow-ups ---------------------------------------------------
 
-  async listFollowUps(clientId: string) {
-    await this.findOne(clientId);
+  async listFollowUps(clientId: string, scopeCtx?: ScopeContext) {
+    await this.findOne(clientId, scopeCtx);
     return this.prisma.followUp.findMany({
       where: { clientId },
       orderBy: [{ status: 'asc' }, { dueAt: 'asc' }],
@@ -558,8 +590,9 @@ export class ClientsService {
     clientId: string,
     dto: CreateFollowUpDto,
     actorId?: string,
+    scopeCtx?: ScopeContext,
   ) {
-    await this.findOne(clientId);
+    await this.findOne(clientId, scopeCtx);
     return this.prisma.followUp.create({
       data: {
         clientId,
@@ -721,8 +754,8 @@ export class ClientsService {
 
   // Notes --------------------------------------------------------
 
-  async listNotes(clientId: string) {
-    await this.findOne(clientId);
+  async listNotes(clientId: string, scopeCtx?: ScopeContext) {
+    await this.findOne(clientId, scopeCtx);
     return this.prisma.clientNote.findMany({
       where: { clientId },
       orderBy: { createdAt: 'desc' },
@@ -734,8 +767,13 @@ export class ClientsService {
     });
   }
 
-  async createNote(clientId: string, dto: CreateNoteDto, actorId?: string) {
-    await this.findOne(clientId);
+  async createNote(
+    clientId: string,
+    dto: CreateNoteDto,
+    actorId?: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(clientId, scopeCtx);
     return this.prisma.clientNote.create({
       data: {
         clientId,

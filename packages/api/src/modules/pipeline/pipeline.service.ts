@@ -8,6 +8,12 @@ import { Cron } from '@nestjs/schedule';
 import { PipelineStage, Prisma, LeadStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  assertOwnership,
+  isUnrestricted,
+  ownerScopeFilter,
+  type ScopeContext,
+} from '../auth/scope.util';
 import type {
   CreateFieldVisitDto,
   CreatePipelineEntryDto,
@@ -84,7 +90,7 @@ export class PipelineService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async createEntry(dto: CreatePipelineEntryDto) {
+  async createEntry(dto: CreatePipelineEntryDto, actorId?: string) {
     if (!dto.leadId && !dto.clientId) {
       throw new BadRequestException('leadId or clientId is required');
     }
@@ -103,7 +109,9 @@ export class PipelineService {
         stage: dto.stage ?? PipelineStage.NEW_LEAD,
         leadId: dto.leadId,
         clientId: dto.clientId,
-        ownerId: dto.ownerId,
+        // Default the pipeline owner (OWN-scope owner) to the acting user so the
+        // creator keeps visibility; this also flows to rfq.originalSalesRepId.
+        ownerId: dto.ownerId ?? actorId,
         estimatedValue: dto.estimatedValue,
         probability: dto.probability,
         nextStep: dto.nextStep,
@@ -123,8 +131,12 @@ export class PipelineService {
     });
   }
 
-  async listEntries(filter: PipelineFilterDto) {
+  async listEntries(filter: PipelineFilterDto, scopeCtx?: ScopeContext) {
     const where: Prisma.PipelineEntryWhereInput = {};
+    // Row-level scope (B2): non-ALL viewers (Sales Rep) see only their own
+    // pipeline entries, consistent with leads/clients. Previously unscoped —
+    // every pipeline:view holder saw the whole company pipeline.
+    Object.assign(where, ownerScopeFilter(scopeCtx, 'ownerId'));
     if (filter.stage) where.stage = filter.stage;
     if (filter.ownerId) where.ownerId = filter.ownerId;
     if (filter.search) {
@@ -162,7 +174,7 @@ export class PipelineService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const entry = await this.prisma.pipelineEntry.findUnique({
       where: { id },
       include: {
@@ -183,11 +195,17 @@ export class PipelineService {
       },
     });
     if (!entry) throw new NotFoundException(`Pipeline entry ${id} not found`);
+    // Object-level scope: a non-ALL actor may only access their own entries.
+    assertOwnership(scopeCtx, entry, 'ownerId');
     return entry;
   }
 
-  async updateEntry(id: string, dto: UpdatePipelineEntryDto) {
-    await this.findOne(id);
+  async updateEntry(
+    id: string,
+    dto: UpdatePipelineEntryDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     const { leadId: _l, clientId: _c, stage: _s, ...rest } = dto;
     const data: Prisma.PipelineEntryUpdateInput = { ...rest };
     if (dto.expectedCloseAt) {
@@ -205,8 +223,13 @@ export class PipelineService {
     });
   }
 
-  async moveStage(id: string, dto: MoveStageDto, actorId?: string) {
-    const entry = await this.findOne(id);
+  async moveStage(
+    id: string,
+    dto: MoveStageDto,
+    actorId?: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    const entry = await this.findOne(id, scopeCtx);
     if (entry.stage === dto.stage) {
       return entry;
     }
@@ -289,18 +312,30 @@ export class PipelineService {
       if (entry.leadId) {
         const mapping = this.mapStageToLeadStatus(dto.stage);
         if (mapping) {
-          await tx.lead.update({
+          // moveStage accepts any stage→any stage (no transition gate), so a
+          // backward move (e.g. CONVERTED lead dragged to a MEETING stage) must
+          // not silently DOWNGRADE the lead's status. Sync only when it isn't a
+          // downgrade of an already-CONVERTED lead (a collapse to LOST is still
+          // allowed). DISQUALIFIED leads are likewise left alone except an
+          // explicit re-open isn't driven from here.
+          const current = await tx.lead.findUnique({
             where: { id: entry.leadId },
-            data: {
-              status: mapping,
-              ...(CLOSED_STAGES.includes(dto.stage)
-                ? { closedAt: new Date() }
-                : {}),
-              ...(dto.stage === PipelineStage.LOST
-                ? { lostReason: dto.reason }
-                : {}),
-            },
+            select: { status: true },
           });
+          if (current && !isLeadStatusDowngrade(current.status, mapping)) {
+            await tx.lead.update({
+              where: { id: entry.leadId },
+              data: {
+                status: mapping,
+                ...(CLOSED_STAGES.includes(dto.stage)
+                  ? { closedAt: new Date() }
+                  : {}),
+                ...(dto.stage === PipelineStage.LOST
+                  ? { lostReason: dto.reason }
+                  : {}),
+              },
+            });
+          }
         }
       }
 
@@ -308,8 +343,8 @@ export class PipelineService {
     });
   }
 
-  async deleteEntry(id: string) {
-    await this.findOne(id);
+  async deleteEntry(id: string, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.pipelineEntry.delete({ where: { id } });
   }
 
@@ -406,9 +441,12 @@ export class PipelineService {
     return visit;
   }
 
-  listVisits(ownerId?: string) {
+  listVisits(ownerId?: string, scopeCtx?: ScopeContext) {
+    // Non-ALL viewers only ever see their own visits, regardless of any
+    // ownerId query param; ALL viewers may filter by the supplied ownerId.
+    const authorId = isUnrestricted(scopeCtx) ? ownerId : scopeCtx!.user.id;
     return this.prisma.fieldVisit.findMany({
-      where: ownerId ? { authorId: ownerId } : undefined,
+      where: authorId ? { authorId } : undefined,
       orderBy: { scheduledAt: 'desc' },
       include: {
         client: {
@@ -421,9 +459,15 @@ export class PipelineService {
     });
   }
 
-  async updateVisit(id: string, dto: UpdateFieldVisitDto) {
+  async updateVisit(
+    id: string,
+    dto: UpdateFieldVisitDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const visit = await this.prisma.fieldVisit.findUnique({ where: { id } });
     if (!visit) throw new NotFoundException(`Visit ${id} not found`);
+    // Object-level scope: only the visit's author (or ALL) may update it.
+    assertOwnership(scopeCtx, visit, 'authorId');
     return this.prisma.fieldVisit.update({
       where: { id },
       data: {
@@ -464,9 +508,13 @@ export class PipelineService {
     });
   }
 
-  listTargets(ownerId?: string) {
+  listTargets(ownerId?: string, scopeCtx?: ScopeContext) {
+    // Non-ALL viewers only see their own targets; ALL may filter by ownerId.
+    const effectiveOwner = isUnrestricted(scopeCtx)
+      ? ownerId
+      : scopeCtx!.user.id;
     return this.prisma.salesTarget.findMany({
-      where: ownerId ? { ownerId } : undefined,
+      where: effectiveOwner ? { ownerId: effectiveOwner } : undefined,
       orderBy: [{ periodStart: 'desc' }, { type: 'asc' }],
       include: {
         owner: {
@@ -519,17 +567,31 @@ export class PipelineService {
       case PipelineStage.MEETING_SCHEDULED:
       case PipelineStage.MEETING_DONE:
         return LeadStatus.IN_PROGRESS;
+      // Post-RFQ stages imply a client+RFQ already exist, so the lead is
+      // CONVERTED. Mapping these to CONVERTED (not QUALIFIED) also prevents a
+      // pipeline move from downgrading a lead requestRfq already set CONVERTED.
       case PipelineStage.RFQ_SUBMITTED:
       case PipelineStage.QUOTE_IN_PREPARATION:
       case PipelineStage.QUOTE_SENT_TO_CLIENT:
       case PipelineStage.NEGOTIATION_REVISION:
-        return LeadStatus.QUALIFIED;
+        return LeadStatus.CONVERTED;
       case PipelineStage.WON:
-        return LeadStatus.QUALIFIED;
+        return LeadStatus.CONVERTED;
       case PipelineStage.LOST:
         return LeadStatus.DISQUALIFIED;
       default:
         return null;
     }
   }
+}
+
+/**
+ * True when syncing `to` over the lead's current `from` status would be a
+ * downgrade we must not apply from a (validation-free) stage move. Today the
+ * only protected case is a CONVERTED lead: a backward stage move maps to
+ * IN_PROGRESS and would otherwise erase the conversion. Marking it LOST
+ * (DISQUALIFIED) is still allowed.
+ */
+function isLeadStatusDowngrade(from: LeadStatus, to: LeadStatus): boolean {
+  return from === LeadStatus.CONVERTED && to !== LeadStatus.DISQUALIFIED;
 }
