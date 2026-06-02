@@ -1,7 +1,7 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3011/api/v1',
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -24,7 +24,8 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as RetriableConfig | undefined;
     const status = error.response?.status;
     const isAuthEndpoint =
-      typeof originalRequest?.url === 'string' && originalRequest.url.startsWith('/auth/');
+      typeof originalRequest?.url === 'string' &&
+      originalRequest.url.startsWith('/auth/');
 
     if (
       typeof window !== 'undefined' &&
@@ -39,13 +40,19 @@ apiClient.interceptors.response.use(
         await useAuthStore.getState().refreshAccessToken();
         const { accessToken } = useAuthStore.getState();
         if (accessToken) {
-          originalRequest.headers?.set('Authorization', `Bearer ${accessToken}`);
+          originalRequest.headers?.set(
+            'Authorization',
+            `Bearer ${accessToken}`,
+          );
         }
         return apiClient(originalRequest);
       } catch (refreshError) {
         const { useAuthStore } = await import('./auth');
         useAuthStore.getState().clearSession();
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        if (
+          typeof window !== 'undefined' &&
+          window.location.pathname !== '/login'
+        ) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);

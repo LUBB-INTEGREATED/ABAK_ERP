@@ -108,7 +108,7 @@ The previously **login-only** controllers must now enforce a permission, not jus
 | S1  | Users with a department + ≥1 role | 25 / 25                                                        |
 | S2  | Departments                       | 12 (2 inactive: Haya Mudun, Khibrah)                           |
 | S3  | Managers set                      | 9; each manager's `departmentId` == the department they manage |
-| S4  | Permissions / roles seeded        | 48 permissions, 8 role templates                               |
+| S4  | Permissions / roles seeded        | 49 permissions, 8 role templates (catalog matches design §3)   |
 | S5  | Legacy `UserRole` enum column     | Still present (migration not yet dropped)                      |
 | S6  | `hassan@` role count              | 2 (Engineer + Technical Director)                              |
 

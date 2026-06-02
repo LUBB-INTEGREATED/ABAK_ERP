@@ -688,7 +688,16 @@
       "CH_SOC": "Social",
       "CH_WEB": "Website",
       "CH_MAP": "Google Maps",
-      "CH_AI": "AI Chatbot"
+      "CH_AI": "AI Chatbot",
+      "REFERRAL": "Referral",
+      "WALK_IN": "Walk-in",
+      "PHONE": "Phone",
+      "EXISTING_CLIENT_REPEAT": "Existing client (repeat)",
+      "SOCIAL_MEDIA": "Social media",
+      "WEBSITE": "Website",
+      "GOOGLE_MAPS": "Google Maps",
+      "AI_CHATBOT": "AI chatbot",
+      "OTHER": "Other"
     },
     "sla": {
       "ON_TIME": "On time",

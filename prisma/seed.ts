@@ -806,7 +806,7 @@ async function main() {
     data: [
       {
         leadNumber: `LEAD-${year}-0001`,
-        channel: LeadChannel.GOVERNMENT_TENDER,
+        channel: LeadChannel.OTHER,
         source: 'Etimad Platform',
         etimadNumber: 'ET-2024-12345',
         tenderDeadline: new Date(Date.now() + 30 * 24 * hour),

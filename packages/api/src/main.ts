@@ -14,12 +14,18 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const port = config.get<number>('app.port') ?? 3001;
   const globalPrefix = config.get<string>('app.globalPrefix') ?? 'api/v1';
-  const frontendUrl = config.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
+  const frontendUrl =
+    config.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
 
   app.setGlobalPrefix(globalPrefix);
 
   app.enableCors({
-    origin: frontendUrl,
+    origin: [
+      frontendUrl,
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3003',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

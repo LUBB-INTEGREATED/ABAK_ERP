@@ -128,11 +128,30 @@ export class RfqsService {
         : {}),
     };
 
-    // Row-level scope: engineers see RFQs assigned to them; Sales Reps see the
-    // RFQs they originated; ALL viewers (managers/admin) are unrestricted.
-    const rfqScope = rfqScopeFilter(scopeCtx);
-    if (Object.keys(rfqScope).length) {
-      where.AND = [rfqScope as Prisma.RfqWhereInput];
+    // Row-level scope: department managers see their whole department's RFQs
+    // (assigned to any member of the department); engineers see RFQs assigned to
+    // them; Sales Reps see RFQs they originated; ALL viewers are unrestricted.
+    const managedRfqDeptId =
+      scopeCtx?.scope === 'DEPARTMENT'
+        ? scopeCtx.user.managedDepartment?.id
+        : undefined;
+    if (managedRfqDeptId) {
+      const members = await this.prisma.user.findMany({
+        where: { departmentId: managedRfqDeptId },
+        select: { id: true },
+      });
+      where.AND = [
+        {
+          assignments: {
+            some: { assigneeId: { in: members.map((m) => m.id) } },
+          },
+        },
+      ];
+    } else {
+      const rfqScope = rfqScopeFilter(scopeCtx);
+      if (Object.keys(rfqScope).length) {
+        where.AND = [rfqScope as Prisma.RfqWhereInput];
+      }
     }
 
     const [total, data] = await this.prisma.$transaction([

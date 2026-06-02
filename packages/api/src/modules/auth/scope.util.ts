@@ -75,6 +75,24 @@ export function projectScopeFilter(
 ): Record<string, unknown> {
   if (!ctx?.scope || ctx.scope === 'ALL') return {};
   const uid = ctx.user.id;
+  const deptId =
+    ctx.scope === 'DEPARTMENT' ? ctx.user.managedDepartment?.id : undefined;
+  if (deptId) {
+    // Department manager: any project their department is working on
+    // (PM, a phase owner, or a task assignee belongs to the department).
+    return {
+      OR: [
+        { pm: { departmentId: deptId } },
+        { phases: { some: { owner: { departmentId: deptId } } } },
+        {
+          phases: {
+            some: { tasks: { some: { assignee: { departmentId: deptId } } } },
+          },
+        },
+      ],
+    };
+  }
+  // Engineer / non-manager: projects they are personally involved in.
   return {
     OR: [
       { pmId: uid },

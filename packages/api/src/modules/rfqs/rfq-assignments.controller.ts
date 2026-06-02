@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   type CreateAssignmentDto,
   type CreateDocRequestDto,
@@ -27,6 +28,7 @@ export class RfqAssignmentsController {
   // Per-department pricer assignments + Lead Pricer designation.
 
   @Get('assignments')
+  @RequirePermission('rfq:view')
   @ApiOperation({
     summary:
       'List per-department pricer assignments (2026-05-21 process correction).',
@@ -36,6 +38,7 @@ export class RfqAssignmentsController {
   }
 
   @Post('assignments')
+  @RequirePermission('rfq:assign_pricers')
   @ApiOperation({
     summary:
       'Create a per-department pricer assignment. If isLeadPricer = true, clears the flag on other rows.',
@@ -48,6 +51,7 @@ export class RfqAssignmentsController {
   }
 
   @Patch('assignments/:assignmentId')
+  @RequirePermission('rfq:assign_pricers')
   @ApiOperation({
     summary:
       'Update assignment (re-assign person, toggle Lead Pricer, change status).',
@@ -61,6 +65,7 @@ export class RfqAssignmentsController {
   }
 
   @Delete('assignments/:assignmentId')
+  @RequirePermission('rfq:assign_pricers')
   @ApiOperation({
     summary:
       'Remove an assignment. Cannot remove the Lead Pricer — designate another assignee first.',
@@ -75,6 +80,7 @@ export class RfqAssignmentsController {
   // Document requests (engineer → sales person).
 
   @Get('doc-requests')
+  @RequirePermission('rfq:view')
   @ApiOperation({
     summary:
       'List document requests raised by pricers while building this quote.',
@@ -84,6 +90,7 @@ export class RfqAssignmentsController {
   }
 
   @Post('doc-requests')
+  @RequirePermission('rfq:request_docs')
   @ApiOperation({
     summary:
       'Request an additional document from the client; routes to the sales person.',
@@ -97,6 +104,7 @@ export class RfqAssignmentsController {
   }
 
   @Patch('doc-requests/:requestId')
+  @RequirePermission('rfq:request_docs')
   @ApiOperation({
     summary: 'Mark a doc request resolved (or attach response / cancel).',
   })
@@ -112,6 +120,7 @@ export class RfqAssignmentsController {
   // Site visit requests.
 
   @Get('site-visit-requests')
+  @RequirePermission('rfq:view')
   @ApiOperation({
     summary: 'List site-visit requests on this RFQ.',
   })
@@ -120,6 +129,7 @@ export class RfqAssignmentsController {
   }
 
   @Post('site-visit-requests')
+  @RequirePermission('rfq:request_docs')
   @ApiOperation({
     summary:
       'Request a site visit before pricing. Sales person is notified for first contact; engineer can then coordinate logistics directly with the client.',
@@ -133,6 +143,7 @@ export class RfqAssignmentsController {
   }
 
   @Patch('site-visit-requests/:requestId')
+  @RequirePermission('rfq:request_docs')
   @ApiOperation({
     summary: 'Update site-visit request (schedule, complete, cancel).',
   })

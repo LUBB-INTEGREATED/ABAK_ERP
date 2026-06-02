@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   CreateFieldVisitDto,
   CreatePipelineEntryDto,
@@ -23,6 +24,7 @@ import { PipelineService } from './pipeline.service';
 
 @ApiTags('pipeline')
 @ApiBearerAuth('JWT-auth')
+@RequirePermission('pipeline:view')
 @Controller()
 export class PipelineController {
   constructor(private readonly pipeline: PipelineService) {}
@@ -42,6 +44,7 @@ export class PipelineController {
   }
 
   @Post('pipeline/entries')
+  @RequirePermission('pipeline:move')
   @ApiOperation({ summary: 'Add a lead or client to the pipeline' })
   create(@Body() dto: CreatePipelineEntryDto) {
     return this.pipeline.createEntry(dto);
@@ -54,6 +57,7 @@ export class PipelineController {
   }
 
   @Patch('pipeline/entries/:id')
+  @RequirePermission('pipeline:move')
   @ApiOperation({
     summary: 'Update owner, estimated value, probability, close date',
   })
@@ -62,6 +66,7 @@ export class PipelineController {
   }
 
   @Patch('pipeline/entries/:id/stage')
+  @RequirePermission('pipeline:move')
   @ApiOperation({ summary: 'Move a pipeline entry to a new stage' })
   move(
     @Param('id') id: string,
@@ -72,6 +77,7 @@ export class PipelineController {
   }
 
   @Delete('pipeline/entries/:id')
+  @RequirePermission('pipeline:move')
   @ApiOperation({
     summary: 'Remove a pipeline entry (does not delete the lead/client)',
   })
@@ -88,6 +94,7 @@ export class PipelineController {
   }
 
   @Post('visits')
+  @RequirePermission('pipeline:log_visit')
   @ApiOperation({ summary: 'Schedule a field visit' })
   createVisit(
     @Body() dto: CreateFieldVisitDto,
@@ -97,6 +104,7 @@ export class PipelineController {
   }
 
   @Patch('visits/:id')
+  @RequirePermission('pipeline:log_visit')
   @ApiOperation({
     summary: 'Update a field visit (close it out, add findings)',
   })
@@ -113,6 +121,7 @@ export class PipelineController {
   }
 
   @Post('team/targets')
+  @RequirePermission('pipeline:move')
   @ApiOperation({
     summary: 'Upsert a target for a user/period/type combination',
   })
