@@ -22,9 +22,15 @@ Acceptance = the one check that proves it's done.
       `GET /files/:id/raw` (`@Public` capability URL, traversal-guarded). No new dep (multer via
       `@nestjs/platform-express`), no migration. Storage round-trip + traversal-guard verified via
       compiled smoke; api typecheck green. HTTP e2e not run in sandbox (needs Nest+Postgres)._
-- [ ] **PDF-1 (P1)** PDF-gen infra spike: `playwright-core` + `@sparticuz/chromium`, server render
+- [x] **PDF-1 (P1)** PDF-gen infra spike: `playwright-core` + `@sparticuz/chromium`, server render
       token, server-trusted data fetch (or SSR the print route), `print-color-adjust:exact`, self-hosted
       fonts. _Accept:_ an API call returns a multi-page A4 PDF of a real quote with backgrounds intact.
+      _Done 2026-06-04 — `PdfRenderService` (full `playwright`, persistent-server; `@sparticuz/chromium`
+      is the serverless swap) + `QuotePdfService` (server-trusted fetch via `QuotesService.findOne`, so no
+      cross-service render token needed) + `GET /quotes/:id/pdf` (`quote:view`). `print-color-adjust:exact`,
+      A4, page-counter footer. Render smoke produced a 2-page A4 PDF with backgrounds intact. HTTP e2e
+      not run in sandbox (needs Nest+Postgres). TODO(spec): self-hosted Arabic fonts + the real 8-block
+      manifest HTML land in DOC-3._
 - [x] **AIW-1 (P1)** Amount-in-words util in `packages/shared`, AR + EN, halalas, tested.
       _Accept:_ 851,000.00 SAR → vetted Arabic + English strings in unit tests.
       _Done 2026-06-04 — `amountInWords()` in `shared-utils`; 10 `node:test` cases green via `nx test shared-utils`._
