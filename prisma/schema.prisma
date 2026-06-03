@@ -134,10 +134,11 @@ model ServiceCategory {
   order       Int     @default(0)
   isActive    Boolean @default(true)
 
-  services        Service[]
-  rfqAssignments  RfqAssignment[]
-  quoteItems      QuoteItem[]
-  departmentLinks DepartmentService[]
+  services           Service[]
+  rfqAssignments     RfqAssignment[]
+  quoteItems         QuoteItem[]
+  departmentSections QuoteDepartmentSection[]
+  departmentLinks    DepartmentService[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -853,6 +854,8 @@ model Quote {
   revisions     Quote[] @relation("QuoteRevisions")
 
   items                  QuoteItem[]
+  departmentSections     QuoteDepartmentSection[]
+  requirements           QuoteRequirement[]
   paymentMilestones      PaymentMilestone[]
   approvals              QuoteApproval[]
   purchaseOrder          PurchaseOrder?
@@ -922,6 +925,11 @@ model QuoteItem {
   departmentId String?
   department   ServiceCategory? @relation(fields: [departmentId], references: [id])
 
+  /// DM-3: the Quote department section this line belongs to (lead-pricer
+  /// compile model). Nullable for legacy/manual quotes with no sections.
+  sectionId String?
+  section   QuoteDepartmentSection? @relation(fields: [sectionId], references: [id])
+
   description String
   quantity    Float
   unit        String?
@@ -941,7 +949,86 @@ model QuoteItem {
 
   @@index([quoteId])
   @@index([departmentId])
+  @@index([sectionId])
   @@map("quote_items")
+}
+
+/// DM-3: per-department section of a multi-dept quote. One row per involved
+/// Department (ServiceCategory). The lead pricer compiles all sections; each
+/// dept pricer fills its own and flips it to SUBMITTED_TO_LEAD.
+model QuoteDepartmentSection {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  departmentId String
+  department   ServiceCategory @relation(fields: [departmentId], references: [id])
+
+  /// The engineer pricing this section (nullable until a pricer is assigned).
+  pricerId String?
+
+  /// Page-3 per-dept scope narrative (bilingual).
+  scopeTextAr String?
+  scopeTextEn String?
+
+  /// Exactly one section per quote is the lead (compiles + submits the whole).
+  isLead Boolean @default(false)
+
+  status       QuoteSectionStatus @default(DRAFT)
+  /// Drives per-visit presentation in the price-offer document.
+  pricingModel DeptPricingModel   @default(LUMP_SUM)
+
+  items QuoteItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([quoteId, departmentId])
+  @@index([quoteId])
+  @@index([departmentId])
+  @@map("quote_department_sections")
+}
+
+enum QuoteSectionStatus {
+  DRAFT
+  SUBMITTED_TO_LEAD
+}
+
+enum DeptPricingModel {
+  LUMP_SUM
+  PER_VISIT // qty = N visits, unitPrice = price/visit (e.g. Supervision)
+  PER_UNIT
+}
+
+/// DM-3: a requirement/note line on the quote. The lead reviewer dedups shared
+/// requirements across department sections into one isShared row, recording the
+/// per-section sources in dedupedFromIds.
+model QuoteRequirement {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  // TODO(spec): requirement type values aren't enumerated in the roadmap;
+  // DOCUMENT (client must provide) vs NOTE (free-text clarification) covers
+  // §14's "requirements/notes" dedup. Revisit if the spec pins more types.
+  type           QuoteRequirementType @default(NOTE)
+  text           String
+  /// True once the lead reviewer merges duplicate per-section lines into one.
+  isShared       Boolean              @default(false)
+  /// Source QuoteRequirement ids merged into this shared row (audit of dedup).
+  dedupedFromIds String[]             @default([])
+  position       Int                  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([quoteId])
+  @@map("quote_requirements")
+}
+
+enum QuoteRequirementType {
+  DOCUMENT
+  NOTE
 }
 
 /// Per-line methodology card (description + steps + deliverable). Optional;

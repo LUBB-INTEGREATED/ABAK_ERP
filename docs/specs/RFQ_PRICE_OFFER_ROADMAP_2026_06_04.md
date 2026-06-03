@@ -49,9 +49,12 @@ Acceptance = the one check that proves it's done.
       mapping old→new). _Accept:_ migration runs; no code writes the removed states.
 - [ ] **DM-2 (P1)** `deriveRfqDisplayStatus(rfq.quote.status)` mapper → QUOTE_READY/SENT/CLOSED in
       list + detail serializers (no second write).
-- [ ] **DM-3 (P1)** New `QuoteDepartmentSection` (departmentId→Department, pricerId, scopeText,
+- [x] **DM-3 (P1)** New `QuoteDepartmentSection` (departmentId→Department, pricerId, scopeText,
       status DRAFT/SUBMITTED*TO_LEAD, isLead) + `QuoteItem.sectionId` + `QuoteRequirement`
       (type, text, isShared, dedupedFromIds). \_Accept:* a multi-dept quote has one section per Department.
+      _Done 2026-06-04 — migration `20260603225036_dm3_quote_department_sections` created + applied to
+      the live DB; additive (3 enums, 2 tables, `QuoteItem.sectionId` FK SET NULL). `pricingModel`
+      (LUMP_SUM/PER_VISIT/PER_UNIT) folded in for the price-offer doc. api typecheck green._
 - [ ] **DM-4 (P1)** `startPricing(rfqId)` — single atomic tx: fold categories→Departments, create
       assignment rows + Draft Quote + one section per Department, set `rfq.quoteId`+status=PRICING,
       return quoteId. Idempotent; `leadId` null-safe (client-only opportunity). _Accept:_ double-click
