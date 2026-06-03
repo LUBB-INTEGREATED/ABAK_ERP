@@ -749,6 +749,18 @@ export class QuotesService {
       );
     }
 
+    // DM-10: resolve the RFQ via the (DM-8 repointed) quoteId so broker
+    // commission accrues against the right request.
+    const linkedRfq = await this.prisma.rfq.findFirst({
+      where: { quoteId: id },
+      select: {
+        id: true,
+        rfqNumber: true,
+        brokerName: true,
+        brokerPhone: true,
+      },
+    });
+
     await this.prisma.$transaction(async (tx) => {
       await tx.quote.update({
         where: { id },
@@ -765,6 +777,35 @@ export class QuotesService {
           createdBy: actorId,
         },
       });
+
+      // DM-10: accrue broker commission ONCE per RFQ (guard against
+      // double-accrual when a quote is reopened and re-won). Re-homed here from
+      // the deleted RFQ recordOutcome (DM-7).
+      if (linkedRfq?.brokerName) {
+        const existing = await tx.commission.findFirst({
+          where: { rfqId: linkedRfq.id },
+          select: { id: true },
+        });
+        if (!existing) {
+          const rateSetting = await tx.systemSetting.findUnique({
+            where: { key: 'commission_rate_broker_default' },
+          });
+          const rate = rateSetting ? Number(rateSetting.value) : 3;
+          await tx.commission.create({
+            data: {
+              rfqId: linkedRfq.id,
+              beneficiaryType: 'BROKER',
+              beneficiaryName: linkedRfq.brokerName,
+              beneficiaryPhone: linkedRfq.brokerPhone,
+              baseAmount: 0, // grows as validated payments come in
+              rate,
+              amount: 0,
+              status: 'ACCRUING',
+              notes: `Auto-accrued on RFQ ${linkedRfq.rfqNumber} WON (quote ${quote.quoteNumber}).`,
+            },
+          });
+        }
+      }
     });
 
     // Notify finance/managers about the won quote requiring PO validation

@@ -95,8 +95,11 @@ Acceptance = the one check that proves it's done.
       `paymentMilestones.length === 0`, or `totalAmount ≤ 0`; surface missing-section list.
       _Done 2026-06-04 — submit() rejects total ≤ 0, zero milestones, and lists unpriced department
       sections (subtotal ≤ 0). **2 regression tests green** (`nx test api`, live DB)._
-- [ ] **DM-10 (P1)** Re-home broker `Commission` onto `accept()`; resolve RFQ via repointed quoteId;
+- [x] **DM-10 (P1)** Re-home broker `Commission` onto `accept()`; resolve RFQ via repointed quoteId;
       once-per-RFQ guard (no double-accrual on reopen).
+      _Done 2026-06-04 — broker commission accrual moved from the deleted RFQ recordOutcome into the
+      `accept()` transaction; RFQ resolved by `quoteId` (DM-8 repoint); `commission.findFirst({rfqId})`
+      guard prevents double-accrual on reopen. api typecheck green._
 - [x] **DM-11 (P1)** Extend `QUOTE_INCLUDE` (`quotes.service.ts:46`): `department.order` +
       `rfq.assignments{departmentId,isLeadPricer}` for lead-dept ordering; null-safe for manual quotes.
       _Done 2026-06-04 — `QUOTE_INCLUDE` now selects `department.order`, includes `rfq.assignments`
