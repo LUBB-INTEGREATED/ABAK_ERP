@@ -3,3 +3,6 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
+
+# Lockfiles are managed by the package manager, not prettier
+pnpm-lock.yaml
