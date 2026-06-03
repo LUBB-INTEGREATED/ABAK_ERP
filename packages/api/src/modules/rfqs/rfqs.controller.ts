@@ -48,9 +48,23 @@ export class RfqsController {
   }
 
   // DM-7: lifecycle routes (assign-coordinator/-contributor, start-preparation,
-  // submit-for-approval, dispatch, outcome) are removed. Pricing now begins via
-  // POST :id/start-pricing (DM-4); decline via POST :id/decline (DM-5); and
-  // submit/approve/send/outcome live on the Quote (/quotes/:id/*).
+  // submit-for-approval, dispatch, outcome) are removed. submit/approve/send/
+  // outcome live on the Quote (/quotes/:id/*).
+
+  @Post(':id/start-pricing')
+  @RequirePermission('quote:build')
+  @ApiOperation({
+    summary:
+      'Accept & assign: mint the Draft Quote from the RFQ, flip to PRICING',
+  })
+  startPricing(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.service.startPricing(id, actorId, { user, scope });
+  }
 
   @Post(':id/cancel')
   @RequirePermission('rfq:request')

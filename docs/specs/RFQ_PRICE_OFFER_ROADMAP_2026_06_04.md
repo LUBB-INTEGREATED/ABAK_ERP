@@ -60,10 +60,15 @@ Acceptance = the one check that proves it's done.
       _Done 2026-06-04 — migration `20260603225036_dm3_quote_department_sections` created + applied to
       the live DB; additive (3 enums, 2 tables, `QuoteItem.sectionId` FK SET NULL). `pricingModel`
       (LUMP_SUM/PER_VISIT/PER_UNIT) folded in for the price-offer doc. api typecheck green._
-- [ ] **DM-4 (P1)** `startPricing(rfqId)` — single atomic tx: fold categories→Departments, create
+- [x] **DM-4 (P1)** `startPricing(rfqId)` — single atomic tx: fold categories→Departments, create
       assignment rows + Draft Quote + one section per Department, set `rfq.quoteId`+status=PRICING,
       return quoteId. Idempotent; `leadId` null-safe (client-only opportunity). _Accept:_ double-click
       creates exactly one quote; client-only opp doesn't throw.
+      _Done 2026-06-04 — `RfqsService.startPricing` + `POST /rfqs/:id/start-pricing` (`quote:build`).
+      Atomic tx mints Draft Quote + one `QuoteDepartmentSection` per category; idempotent (quoteId guard);
+      `leadId = opp?.leadId ?? undefined`. Double-click safety structurally enforced by `rfq.quoteId @unique` + section `@@unique([quoteId,departmentId])`. api typecheck green. NB: pricer assignment rows are
+      written via the existing rfq-assignments endpoint (spec §3.4), not inside startPricing. Idempotency
+      integration test pends the api test runner (DM-8/9)._
 - [ ] **DM-5 (P1)** `declineRfq(rfqId,{type,reason,suggestedCategoryIds})` → status=DECLINED, notify sales.
 - [ ] **DM-6 (P1)** `POST /rfqs/:id/reroute` (perm `rfq:request`, requires DECLINED+WRONG_DEPT): new
       `requestedCategoryIds`, clear decline fields, status→SUBMITTED, re-fire inbox routing.

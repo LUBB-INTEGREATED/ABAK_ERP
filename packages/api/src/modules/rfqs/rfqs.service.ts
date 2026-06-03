@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PipelineStage, Prisma, RfqStatus } from '@prisma/client';
+import { PipelineStage, Prisma, QuoteStatus, RfqStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRfqDto } from './dto/create-rfq.dto';
@@ -275,6 +275,88 @@ export class RfqsService {
       include: RFQ_DETAIL_INCLUDE,
     });
     return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
+  }
+
+  /**
+   * DM-4: the accept+assign seam. Atomically mints the Draft Quote for an RFQ,
+   * one QuoteDepartmentSection per involved category (DM-3), and flips the RFQ
+   * to PRICING. Idempotent — a second call (double-click, or a subsequent dept
+   * manager) returns the existing quote. `leadId` is null-safe (client-only
+   * opportunity). Pricer assignments are written separately via the existing
+   * rfq-assignments endpoint (spec §3.4).
+   */
+  async startPricing(id: string, actorId: string, scopeCtx?: ScopeContext) {
+    await this.assertRfqInScope(id, scopeCtx);
+    const rfq = await this.prisma.rfq.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        rfqNumber: true,
+        clientId: true,
+        quoteId: true,
+        status: true,
+        requestedCategoryIds: true,
+        opportunityId: true,
+      },
+    });
+    if (!rfq) throw new NotFoundException();
+    if (
+      rfq.status === RfqStatus.DECLINED ||
+      rfq.status === RfqStatus.CANCELLED
+    ) {
+      throw new BadRequestException('Cannot price a declined/cancelled RFQ');
+    }
+
+    // Idempotent: if already linked, return it (covers double-click + the
+    // subsequent dept manager who joins an in-flight quote).
+    if (rfq.quoteId) {
+      const existing = await this.prisma.quote.findUnique({
+        where: { id: rfq.quoteId },
+        select: { id: true, quoteNumber: true },
+      });
+      if (existing)
+        return { quoteId: existing.id, quoteNumber: existing.quoteNumber };
+    }
+
+    // leadId is canonical on the opportunity (RFQ has no direct leadId);
+    // null-safe for a client-only opportunity.
+    const opp = await this.prisma.pipelineEntry.findUnique({
+      where: { id: rfq.opportunityId },
+      select: { leadId: true },
+    });
+    const categoryIds = rfq.requestedCategoryIds ?? [];
+
+    return this.prisma.$transaction(async (tx) => {
+      const last = await tx.quote.findFirst({
+        orderBy: { createdAt: 'desc' },
+        select: { quoteNumber: true },
+      });
+      const quoteNumber = nextEntityNumber('QUO', last?.quoteNumber);
+
+      const quote = await tx.quote.create({
+        data: {
+          quoteNumber,
+          clientId: rfq.clientId,
+          leadId: opp?.leadId ?? undefined,
+          title: `عرض سعر — ${rfq.rfqNumber}`,
+          status: QuoteStatus.DRAFT,
+          preparedById: actorId,
+          // One section per involved Department (DM-3). Pricers add their line
+          // items + scope text under their section in the builder.
+          departmentSections: categoryIds.length
+            ? { create: categoryIds.map((departmentId) => ({ departmentId })) }
+            : undefined,
+        },
+        select: { id: true, quoteNumber: true },
+      });
+
+      await tx.rfq.update({
+        where: { id },
+        data: { quoteId: quote.id, status: RfqStatus.PRICING },
+      });
+
+      return { quoteId: quote.id, quoteNumber: quote.quoteNumber };
+    });
   }
 
   async stats() {
