@@ -69,7 +69,11 @@ Acceptance = the one check that proves it's done.
       `leadId = opp?.leadId ?? undefined`. Double-click safety structurally enforced by `rfq.quoteId @unique` + section `@@unique([quoteId,departmentId])`. api typecheck green. NB: pricer assignment rows are
       written via the existing rfq-assignments endpoint (spec §3.4), not inside startPricing. Idempotency
       integration test pends the api test runner (DM-8/9)._
-- [ ] **DM-5 (P1)** `declineRfq(rfqId,{type,reason,suggestedCategoryIds})` → status=DECLINED, notify sales.
+- [x] **DM-5 (P1)** `declineRfq(rfqId,{type,reason,suggestedCategoryIds})` → status=DECLINED, notify sales.
+      _Done 2026-06-04 — `DeclineRfqDto{type,reason}` + `RfqsService.declineRfq` + `POST /rfqs/:id/decline`
+      (`rfq:assign_pricers`, inherits dept-manager unlock). Guards SUBMITTED/ASSIGNED + no quote; sets
+      decline audit; notifies originalSalesRep+creator (rfq.declined_wrong_dept|no_bid). NB: `suggestedCategoryIds`
+      omitted per detailed spec §4 (sales picks categories in the DM-6 reroute); TODO(spec) if a column is wanted._
 - [ ] **DM-6 (P1)** `POST /rfqs/:id/reroute` (perm `rfq:request`, requires DECLINED+WRONG_DEPT): new
       `requestedCategoryIds`, clear decline fields, status→SUBMITTED, re-fire inbox routing.
 - [x] **DM-7 (P1)** Move submit/approve/send/outcome OFF RFQ → Quote; delete dead `linkQuote` +

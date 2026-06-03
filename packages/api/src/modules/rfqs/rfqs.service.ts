@@ -4,10 +4,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PipelineStage, Prisma, QuoteStatus, RfqStatus } from '@prisma/client';
+import {
+  PipelineStage,
+  Prisma,
+  QuoteStatus,
+  RfqDeclineType,
+  RfqStatus,
+} from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRfqDto } from './dto/create-rfq.dto';
+import { DeclineRfqDto } from './dto/decline-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
 import {
   isUnrestricted,
@@ -45,7 +53,10 @@ const RFQ_DETAIL_INCLUDE = {
 
 @Injectable()
 export class RfqsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async create(dto: CreateRfqDto, actorId: string) {
     const opportunity = await this.prisma.pipelineEntry.findUnique({
@@ -382,6 +393,77 @@ export class RfqsService {
       })),
       coordinatorSlaBreached: slaBreachCount,
     };
+  }
+
+  /**
+   * DM-5: decline ("Not us"). A dept manager rejects an RFQ before pricing with
+   * a required reason. WRONG_DEPT routes back to sales for re-route (DM-6);
+   * NO_BID closes it out. Notifies the originating sales rep + creator.
+   */
+  async declineRfq(
+    id: string,
+    dto: DeclineRfqDto,
+    actorId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.assertRfqInScope(id, scopeCtx);
+    const rfq = await this.requireStatus(id, [
+      RfqStatus.SUBMITTED,
+      RfqStatus.ASSIGNED,
+    ]);
+    if (rfq.quoteId) {
+      throw new BadRequestException('Cannot decline after pricing started');
+    }
+    const updated = await this.prisma.rfq.update({
+      where: { id },
+      data: {
+        status: RfqStatus.DECLINED,
+        declineType: dto.type,
+        declineReason: dto.reason,
+        declinedById: actorId,
+        declinedAt: new Date(),
+      },
+      include: RFQ_DETAIL_INCLUDE,
+    });
+
+    const recipients = [
+      ...new Set(
+        [updated.originalSalesRepId, updated.createdBy].filter(
+          (r): r is string => Boolean(r),
+        ),
+      ),
+    ];
+    if (recipients.length) {
+      void this.notifications.sendToMany(recipients, {
+        eventCode:
+          dto.type === RfqDeclineType.NO_BID
+            ? 'rfq.declined_no_bid'
+            : 'rfq.declined_wrong_dept',
+        subject: `تم رفض طلب التسعير: ${updated.rfqNumber}`,
+        body:
+          dto.type === RfqDeclineType.NO_BID
+            ? `لن يتم التقديم — السبب: ${dto.reason}`
+            : `القسم غير مختص — يحتاج إعادة توجيه — السبب: ${dto.reason}`,
+        deepLink: `/rfqs/${id}`,
+        payload: {
+          rfqId: id,
+          rfqNumber: updated.rfqNumber,
+          declineType: dto.type,
+        },
+      });
+    }
+    return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
+  }
+
+  private async requireStatus(id: string, allowed: RfqStatus[]) {
+    const rfq = await this.prisma.rfq.findUnique({ where: { id } });
+    if (!rfq) throw new NotFoundException();
+    if (!allowed.includes(rfq.status)) {
+      throw new BadRequestException(
+        `Action not allowed in current status ${rfq.status}`,
+      );
+    }
+    return rfq;
   }
 
   private async generateRfqNumber(): Promise<string> {

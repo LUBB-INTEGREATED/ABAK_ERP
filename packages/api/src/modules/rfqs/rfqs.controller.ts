@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateRfqDto } from './dto/create-rfq.dto';
+import { DeclineRfqDto } from './dto/decline-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
 import { RfqsService } from './rfqs.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
@@ -64,6 +65,22 @@ export class RfqsController {
     @CurrentScope('quote:build') scope: PermissionScope | undefined,
   ) {
     return this.service.startPricing(id, actorId, { user, scope });
+  }
+
+  @Post(':id/decline')
+  @RequirePermission('rfq:assign_pricers')
+  @ApiOperation({
+    summary:
+      'Not us — decline an RFQ with a required reason (wrong_dept | no_bid)',
+  })
+  decline(
+    @Param('id') id: string,
+    @Body() dto: DeclineRfqDto,
+    @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
+  ) {
+    return this.service.declineRfq(id, dto, actorId, { user, scope });
   }
 
   @Post(':id/cancel')
