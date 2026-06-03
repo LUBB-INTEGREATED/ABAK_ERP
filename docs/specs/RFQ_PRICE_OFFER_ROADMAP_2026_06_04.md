@@ -22,8 +22,12 @@ Acceptance = the one check that proves it's done.
 - [x] **AIW-1 (P1)** Amount-in-words util in `packages/shared`, AR + EN, halalas, tested.
       _Accept:_ 851,000.00 SAR → vetted Arabic + English strings in unit tests.
       _Done 2026-06-04 — `amountInWords()` in `shared-utils`; 10 `node:test` cases green via `nx test shared-utils`._
-- [ ] **MON-1 (P1)** One localized money formatter; DECIDE Latin vs Arabic-Indic digits and apply
+- [x] **MON-1 (P1)** One localized money formatter; DECIDE Latin vs Arabic-Indic digits and apply
       everywhere (replaces hardcoded `toLocaleString('en-US')` in `print/page.tsx:648`).
+      _Done 2026-06-04 — DECISION: **Latin (Western) digits** on client quotes (Saudi
+      commercial/bank/invoice convention; PDF-font-safe; no English-export drift). `print/page.tsx`
+      now routes money + qty/%/day-offsets through `shared-utils` `formatNumber`; hardcoded
+      `toLocaleString` removed._
 
 ---
 

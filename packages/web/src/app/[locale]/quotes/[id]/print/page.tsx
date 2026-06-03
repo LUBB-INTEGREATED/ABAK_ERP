@@ -4,6 +4,7 @@ import { use } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { formatNumber } from 'shared-utils';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { QuoteStatusBadge } from '@/components/ui/entity-status-badges';
@@ -207,7 +208,7 @@ export default function QuotePrintPage({
             )}
             {quote.taxAmount > 0 && (
               <TotalRow
-                label={`${t('quotePdf.tax')} (${quote.taxRate}%)`}
+                label={`${t('quotePdf.tax')} (${formatCount(quote.taxRate)}%)`}
                 value={quote.taxAmount}
               />
             )}
@@ -438,7 +439,7 @@ function ItemRow({
         )}
       </td>
       <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
-        {item.quantity}
+        {formatCount(item.quantity)}
       </td>
       <td className="py-2 text-end text-xs text-muted-foreground">
         {item.unit ?? '—'}
@@ -615,7 +616,7 @@ function MilestonesTable({
               </td>
               <td className="py-2 pe-3 font-medium">{m.description}</td>
               <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
-                {m.percentage}%
+                {formatCount(m.percentage)}%
               </td>
               <td className="py-2 text-end font-mono tabular-nums" dir="ltr">
                 {formatMoney((m.percentage / 100) * total)}
@@ -624,7 +625,7 @@ function MilestonesTable({
                 className="py-2 text-end text-xs text-muted-foreground"
                 dir="ltr"
               >
-                {m.daysFromStart ?? '—'}
+                {m.daysFromStart != null ? formatCount(m.daysFromStart) : '—'}
               </td>
             </tr>
           ))}
@@ -645,9 +646,21 @@ function TotalRow({ label, value }: { label: string; value: number }) {
   );
 }
 
+// MON-1: single localized money formatter, routed through shared-utils so the
+// quote document, dashboard, and PDF export all agree.
+// Digit-system decision: Latin (Western) numerals on client-facing quotes —
+// matches Saudi commercial/bank/invoice convention, is PDF-font-safe, and
+// avoids mixed-digit drift on English exports. (Owner-confirmed 2026-06-04.)
 function formatMoney(n: number) {
-  return n.toLocaleString('en-US', {
+  return formatNumber(n, {
+    numerals: 'latin',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+// Counts/percentages/day-offsets: same Latin digit system, ungrouped to match
+// the existing inline rendering. Keeps qty/% on the one formatter (MON-1).
+function formatCount(n: number) {
+  return formatNumber(n, { numerals: 'latin', grouping: false });
 }
