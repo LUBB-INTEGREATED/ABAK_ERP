@@ -120,7 +120,7 @@ export function useDepartments() {
 // Doc requests + site-visit requests on an RFQ
 // ------------------------------------------------------------------
 
-export type RfqRequestStatus = 'OPEN' | 'RESOLVED' | 'CANCELLED';
+export type RfqRequestStatus = 'PENDING' | 'RESOLVED' | 'CANCELLED';
 
 export type RfqDocRequest = {
   id: string;

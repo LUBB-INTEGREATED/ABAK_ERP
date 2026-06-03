@@ -20,6 +20,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   CalendarRange,
   CheckCircle2,
@@ -65,29 +66,30 @@ import { cn } from '@/lib/utils';
 
 const STATUS_TONE: Record<
   RfqRequestStatus,
-  { label: string; className: string }
+  { labelKey: string; className: string }
 > = {
-  OPEN: {
-    label: 'Open',
+  PENDING: {
+    labelKey: 'statusOpen',
     className: 'border-amber-300 bg-amber-50 text-amber-900',
   },
   RESOLVED: {
-    label: 'Resolved',
+    labelKey: 'statusResolved',
     className: 'border-emerald-300 bg-emerald-50 text-emerald-900',
   },
   CANCELLED: {
-    label: 'Cancelled',
+    labelKey: 'statusCancelled',
     className: 'border-muted bg-muted/40 text-muted-foreground',
   },
 };
 
 export function RfqRequestsPanel({ rfqId }: { rfqId: string }) {
+  const t = useTranslations('rfqRequests');
   const { data: docs = [], isLoading: docsLoading } = useRfqDocRequests(rfqId);
   const { data: visits = [], isLoading: visitsLoading } =
     useRfqSiteVisitRequests(rfqId);
 
-  const openDocCount = docs.filter((d) => d.status === 'OPEN').length;
-  const openVisitCount = visits.filter((v) => v.status === 'OPEN').length;
+  const openDocCount = docs.filter((d) => d.status === 'PENDING').length;
+  const openVisitCount = visits.filter((v) => v.status === 'PENDING').length;
 
   return (
     <div className="space-y-6">
@@ -96,31 +98,28 @@ export function RfqRequestsPanel({ rfqId }: { rfqId: string }) {
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <FileQuestion className="h-4 w-4 text-abak-blue" />
-              Document requests
+              {t('docRequestsTitle')}
               {openDocCount > 0 && (
                 <Badge
                   variant="outline"
                   className="border-amber-300 text-amber-700"
                 >
-                  {openDocCount} open
+                  {t('openCount', { count: openDocCount })}
                 </Badge>
               )}
             </CardTitle>
-            <CardDescription>
-              Ask the sales person for additional documents from the client
-              (CAD, soil report, site photos, contract clarifications…).
-            </CardDescription>
+            <CardDescription>{t('docRequestsDescription')}</CardDescription>
           </div>
           <NewDocRequestSheet rfqId={rfqId} />
         </CardHeader>
         <CardContent>
           {docsLoading ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Loading…
+              {t('loading')}
             </p>
           ) : docs.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              No document requests yet. Raise one above if anything is missing.
+              {t('docRequestsEmpty')}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -137,32 +136,28 @@ export function RfqRequestsPanel({ rfqId }: { rfqId: string }) {
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <MapPinned className="h-4 w-4 text-abak-blue" />
-              Site-visit requests
+              {t('siteVisitsTitle')}
               {openVisitCount > 0 && (
                 <Badge
                   variant="outline"
                   className="border-amber-300 text-amber-700"
                 >
-                  {openVisitCount} open
+                  {t('openCount', { count: openVisitCount })}
                 </Badge>
               )}
             </CardTitle>
-            <CardDescription>
-              Need to walk the site before pricing? The sales person makes the
-              first contact; after that you can coordinate logistics with the
-              client directly (CC sales for the record).
-            </CardDescription>
+            <CardDescription>{t('siteVisitsDescription')}</CardDescription>
           </div>
           <NewSiteVisitSheet rfqId={rfqId} />
         </CardHeader>
         <CardContent>
           {visitsLoading ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Loading…
+              {t('loading')}
             </p>
           ) : visits.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              No site visits requested yet.
+              {t('siteVisitsEmpty')}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -182,25 +177,27 @@ export function RfqRequestsPanel({ rfqId }: { rfqId: string }) {
 // ------------------------------------------------------------------
 
 function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
+  const t = useTranslations('rfqRequests');
+  const td = useTranslations('detail');
   const update = useUpdateRfqDocRequest(rfqId);
   const tone = STATUS_TONE[req.status];
-  const isOpen = req.status === 'OPEN';
+  const isOpen = req.status === 'PENDING';
 
   async function resolve() {
     try {
       await update.mutateAsync({ requestId: req.id, status: 'RESOLVED' });
-      toast.success('Marked resolved.');
+      toast.success(t('toastMarkedResolved'));
     } catch {
-      toast.error('Failed to update.');
+      toast.error(t('toastFailedUpdate'));
     }
   }
 
   async function cancel() {
     try {
       await update.mutateAsync({ requestId: req.id, status: 'CANCELLED' });
-      toast.success('Cancelled.');
+      toast.success(t('toastCancelled'));
     } catch {
-      toast.error('Failed to update.');
+      toast.error(t('toastFailedUpdate'));
     }
   }
 
@@ -215,7 +212,7 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={cn('text-xs', tone.className)}>
-              {tone.label}
+              {t(tone.labelKey)}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {new Date(req.createdAt).toLocaleDateString()}
@@ -224,7 +221,7 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
           <p className="mt-1 text-sm whitespace-pre-wrap">{req.description}</p>
           {req.response && (
             <p className="mt-2 rounded-md bg-emerald-50 p-2 text-xs text-emerald-900">
-              <strong>Response:</strong> {req.response}
+              <strong>{t('responseLabel')}</strong> {req.response}
             </p>
           )}
           {req.attachmentUrl && (
@@ -234,7 +231,7 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
               rel="noopener noreferrer"
               className="mt-2 inline-block text-xs text-abak-blue underline"
             >
-              View attachment
+              {t('viewAttachment')}
             </a>
           )}
         </div>
@@ -245,10 +242,10 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
               variant="outline"
               onClick={resolve}
               disabled={update.isPending}
-              title="Mark as resolved"
+              title={t('markAsResolved')}
             >
               <CheckCircle2 className="me-1 h-3.5 w-3.5" />
-              Resolve
+              {t('resolve')}
             </Button>
             <Button
               size="sm"
@@ -256,10 +253,10 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
               onClick={cancel}
               disabled={update.isPending}
               className="text-muted-foreground"
-              title="Cancel this request"
+              title={t('cancelThisRequest')}
             >
               <XCircle className="me-1 h-3.5 w-3.5" />
-              Cancel
+              {td('cancel')}
             </Button>
           </div>
         )}
@@ -269,22 +266,24 @@ function DocRequestRow({ rfqId, req }: { rfqId: string; req: RfqDocRequest }) {
 }
 
 function NewDocRequestSheet({ rfqId }: { rfqId: string }) {
+  const t = useTranslations('rfqRequests');
+  const td = useTranslations('detail');
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState('');
   const create = useCreateRfqDocRequest(rfqId);
 
   async function submit() {
     if (description.trim().length < 5) {
-      toast.error('Describe what you need (5+ characters).');
+      toast.error(t('errorDescribeNeed'));
       return;
     }
     try {
       await create.mutateAsync({ description: description.trim() });
-      toast.success('Request raised. Sales person will be notified.');
+      toast.success(t('toastDocRequestRaised'));
       setDescription('');
       setOpen(false);
     } catch {
-      toast.error('Failed to raise request.');
+      toast.error(t('toastFailedRaise'));
     }
   }
 
@@ -293,25 +292,22 @@ function NewDocRequestSheet({ rfqId }: { rfqId: string }) {
       <SheetTrigger asChild>
         <Button size="sm" variant="outline">
           <Plus className="me-1 h-4 w-4" />
-          Raise request
+          {t('raiseRequest')}
         </Button>
       </SheetTrigger>
       <SheetContent className="sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Request a document</SheetTitle>
-          <SheetDescription>
-            Be specific — the sales person will forward this verbatim to the
-            client.
-          </SheetDescription>
+          <SheetTitle>{t('requestDocumentTitle')}</SheetTitle>
+          <SheetDescription>{t('requestDocumentDescription')}</SheetDescription>
         </SheetHeader>
         <div className="my-6 space-y-3">
-          <Label htmlFor="doc-desc">What do you need?</Label>
+          <Label htmlFor="doc-desc">{t('whatDoYouNeed')}</Label>
           <Textarea
             id="doc-desc"
             rows={5}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={`e.g. "Updated CAD plan with the new mezzanine, soil-test report from the geotechnical survey."`}
+            placeholder={t('docDescPlaceholder')}
           />
         </div>
         <SheetFooter>
@@ -320,10 +316,10 @@ function NewDocRequestSheet({ rfqId }: { rfqId: string }) {
             onClick={() => setOpen(false)}
             disabled={create.isPending}
           >
-            Cancel
+            {td('cancel')}
           </Button>
           <Button onClick={submit} disabled={create.isPending}>
-            {create.isPending ? 'Raising…' : 'Raise request'}
+            {create.isPending ? t('raising') : t('raiseRequest')}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -342,24 +338,22 @@ function SiteVisitRow({
   rfqId: string;
   req: RfqSiteVisitRequest;
 }) {
+  const t = useTranslations('rfqRequests');
   const update = useUpdateRfqSiteVisitRequest(rfqId);
   const tone = STATUS_TONE[req.status];
-  const isOpen = req.status === 'OPEN';
+  const isOpen = req.status === 'PENDING';
 
   async function scheduleNow() {
-    const when = window.prompt(
-      'Scheduled at (YYYY-MM-DD HH:mm). Leave empty to skip.',
-      '',
-    );
+    const when = window.prompt(t('schedulePrompt'), '');
     if (!when) return;
     try {
       await update.mutateAsync({
         requestId: req.id,
         scheduledAt: new Date(when).toISOString(),
       });
-      toast.success('Visit scheduled.');
+      toast.success(t('toastVisitScheduled'));
     } catch {
-      toast.error('Failed to schedule.');
+      toast.error(t('toastFailedSchedule'));
     }
   }
 
@@ -370,18 +364,18 @@ function SiteVisitRow({
         status: 'RESOLVED',
         completedAt: new Date().toISOString(),
       });
-      toast.success('Visit marked complete.');
+      toast.success(t('toastVisitCompleted'));
     } catch {
-      toast.error('Failed to update.');
+      toast.error(t('toastFailedUpdate'));
     }
   }
 
   async function cancel() {
     try {
       await update.mutateAsync({ requestId: req.id, status: 'CANCELLED' });
-      toast.success('Cancelled.');
+      toast.success(t('toastCancelled'));
     } catch {
-      toast.error('Failed to cancel.');
+      toast.error(t('toastFailedCancel'));
     }
   }
 
@@ -396,7 +390,7 @@ function SiteVisitRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className={cn('text-xs', tone.className)}>
-              {tone.label}
+              {t(tone.labelKey)}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {new Date(req.createdAt).toLocaleDateString()}
@@ -411,7 +405,7 @@ function SiteVisitRow({
           <p className="mt-1 text-sm whitespace-pre-wrap">{req.purpose}</p>
           {(req.preferredDateFrom || req.preferredDateTo) && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Preferred window:{' '}
+              {t('preferredWindow')}{' '}
               {req.preferredDateFrom
                 ? new Date(req.preferredDateFrom).toLocaleDateString()
                 : '—'}
@@ -434,7 +428,7 @@ function SiteVisitRow({
               disabled={update.isPending}
             >
               <CalendarRange className="me-1 h-3.5 w-3.5" />
-              Schedule
+              {t('schedule')}
             </Button>
             <Button
               size="sm"
@@ -443,7 +437,7 @@ function SiteVisitRow({
               disabled={update.isPending}
             >
               <CheckCircle2 className="me-1 h-3.5 w-3.5" />
-              Complete
+              {t('complete')}
             </Button>
             <Button
               size="sm"
@@ -453,7 +447,7 @@ function SiteVisitRow({
               className="text-muted-foreground"
             >
               <XCircle className="me-1 h-3.5 w-3.5" />
-              Cancel
+              {t('cancel')}
             </Button>
           </div>
         )}
@@ -463,6 +457,8 @@ function SiteVisitRow({
 }
 
 function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
+  const t = useTranslations('rfqRequests');
+  const td = useTranslations('detail');
   const [open, setOpen] = useState(false);
   const [purpose, setPurpose] = useState('');
   const [from, setFrom] = useState('');
@@ -471,7 +467,7 @@ function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
 
   async function submit() {
     if (purpose.trim().length < 5) {
-      toast.error('Explain the purpose (5+ characters).');
+      toast.error(t('errorExplainPurpose'));
       return;
     }
     try {
@@ -480,13 +476,13 @@ function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
         preferredDateFrom: from ? new Date(from).toISOString() : undefined,
         preferredDateTo: to ? new Date(to).toISOString() : undefined,
       });
-      toast.success('Site-visit request raised. Sales person will reach out.');
+      toast.success(t('toastSiteVisitRaised'));
       setPurpose('');
       setFrom('');
       setTo('');
       setOpen(false);
     } catch {
-      toast.error('Failed to raise request.');
+      toast.error(t('toastFailedRaise'));
     }
   }
 
@@ -495,32 +491,30 @@ function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
       <SheetTrigger asChild>
         <Button size="sm" variant="outline">
           <Plus className="me-1 h-4 w-4" />
-          Request visit
+          {t('requestVisit')}
         </Button>
       </SheetTrigger>
       <SheetContent className="sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Request a site visit</SheetTitle>
+          <SheetTitle>{t('requestSiteVisitTitle')}</SheetTitle>
           <SheetDescription>
-            Explain why a visit is needed and an optional date window. The sales
-            person makes the first call; logistics with the client can then go
-            direct.
+            {t('requestSiteVisitDescription')}
           </SheetDescription>
         </SheetHeader>
         <div className="my-6 space-y-4">
           <div>
-            <Label htmlFor="visit-purpose">Purpose</Label>
+            <Label htmlFor="visit-purpose">{t('purpose')}</Label>
             <Textarea
               id="visit-purpose"
               rows={4}
               value={purpose}
               onChange={(e) => setPurpose(e.target.value)}
-              placeholder={`e.g. "Need to verify column spacing & assess existing MEP risers before pricing structural retrofit."`}
+              placeholder={t('purposePlaceholder')}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="visit-from">Preferred from</Label>
+              <Label htmlFor="visit-from">{t('preferredFrom')}</Label>
               <Input
                 id="visit-from"
                 type="date"
@@ -529,7 +523,7 @@ function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
               />
             </div>
             <div>
-              <Label htmlFor="visit-to">Preferred to</Label>
+              <Label htmlFor="visit-to">{t('preferredTo')}</Label>
               <Input
                 id="visit-to"
                 type="date"
@@ -545,10 +539,10 @@ function NewSiteVisitSheet({ rfqId }: { rfqId: string }) {
             onClick={() => setOpen(false)}
             disabled={create.isPending}
           >
-            Cancel
+            {td('cancel')}
           </Button>
           <Button onClick={submit} disabled={create.isPending}>
-            {create.isPending ? 'Requesting…' : 'Request visit'}
+            {create.isPending ? t('requesting') : t('requestVisit')}
           </Button>
         </SheetFooter>
       </SheetContent>
