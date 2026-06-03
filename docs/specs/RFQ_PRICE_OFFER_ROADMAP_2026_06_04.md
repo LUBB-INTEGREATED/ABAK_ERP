@@ -19,8 +19,9 @@ Acceptance = the one check that proves it's done.
 - [ ] **PDF-1 (P1)** PDF-gen infra spike: `playwright-core` + `@sparticuz/chromium`, server render
       token, server-trusted data fetch (or SSR the print route), `print-color-adjust:exact`, self-hosted
       fonts. _Accept:_ an API call returns a multi-page A4 PDF of a real quote with backgrounds intact.
-- [ ] **AIW-1 (P1)** Amount-in-words util in `packages/shared`, AR + EN, halalas, tested.
+- [x] **AIW-1 (P1)** Amount-in-words util in `packages/shared`, AR + EN, halalas, tested.
       _Accept:_ 851,000.00 SAR → vetted Arabic + English strings in unit tests.
+      _Done 2026-06-04 — `amountInWords()` in `shared-utils`; 10 `node:test` cases green via `nx test shared-utils`._
 - [ ] **MON-1 (P1)** One localized money formatter; DECIDE Latin vs Arabic-Indic digits and apply
       everywhere (replaces hardcoded `toLocaleString('en-US')` in `print/page.tsx:648`).
 
@@ -33,8 +34,8 @@ Acceptance = the one check that proves it's done.
 - [ ] **DM-2 (P1)** `deriveRfqDisplayStatus(rfq.quote.status)` mapper → QUOTE_READY/SENT/CLOSED in
       list + detail serializers (no second write).
 - [ ] **DM-3 (P1)** New `QuoteDepartmentSection` (departmentId→Department, pricerId, scopeText,
-      status DRAFT/SUBMITTED_TO_LEAD, isLead) + `QuoteItem.sectionId` + `QuoteRequirement`
-      (type, text, isShared, dedupedFromIds). _Accept:_ a multi-dept quote has one section per Department.
+      status DRAFT/SUBMITTED*TO_LEAD, isLead) + `QuoteItem.sectionId` + `QuoteRequirement`
+      (type, text, isShared, dedupedFromIds). \_Accept:* a multi-dept quote has one section per Department.
 - [ ] **DM-4 (P1)** `startPricing(rfqId)` — single atomic tx: fold categories→Departments, create
       assignment rows + Draft Quote + one section per Department, set `rfq.quoteId`+status=PRICING,
       return quoteId. Idempotent; `leadId` null-safe (client-only opportunity). _Accept:_ double-click

@@ -19,7 +19,18 @@
     "tags": [
       "scope:shared",
       "type:util"
-    ]
+    ],
+    "targets": {
+      "test": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "command": "node --test packages/shared/utils/dist/lib/*.spec.js"
+        }
+      }
+    }
   },
   "dependencies": {
     "tslib": "^2.3.0"
