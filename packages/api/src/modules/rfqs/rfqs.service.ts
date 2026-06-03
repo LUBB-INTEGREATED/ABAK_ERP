@@ -448,7 +448,9 @@ export class RfqsService {
   async cancel(id: string, scopeCtx?: ScopeContext) {
     const rfq = await this.findOne(id, scopeCtx);
     if (
-      [RfqStatus.WON, RfqStatus.LOST, RfqStatus.CANCELLED].includes(rfq.status)
+      (
+        [RfqStatus.WON, RfqStatus.LOST, RfqStatus.CANCELLED] as RfqStatus[]
+      ).includes(rfq.status)
     ) {
       throw new ForbiddenException('Cannot cancel a terminal RFQ');
     }
@@ -465,6 +467,7 @@ export class RfqsService {
       this.prisma.rfq.groupBy({
         by: ['status'],
         _count: { _all: true },
+        orderBy: { status: 'asc' },
       }),
       this.prisma.rfq.count({
         where: {
@@ -477,7 +480,7 @@ export class RfqsService {
       total,
       byStatus: byStatus.map((row) => ({
         status: row.status,
-        count: row._count._all,
+        count: (row._count as { _all: number })._all,
       })),
       coordinatorSlaBreached: slaBreachCount,
     };

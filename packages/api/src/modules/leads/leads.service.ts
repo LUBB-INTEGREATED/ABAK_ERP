@@ -10,8 +10,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AssignmentService } from './assignment.service';
 import {
-  assertOwnership,
-  ownerScopeFilter,
+  assertOwnerOrCreator,
+  ownerOrCreatorScopeFilter,
   type ScopeContext,
 } from '../auth/scope.util';
 import type { AssignLeadDto } from './dto/assign-lead.dto';
@@ -84,9 +84,10 @@ export class LeadsService {
     if (!lead) throw new NotFoundException(`Lead ${leadId} not found`);
 
     // Row-level scope: a non-ALL actor (Sales Rep) may only raise an RFQ on a
-    // lead they own. This makes the cross-rep owner mismatch (B1) impossible by
-    // construction — the resolved owner below is the actor in the normal flow.
-    assertOwnership(scopeCtx, lead, 'assignedToId');
+    // lead they own or created. This makes the cross-rep owner mismatch (B1)
+    // impossible by construction — the resolved owner below is the actor in the
+    // normal flow.
+    assertOwnerOrCreator(scopeCtx, lead, 'assignedToId');
 
     // Resolve department names for the human-readable RFQ scope.
     const categories = dto.departmentIds.length
@@ -477,8 +478,13 @@ export class LeadsService {
       ];
     }
 
-    // Row-level scope: non-ALL viewers (e.g. Sales Rep) see only their own leads.
-    Object.assign(where, ownerScopeFilter(scopeCtx, 'assignedToId'));
+    // Row-level scope: non-ALL viewers (e.g. Sales Rep) see leads assigned to
+    // them OR that they created (so a lead auto-assigned elsewhere on creation
+    // stays visible to its creator). Wrapped in AND to not collide with search OR.
+    const leadScope = ownerOrCreatorScopeFilter(scopeCtx, 'assignedToId');
+    if (Object.keys(leadScope).length) {
+      where.AND = [leadScope as Prisma.LeadWhereInput];
+    }
 
     const page = filter.page ?? 1;
     const limit = filter.limit ?? 50;
@@ -523,8 +529,9 @@ export class LeadsService {
       },
     });
     if (!lead) throw new NotFoundException(`Lead ${id} not found`);
-    // Object-level scope: a non-ALL actor may only read a lead they own.
-    assertOwnership(scopeCtx, lead, 'assignedToId');
+    // Object-level scope: a non-ALL actor may access a lead assigned to them or
+    // that they created (mirrors the list filter).
+    assertOwnerOrCreator(scopeCtx, lead, 'assignedToId');
     return lead;
   }
 
@@ -540,7 +547,7 @@ export class LeadsService {
     });
     if (!lead) throw new NotFoundException(`Lead ${leadNumber} not found`);
     // LEAD-YYYY-XXXX is sequential — guard the by-number lookup too.
-    assertOwnership(scopeCtx, lead, 'assignedToId');
+    assertOwnerOrCreator(scopeCtx, lead, 'assignedToId');
     return lead;
   }
 

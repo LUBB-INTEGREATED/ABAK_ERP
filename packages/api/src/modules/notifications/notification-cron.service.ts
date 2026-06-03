@@ -36,7 +36,7 @@ export class NotificationCronService {
         recipientId: fu.assignedToId,
         eventCode: 'followup.due_today',
         subject: `متابعة مستحقة اليوم — ${clientLabel}`,
-        body: fu.notes ?? 'لديك متابعة مجدولة اليوم',
+        body: fu.description ?? 'لديك متابعة مجدولة اليوم',
         deepLink: `/clients/${fu.clientId}`,
         payload: { followUpId: fu.id, clientId: fu.clientId },
       });
@@ -318,7 +318,6 @@ export class NotificationCronService {
     const rfqs = await this.prisma.rfq.findMany({
       where: {
         status: 'RECEIVED',
-        assignedToId: null,
         createdAt: { lt: threshold },
       },
       select: { id: true, rfqNumber: true },
