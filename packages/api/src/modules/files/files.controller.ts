@@ -1,9 +1,33 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Post,
+  Query,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiConsumes,
+  ApiOperation,
+  ApiProperty,
+  ApiTags,
+} from '@nestjs/swagger';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { FilesService } from './files.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { FilesService, type UploadedFileLike } from './files.service';
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_MIME =
+  /^(image\/(png|jpe?g|webp|gif|svg\+xml)|application\/pdf)$/;
 
 export class RegisterFileDto {
   @ApiProperty()
@@ -35,6 +59,18 @@ export class RegisterFileDto {
   ownerResourceId?: string;
 }
 
+export class UploadFileDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  ownerResource?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  ownerResourceId?: string;
+}
+
 @ApiTags('files')
 @Controller('files')
 export class FilesController {
@@ -47,6 +83,47 @@ export class FilesController {
   })
   register(@Body() dto: RegisterFileDto, @CurrentUser('id') actorId: string) {
     return this.service.register(dto, actorId);
+  }
+
+  @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary:
+      'Upload a file (image or PDF). Stored on the active storage provider; returns the FileAsset whose url serves the bytes back.',
+  })
+  // TODO(spec): gate behind a dedicated upload permission once DM-12 splits the
+  // RFQ/company-profile permissions; for now this matches the auth-only
+  // convention of the existing register() endpoint.
+  @UseInterceptors(FileInterceptor('file'))
+  upload(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_UPLOAD_BYTES }),
+          new FileTypeValidator({ fileType: ALLOWED_MIME }),
+        ],
+      }),
+    )
+    file: UploadedFileLike,
+    @Body() dto: UploadFileDto,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.service.upload(file, dto, actorId);
+  }
+
+  @Public()
+  @Get(':id/raw')
+  @ApiOperation({
+    summary:
+      'Serve the raw bytes of an uploaded file by id (public capability URL — the id is an unguessable token).',
+  })
+  async raw(@Param('id') id: string): Promise<StreamableFile> {
+    const { asset, stream } = await this.service.openStored(id);
+    return new StreamableFile(stream, {
+      type: asset.mimeType,
+      disposition: `inline; filename="${encodeURIComponent(asset.originalName)}"`,
+      length: asset.sizeBytes,
+    });
   }
 
   @Get(':id')

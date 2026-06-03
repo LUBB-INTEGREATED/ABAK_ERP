@@ -13,9 +13,15 @@ Acceptance = the one check that proves it's done.
       `use-rfq-assignments.ts:123`). _Done 2026-06-04 — doc/site-visit requests now render & resolve._
 - [x] **GRAIN-1** Resolve category-vs-department grain → **per real `Department`** (owner D5).
       _Done — see split spec §14._
-- [ ] **UP-1 (P1)** Upload pipeline: multipart endpoint + storage target (disk volume or S3 SDK).
+- [x] **UP-1 (P1)** Upload pipeline: multipart endpoint + storage target (disk volume or S3 SDK).
       Today `FilesService.register()` only writes a `FileAsset` row from a URL. _Accept:_ an image
       uploaded from the browser is stored and served back by URL.
+      _Done 2026-06-04 — `POST /files/upload` (`FileInterceptor`, image/PDF ≤10MB) →
+      `StorageProvider` seam (disk-volume default `LocalDiskStorageProvider`, env `UPLOAD_DIR`;
+      S3 drops in behind `STORAGE_PROVIDER`). Bytes keyed by `FileAsset.id`, served by
+      `GET /files/:id/raw` (`@Public` capability URL, traversal-guarded). No new dep (multer via
+      `@nestjs/platform-express`), no migration. Storage round-trip + traversal-guard verified via
+      compiled smoke; api typecheck green. HTTP e2e not run in sandbox (needs Nest+Postgres)._
 - [ ] **PDF-1 (P1)** PDF-gen infra spike: `playwright-core` + `@sparticuz/chromium`, server render
       token, server-trusted data fetch (or SSR the print route), `print-color-adjust:exact`, self-hosted
       fonts. _Accept:_ an API call returns a multi-page A4 PDF of a real quote with backgrounds intact.

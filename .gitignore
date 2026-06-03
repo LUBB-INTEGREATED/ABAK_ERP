@@ -59,3 +59,7 @@ Thumbs.db
 
 # Prisma
 .env
+
+# Uploads (UP-1 local disk storage)
+storage/uploads/
+packages/api/storage/uploads/
