@@ -1217,7 +1217,13 @@ model Rfq {
   originalSalesRepId String?
   originalSalesRep   User?   @relation("RfqOriginalSalesRep", fields: [originalSalesRepId], references: [id])
 
-  status RfqStatus @default(RECEIVED)
+  status RfqStatus @default(SUBMITTED)
+
+  // DM-1 decline ("Not us") audit — set by declineRfq
+  declineType   RfqDeclineType?
+  declineReason String?
+  declinedById  String?
+  declinedAt    DateTime?
 
   quoteId       String?             @unique
   quote         Quote?              @relation(fields: [quoteId], references: [id])
@@ -1359,17 +1365,20 @@ enum RfqRequestStatus {
   CANCELLED
 }
 
+// DM-1: thin RFQ. Lifecycle/terminal states (SENT/WON/LOST/POSTPONED/…) now
+// live ONLY on the Quote; the sales-facing display status is DERIVED from
+// rfq.quote.status (see rfq-display-status.ts). RFQ keeps only intake states.
 enum RfqStatus {
-  RECEIVED
-  ASSIGNED
-  IN_PREPARATION
-  PENDING_APPROVAL
-  APPROVED_READY_FOR_DISPATCH
-  SENT
-  WON
-  LOST
-  POSTPONED
-  CANCELLED
+  SUBMITTED // was RECEIVED — raised by sales, awaiting dept triage
+  ASSIGNED // pricers assigned, no draft quote yet (optional intermediate)
+  PRICING // accept+assign fired startPricing → quote exists & is being built
+  CANCELLED // sales-side cancel
+  DECLINED // dept said "not us" (wrong_dept | no_bid)
+}
+
+enum RfqDeclineType {
+  WRONG_DEPT // route back to sales as needs-re-route
+  NO_BID // close out as no-bid
 }
 
 enum RfqSource {

@@ -213,7 +213,8 @@ export class LeadsService {
           // Structured service selection — drives department routing + the
           // manager visibility branch in rfqs.list (D1/D2).
           requestedCategoryIds: dto.departmentIds,
-          status: 'RECEIVED',
+          // DM-1: thin RFQ starts at SUBMITTED (was RECEIVED).
+          status: 'SUBMITTED',
           createdBy: actorId,
         },
         select: { id: true, rfqNumber: true },

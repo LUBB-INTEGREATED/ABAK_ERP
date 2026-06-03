@@ -45,10 +45,15 @@ Acceptance = the one check that proves it's done.
 
 ## EPIC 1 — Data model: thin RFQ, Quote owns the lifecycle
 
-- [ ] **DM-1 (P1)** Collapse `RfqStatus` → `SUBMITTED·ASSIGNED·PRICING·CANCELLED·DECLINED` (+ migration
+- [x] **DM-1 (P1)** Collapse `RfqStatus` → `SUBMITTED·ASSIGNED·PRICING·CANCELLED·DECLINED` (+ migration
       mapping old→new). _Accept:_ migration runs; no code writes the removed states.
-- [ ] **DM-2 (P1)** `deriveRfqDisplayStatus(rfq.quote.status)` mapper → QUOTE_READY/SENT/CLOSED in
+      _Done 2026-06-04 — migration `20260603230510_dm1_thin_rfq_status` (CASE remap, applied to live DB;
+      RECEIVED→SUBMITTED etc. verified) + `RfqDeclineType` + decline columns. Co-committed with DM-2/DM-7
+      (enum change forces the code change to compile)._
+- [x] **DM-2 (P1)** `deriveRfqDisplayStatus(rfq.quote.status)` mapper → QUOTE*READY/SENT/CLOSED in
       list + detail serializers (no second write).
+      \_Done 2026-06-04 — `rfq-display-status.ts`; applied in `list`/`findOne`/`cancel` (quote.status added
+      to the list include). RFQ DB status never holds SENT/WON/etc.*
 - [x] **DM-3 (P1)** New `QuoteDepartmentSection` (departmentId→Department, pricerId, scopeText,
       status DRAFT/SUBMITTED*TO_LEAD, isLead) + `QuoteItem.sectionId` + `QuoteRequirement`
       (type, text, isShared, dedupedFromIds). \_Accept:* a multi-dept quote has one section per Department.
@@ -62,8 +67,11 @@ Acceptance = the one check that proves it's done.
 - [ ] **DM-5 (P1)** `declineRfq(rfqId,{type,reason,suggestedCategoryIds})` → status=DECLINED, notify sales.
 - [ ] **DM-6 (P1)** `POST /rfqs/:id/reroute` (perm `rfq:request`, requires DECLINED+WRONG_DEPT): new
       `requestedCategoryIds`, clear decline fields, status→SUBMITTED, re-fire inbox routing.
-- [ ] **DM-7 (P1)** Move submit/approve/send/outcome OFF RFQ → Quote; delete dead `linkQuote` +
+- [x] **DM-7 (P1)** Move submit/approve/send/outcome OFF RFQ → Quote; delete dead `linkQuote` +
       orphan `markApproved`.
+      _Done 2026-06-04 — deleted assignCoordinator/assignContributor/startPreparation/submitForApproval/
+      markApproved/dispatch/recordOutcome/linkQuote + their routes + 4 dead DTOs. submit/approve/send/
+      outcome already live on the Quote. Commission re-home onto accept() = DM-10 (next)._
 - [ ] **DM-8 (P1)** Fix `revise()` (`quotes.service.ts:857`): repoint `rfq.quoteId` to the new version
       (FK `@unique`), carry `departmentId`/`sectionId`/`methodologyCard`/`ganttBlock`. _Accept:_ regression
       test asserts `rfq.quoteId === latest revision` and sections survive a revision.

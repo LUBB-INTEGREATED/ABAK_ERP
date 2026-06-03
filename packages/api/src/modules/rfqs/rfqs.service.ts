@@ -7,20 +7,14 @@ import {
 import { PipelineStage, Prisma, RfqStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  AssignContributorDto,
-  ContributorRole,
-} from './dto/assign-contributor.dto';
-import { AssignCoordinatorDto } from './dto/assign-coordinator.dto';
 import { CreateRfqDto } from './dto/create-rfq.dto';
-import { DispatchRfqDto } from './dto/dispatch-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
-import { RfqOutcomeDto, RfqOutcomeValue } from './dto/rfq-outcome.dto';
 import {
   isUnrestricted,
   rfqScopeFilter,
   type ScopeContext,
 } from '../auth/scope.util';
+import { deriveRfqDisplayStatus } from './rfq-display-status';
 
 const RFQ_DETAIL_INCLUDE = {
   client: true,
@@ -95,7 +89,8 @@ export class RfqsService {
         brokerName: dto.brokerName,
         brokerPhone: dto.brokerPhone,
         originalSalesRepId: opportunity.ownerId,
-        status: RfqStatus.RECEIVED,
+        // DM-1: thin RFQ starts at SUBMITTED (was RECEIVED).
+        status: RfqStatus.SUBMITTED,
         createdBy: actorId,
       },
       include: RFQ_DETAIL_INCLUDE,
@@ -152,6 +147,9 @@ export class RfqsService {
           coordinator: {
             select: { id: true, firstName: true, lastName: true },
           },
+          // DM-2: the Quote status is the source of truth for the derived
+          // sales-facing display status.
+          quote: { select: { status: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
@@ -160,7 +158,10 @@ export class RfqsService {
     ]);
 
     return {
-      data,
+      data: data.map((rfq) => ({
+        ...rfq,
+        displayStatus: deriveRfqDisplayStatus(rfq),
+      })),
       pagination: {
         total,
         page,
@@ -179,7 +180,7 @@ export class RfqsService {
     // Object-level scope: re-check the same scope predicate the list uses so a
     // non-ALL actor can't read an RFQ outside their scope by id (cross-rep IDOR).
     await this.assertRfqInScope(id, scopeCtx);
-    return rfq;
+    return { ...rfq, displayStatus: deriveRfqDisplayStatus(rfq) };
   }
 
   /**
@@ -257,208 +258,23 @@ export class RfqsService {
     await this.assertRfqInScope(rfqId, scopeCtx);
   }
 
-  async assignCoordinator(
-    id: string,
-    dto: AssignCoordinatorDto,
-    scopeCtx?: ScopeContext,
-  ) {
-    await this.assertRfqInScope(id, scopeCtx);
-    const rfq = await this.requireStatus(id, [
-      RfqStatus.RECEIVED,
-      RfqStatus.ASSIGNED,
-    ]);
-    const coordinator = await this.prisma.user.findUnique({
-      where: { id: dto.coordinatorId },
-    });
-    if (!coordinator) throw new NotFoundException('Coordinator not found');
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: {
-        coordinatorId: dto.coordinatorId,
-        coordinatorAssignedAt: new Date(),
-        status: RfqStatus.ASSIGNED,
-      },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async assignContributor(
-    id: string,
-    dto: AssignContributorDto,
-    scopeCtx?: ScopeContext,
-  ) {
-    await this.assertRfqInScope(id, scopeCtx);
-    const rfq = await this.requireStatus(id, [
-      RfqStatus.ASSIGNED,
-      RfqStatus.IN_PREPARATION,
-    ]);
-    const user = await this.prisma.user.findUnique({
-      where: { id: dto.userId },
-    });
-    if (!user) throw new NotFoundException('User not found');
-    const data: Prisma.RfqUpdateInput =
-      dto.role === ContributorRole.TECHNICAL
-        ? { technicalContributor: { connect: { id: dto.userId } } }
-        : { financialReviewer: { connect: { id: dto.userId } } };
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data,
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async startPreparation(id: string, scopeCtx?: ScopeContext) {
-    await this.assertRfqInScope(id, scopeCtx);
-    const rfq = await this.requireStatus(id, [RfqStatus.ASSIGNED]);
-    if (!rfq.coordinatorId) {
-      throw new BadRequestException('Coordinator must be assigned first');
-    }
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: { status: RfqStatus.IN_PREPARATION },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async submitForApproval(id: string) {
-    const rfq = await this.requireStatus(id, [RfqStatus.IN_PREPARATION]);
-    if (!rfq.quoteId) {
-      throw new BadRequestException(
-        'A linked Quote with items is required before submitting for approval (BR-06).',
-      );
-    }
-    const quote = await this.prisma.quote.findUnique({
-      where: { id: rfq.quoteId },
-      include: { items: true, paymentMilestones: true },
-    });
-    if (!quote) {
-      throw new BadRequestException('Linked Quote not found');
-    }
-    if (quote.items.length === 0) {
-      throw new BadRequestException(
-        'Linked Quote has no items; cannot submit for approval.',
-      );
-    }
-    if (quote.paymentMilestones.length === 0) {
-      throw new BadRequestException(
-        'Linked Quote has no payment milestones; cannot submit for approval.',
-      );
-    }
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: { status: RfqStatus.PENDING_APPROVAL },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async markApproved(id: string) {
-    const rfq = await this.requireStatus(id, [RfqStatus.PENDING_APPROVAL]);
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: { status: RfqStatus.APPROVED_READY_FOR_DISPATCH },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async dispatch(id: string, dto: DispatchRfqDto) {
-    const rfq = await this.requireStatus(id, [
-      RfqStatus.APPROVED_READY_FOR_DISPATCH,
-    ]);
-    return this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: {
-        status: RfqStatus.SENT,
-        dispatchedAt: new Date(),
-        dispatchedVia: dto.channel,
-      },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
-  async recordOutcome(id: string, dto: RfqOutcomeDto) {
-    const rfq = await this.requireStatus(id, [RfqStatus.SENT]);
-    const base: Prisma.RfqUpdateInput = {};
-
-    switch (dto.outcome) {
-      case RfqOutcomeValue.WON:
-        base.status = RfqStatus.WON;
-        base.confirmationType = dto.confirmationType;
-        base.confirmationValue = dto.confirmationValue;
-        base.confirmationAt = dto.confirmationAt
-          ? new Date(dto.confirmationAt)
-          : null;
-        base.confirmationDocUrl = dto.confirmationDocUrl;
-        break;
-      case RfqOutcomeValue.LOST:
-        base.status = RfqStatus.LOST;
-        base.lostReason = dto.lostReason;
-        break;
-      case RfqOutcomeValue.POSTPONED:
-        base.status = RfqStatus.POSTPONED;
-        base.postponedUntil = dto.postponedUntil
-          ? new Date(dto.postponedUntil)
-          : null;
-        break;
-    }
-
-    const updated = await this.prisma.rfq.update({
-      where: { id: rfq.id },
-      data: base,
-      include: RFQ_DETAIL_INCLUDE,
-    });
-
-    // M7-005: auto-accrue commission when RFQ is WON and has broker info.
-    if (dto.outcome === RfqOutcomeValue.WON && rfq.brokerName) {
-      const rateSetting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'commission_rate_broker_default' },
-      });
-      const rate = rateSetting ? Number(rateSetting.value) : 3;
-      await this.prisma.commission.create({
-        data: {
-          rfqId: rfq.id,
-          beneficiaryType: 'BROKER',
-          beneficiaryName: rfq.brokerName,
-          beneficiaryPhone: rfq.brokerPhone,
-          baseAmount: 0, // grows as validated payments come in
-          rate,
-          amount: 0,
-          status: 'ACCRUING',
-          notes: `Auto-accrued on RFQ ${rfq.rfqNumber} WON.`,
-        },
-      });
-    }
-
-    return updated;
-  }
-
-  async linkQuote(id: string, quoteId: string) {
-    const rfq = await this.findOne(id);
-    if (rfq.quoteId && rfq.quoteId !== quoteId) {
-      throw new BadRequestException(
-        'RFQ is already linked to a different quote',
-      );
-    }
-    return this.prisma.rfq.update({
-      where: { id },
-      data: { quoteId },
-      include: RFQ_DETAIL_INCLUDE,
-    });
-  }
-
   async cancel(id: string, scopeCtx?: ScopeContext) {
     const rfq = await this.findOne(id, scopeCtx);
+    // DM-1: terminal intake states are CANCELLED/DECLINED (won/lost/etc. now
+    // live on the Quote and are read via the derived display status).
     if (
-      (
-        [RfqStatus.WON, RfqStatus.LOST, RfqStatus.CANCELLED] as RfqStatus[]
-      ).includes(rfq.status)
+      ([RfqStatus.CANCELLED, RfqStatus.DECLINED] as RfqStatus[]).includes(
+        rfq.status,
+      )
     ) {
       throw new ForbiddenException('Cannot cancel a terminal RFQ');
     }
-    return this.prisma.rfq.update({
+    const updated = await this.prisma.rfq.update({
       where: { id },
       data: { status: RfqStatus.CANCELLED },
       include: RFQ_DETAIL_INCLUDE,
     });
+    return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
   }
 
   async stats() {
@@ -471,7 +287,7 @@ export class RfqsService {
       }),
       this.prisma.rfq.count({
         where: {
-          status: RfqStatus.RECEIVED,
+          status: RfqStatus.SUBMITTED,
           createdAt: { lt: new Date(Date.now() - 4 * 60 * 60 * 1000) },
         },
       }),
@@ -484,17 +300,6 @@ export class RfqsService {
       })),
       coordinatorSlaBreached: slaBreachCount,
     };
-  }
-
-  private async requireStatus(id: string, allowed: RfqStatus[]) {
-    const rfq = await this.prisma.rfq.findUnique({ where: { id } });
-    if (!rfq) throw new NotFoundException();
-    if (!allowed.includes(rfq.status)) {
-      throw new BadRequestException(
-        `Action not allowed in current status ${rfq.status}`,
-      );
-    }
-    return rfq;
   }
 
   private async generateRfqNumber(): Promise<string> {

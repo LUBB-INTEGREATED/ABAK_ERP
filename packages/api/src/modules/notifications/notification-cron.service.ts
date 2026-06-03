@@ -317,7 +317,8 @@ export class NotificationCronService {
 
     const rfqs = await this.prisma.rfq.findMany({
       where: {
-        status: 'RECEIVED',
+        // DM-1: SUBMITTED is the new intake state (was RECEIVED).
+        status: 'SUBMITTED',
         createdAt: { lt: threshold },
       },
       select: { id: true, rfqNumber: true },

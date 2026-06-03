@@ -1,20 +1,8 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AssignContributorDto } from './dto/assign-contributor.dto';
-import { AssignCoordinatorDto } from './dto/assign-coordinator.dto';
 import { CreateRfqDto } from './dto/create-rfq.dto';
-import { DispatchRfqDto } from './dto/dispatch-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
-import { RfqOutcomeDto } from './dto/rfq-outcome.dto';
 import { RfqsService } from './rfqs.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CurrentScope } from '../auth/decorators/current-scope.decorator';
@@ -59,61 +47,10 @@ export class RfqsController {
     return this.service.findOne(id, { user, scope });
   }
 
-  @Patch(':id/assign-coordinator')
-  @RequirePermission('rfq:assign_pricers')
-  @ApiOperation({ summary: 'Assign primary RFQ coordinator' })
-  assignCoordinator(
-    @Param('id') id: string,
-    @Body() dto: AssignCoordinatorDto,
-    @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
-  ) {
-    return this.service.assignCoordinator(id, dto, { user, scope });
-  }
-
-  @Patch(':id/assign-contributor')
-  @RequirePermission('rfq:assign_pricers')
-  @ApiOperation({ summary: 'Assign technical or financial contributor' })
-  assignContributor(
-    @Param('id') id: string,
-    @Body() dto: AssignContributorDto,
-    @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
-  ) {
-    return this.service.assignContributor(id, dto, { user, scope });
-  }
-
-  @Patch(':id/start-preparation')
-  @RequirePermission('rfq:price_section')
-  @ApiOperation({ summary: 'Transition ASSIGNED → IN_PREPARATION' })
-  startPreparation(
-    @Param('id') id: string,
-    @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:price_section') scope: PermissionScope | undefined,
-  ) {
-    return this.service.startPreparation(id, { user, scope });
-  }
-
-  @Post(':id/submit-for-approval')
-  @RequirePermission('quote:submit_approval')
-  @ApiOperation({ summary: 'Submit linked Quote for approvals' })
-  submitForApproval(@Param('id') id: string) {
-    return this.service.submitForApproval(id);
-  }
-
-  @Post(':id/dispatch')
-  @RequirePermission('quote:send')
-  @ApiOperation({ summary: 'Dispatch quote to client (WhatsApp/Email)' })
-  dispatch(@Param('id') id: string, @Body() dto: DispatchRfqDto) {
-    return this.service.dispatch(id, dto);
-  }
-
-  @Post(':id/outcome')
-  @RequirePermission('quote:set_outcome')
-  @ApiOperation({ summary: 'Record RFQ outcome (WON/LOST/POSTPONED)' })
-  recordOutcome(@Param('id') id: string, @Body() dto: RfqOutcomeDto) {
-    return this.service.recordOutcome(id, dto);
-  }
+  // DM-7: lifecycle routes (assign-coordinator/-contributor, start-preparation,
+  // submit-for-approval, dispatch, outcome) are removed. Pricing now begins via
+  // POST :id/start-pricing (DM-4); decline via POST :id/decline (DM-5); and
+  // submit/approve/send/outcome live on the Quote (/quotes/:id/*).
 
   @Post(':id/cancel')
   @RequirePermission('rfq:request')
