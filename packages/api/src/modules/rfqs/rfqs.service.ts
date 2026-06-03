@@ -17,6 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { DeclineRfqDto } from './dto/decline-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
+import { RerouteRfqDto } from './dto/reroute-rfq.dto';
 import {
   isUnrestricted,
   rfqScopeFilter,
@@ -453,6 +454,85 @@ export class RfqsService {
       });
     }
     return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
+  }
+
+  /**
+   * DM-6: re-route a wrong-department decline back into triage. Sales picks new
+   * categories; the decline audit is cleared, status returns to SUBMITTED, and
+   * the department inbox routing is re-fired for the new categories.
+   */
+  async reroute(id: string, dto: RerouteRfqDto, scopeCtx?: ScopeContext) {
+    await this.assertRfqInScope(id, scopeCtx);
+    const rfq = await this.prisma.rfq.findUnique({
+      where: { id },
+      select: { id: true, status: true, declineType: true },
+    });
+    if (!rfq) throw new NotFoundException();
+    if (
+      rfq.status !== RfqStatus.DECLINED ||
+      rfq.declineType !== RfqDeclineType.WRONG_DEPT
+    ) {
+      throw new BadRequestException(
+        'Re-route is only allowed for a wrong-department decline',
+      );
+    }
+
+    const updated = await this.prisma.rfq.update({
+      where: { id },
+      data: {
+        requestedCategoryIds: dto.requestedCategoryIds,
+        status: RfqStatus.SUBMITTED,
+        declineType: null,
+        declineReason: null,
+        declinedById: null,
+        declinedAt: null,
+      },
+      include: RFQ_DETAIL_INCLUDE,
+    });
+
+    void this.routeToManagers(
+      updated.id,
+      updated.rfqNumber,
+      dto.requestedCategoryIds,
+    );
+    return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
+  }
+
+  /**
+   * Best-effort department-inbox routing: notify the managers of the
+   * departments offering the given categories (ServiceCategory →
+   * DepartmentService → managerId). Never blocks the caller.
+   */
+  private async routeToManagers(
+    rfqId: string,
+    rfqNumber: string,
+    categoryIds: string[],
+  ): Promise<void> {
+    if (!categoryIds.length) return;
+    try {
+      const links = await this.prisma.departmentService.findMany({
+        where: { serviceCategoryId: { in: categoryIds } },
+        select: { department: { select: { managerId: true } } },
+      });
+      const managerIds = [
+        ...new Set(
+          links
+            .map((l) => l.department.managerId)
+            .filter((x): x is string => Boolean(x)),
+        ),
+      ];
+      if (managerIds.length) {
+        await this.notifications.sendToMany(managerIds, {
+          eventCode: 'rfq.received',
+          subject: `طلب تسعير مُعاد توجيهه بانتظار التعيين: ${rfqNumber}`,
+          body: `تمت إعادة توجيه الطلب ${rfqNumber} إلى قسمكم.`,
+          deepLink: `/rfqs/${rfqId}`,
+          payload: { rfqId, rfqNumber, rerouted: true },
+        });
+      }
+    } catch {
+      // best-effort routing; never block the re-route
+    }
   }
 
   private async requireStatus(id: string, allowed: RfqStatus[]) {

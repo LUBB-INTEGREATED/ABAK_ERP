@@ -74,8 +74,11 @@ Acceptance = the one check that proves it's done.
       (`rfq:assign_pricers`, inherits dept-manager unlock). Guards SUBMITTED/ASSIGNED + no quote; sets
       decline audit; notifies originalSalesRep+creator (rfq.declined_wrong_dept|no_bid). NB: `suggestedCategoryIds`
       omitted per detailed spec §4 (sales picks categories in the DM-6 reroute); TODO(spec) if a column is wanted._
-- [ ] **DM-6 (P1)** `POST /rfqs/:id/reroute` (perm `rfq:request`, requires DECLINED+WRONG_DEPT): new
+- [x] **DM-6 (P1)** `POST /rfqs/:id/reroute` (perm `rfq:request`, requires DECLINED+WRONG*DEPT): new
       `requestedCategoryIds`, clear decline fields, status→SUBMITTED, re-fire inbox routing.
+      \_Done 2026-06-04 — `RerouteRfqDto{requestedCategoryIds[]}` + `RfqsService.reroute` + route. Guards
+      DECLINED+WRONG_DEPT, clears decline audit, status→SUBMITTED, re-fires dept-manager routing via a
+      local best-effort `routeToManagers` (DepartmentService→managerId).*
 - [x] **DM-7 (P1)** Move submit/approve/send/outcome OFF RFQ → Quote; delete dead `linkQuote` +
       orphan `markApproved`.
       _Done 2026-06-04 — deleted assignCoordinator/assignContributor/startPreparation/submitForApproval/

@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { DeclineRfqDto } from './dto/decline-rfq.dto';
 import { ListRfqsDto } from './dto/list-rfqs.dto';
+import { RerouteRfqDto } from './dto/reroute-rfq.dto';
 import { RfqsService } from './rfqs.service';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CurrentScope } from '../auth/decorators/current-scope.decorator';
@@ -81,6 +82,21 @@ export class RfqsController {
     @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
   ) {
     return this.service.declineRfq(id, dto, actorId, { user, scope });
+  }
+
+  @Post(':id/reroute')
+  @RequirePermission('rfq:request')
+  @ApiOperation({
+    summary:
+      'Re-route a wrong-department decline back to triage (new categories)',
+  })
+  reroute(
+    @Param('id') id: string,
+    @Body() dto: RerouteRfqDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:request') scope: PermissionScope | undefined,
+  ) {
+    return this.service.reroute(id, dto, { user, scope });
   }
 
   @Post(':id/cancel')
