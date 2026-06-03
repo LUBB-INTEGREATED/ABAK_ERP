@@ -1,0 +1,240 @@
+import 'reflect-metadata';
+import { after, test } from 'node:test';
+import { strict as assert } from 'node:assert';
+import { QuoteStatus } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PricingPolicyService } from '../settings/pricing-policy.service';
+import { QuotesService } from './quotes.service';
+import type { SubmitQuoteDto } from './dto';
+
+// DM-8 / DM-9 regression tests. Runs against the live dev Postgres (DATABASE_URL
+// via --env-file). Instantiates QuotesService directly with a real Prisma client
+// and inert stubs — the DM-9 validations throw before any notifier/policy call.
+
+const prisma = new PrismaService();
+const notifications = {
+  send: async () => undefined,
+  sendToMany: async () => undefined,
+} as unknown as NotificationsService;
+const pricingPolicy = {
+  resolveApprovalChain: async () => [],
+} as unknown as PricingPolicyService;
+const service = new QuotesService(prisma, notifications, pricingPolicy);
+
+const TAG = `TEST-${Date.now()}`;
+const trash = {
+  rfqIds: [] as string[],
+  quoteIds: [] as string[],
+  oppIds: [] as string[],
+  clientIds: [] as string[],
+};
+
+async function seedClient(): Promise<string> {
+  const c = await prisma.client.create({
+    data: {
+      clientNumber: `CLI-${TAG}-${trash.clientIds.length}`,
+      contactName: 'Revise/Submit Test',
+      phone: '0500000000',
+    },
+    select: { id: true },
+  });
+  trash.clientIds.push(c.id);
+  return c.id;
+}
+
+async function departmentIds(): Promise<string[]> {
+  const cats = await prisma.serviceCategory.findMany({
+    select: { id: true },
+    take: 2,
+  });
+  if (!cats.length)
+    throw new Error('No ServiceCategory in DB to use as a dept');
+  return cats.map((c) => c.id);
+}
+
+async function aUserId(): Promise<string> {
+  const u = await prisma.user.findFirst({ select: { id: true } });
+  if (!u) throw new Error('No User in DB to use as the actor');
+  return u.id;
+}
+
+after(async () => {
+  for (const id of trash.rfqIds) await prisma.rfq.deleteMany({ where: { id } });
+  for (const id of trash.quoteIds)
+    await prisma.quote.deleteMany({ where: { id } });
+  for (const id of trash.oppIds)
+    await prisma.pipelineEntry.deleteMany({ where: { id } });
+  for (const id of trash.clientIds)
+    await prisma.client.deleteMany({ where: { id } });
+  await prisma.$disconnect();
+});
+
+test('DM-8: revise() repoints rfq.quoteId to the new version and sections survive', async () => {
+  const clientId = await seedClient();
+  const [departmentId] = await departmentIds();
+
+  const opp = await prisma.pipelineEntry.create({
+    data: { clientId },
+    select: { id: true },
+  });
+  trash.oppIds.push(opp.id);
+
+  const rfq = await prisma.rfq.create({
+    data: {
+      rfqNumber: `RFQ-${TAG}`,
+      opportunityId: opp.id,
+      clientId,
+      serviceType: 'TEST',
+      projectScope: 'TEST',
+      requestedByChannel: 'INTERNAL_REP',
+      status: 'PRICING',
+    },
+    select: { id: true },
+  });
+  trash.rfqIds.push(rfq.id);
+
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}`,
+      clientId,
+      title: 'Revision parent',
+      status: QuoteStatus.APPROVED,
+      subtotal: 1000,
+      totalAmount: 1000,
+      departmentSections: { create: [{ departmentId }] },
+    },
+    select: { id: true, departmentSections: { select: { id: true } } },
+  });
+  trash.quoteIds.push(quote.id);
+  const sectionId = quote.departmentSections[0].id;
+  await prisma.quoteItem.create({
+    data: {
+      quoteId: quote.id,
+      departmentId,
+      sectionId,
+      description: 'Priced line',
+      quantity: 1,
+      unitPrice: 1000,
+      subtotal: 1000,
+      position: 0,
+    },
+  });
+  await prisma.rfq.update({
+    where: { id: rfq.id },
+    data: { quoteId: quote.id },
+  });
+
+  const actorId = await aUserId();
+  const next = await service.revise(quote.id, actorId);
+  trash.quoteIds.push(next.id);
+
+  const reloadedRfq = await prisma.rfq.findUnique({
+    where: { id: rfq.id },
+    select: { quoteId: true },
+  });
+  assert.equal(
+    reloadedRfq?.quoteId,
+    next.id,
+    'rfq.quoteId is repointed to the latest revision',
+  );
+  assert.equal(next.version, 2, 'new version is parent.version + 1');
+  assert.equal(
+    next.departmentSections.length,
+    1,
+    'the department section survives the revision',
+  );
+  const nextItem = next.items.find((i) => i.sectionId);
+  if (!nextItem) throw new Error('revision lost the section-grouped item');
+  assert.equal(
+    nextItem.sectionId,
+    next.departmentSections[0].id,
+    'item.sectionId points at the NEW section (remapped)',
+  );
+  assert.equal(
+    nextItem.departmentId,
+    departmentId,
+    'item.departmentId carried',
+  );
+});
+
+test('DM-9: submit() rejects a quote with an unpriced department section', async () => {
+  const clientId = await seedClient();
+  const [deptA, deptB] = await departmentIds();
+  if (!deptB) return; // needs two distinct departments
+
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-UNPRICED`,
+      clientId,
+      title: 'Unpriced section',
+      status: QuoteStatus.DRAFT,
+      subtotal: 1000,
+      totalAmount: 1000,
+      paymentMilestones: {
+        create: [
+          { description: 'Full', percentage: 100, amount: 1000, position: 0 },
+        ],
+      },
+      departmentSections: {
+        create: [{ departmentId: deptA }, { departmentId: deptB }],
+      },
+      items: {
+        create: [
+          {
+            departmentId: deptA,
+            description: 'Priced',
+            quantity: 1,
+            unitPrice: 1000,
+            subtotal: 1000,
+            position: 0,
+          },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(quote.id);
+
+  await assert.rejects(
+    () => service.submit(quote.id, {} as SubmitQuoteDto, undefined),
+    /not yet priced/i,
+    'submit rejects when a department section has zero subtotal',
+  );
+});
+
+test('DM-9: submit() rejects a quote with no payment milestones', async () => {
+  const clientId = await seedClient();
+  const [departmentId] = await departmentIds();
+
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-NOMILE`,
+      clientId,
+      title: 'No milestones',
+      status: QuoteStatus.DRAFT,
+      subtotal: 1000,
+      totalAmount: 1000,
+      items: {
+        create: [
+          {
+            departmentId,
+            description: 'Priced',
+            quantity: 1,
+            unitPrice: 1000,
+            subtotal: 1000,
+            position: 0,
+          },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(quote.id);
+
+  await assert.rejects(
+    () => service.submit(quote.id, {} as SubmitQuoteDto, undefined),
+    /payment milestone/i,
+    'submit rejects when there are no payment milestones',
+  );
+});

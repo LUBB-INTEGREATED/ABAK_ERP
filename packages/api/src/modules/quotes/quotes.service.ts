@@ -61,11 +61,24 @@ const QUOTE_INCLUDE = {
   items: {
     orderBy: { position: 'asc' },
     include: {
-      department: { select: { id: true, name: true, nameAr: true } },
+      // DM-11: department.order drives lead-dept-first section ordering.
+      department: {
+        select: { id: true, name: true, nameAr: true, order: true },
+      },
       methodologyCard: true,
       ganttBlock: true,
     },
   },
+  // DM-3: per-department sections + requirements (lead-pricer compile model).
+  departmentSections: {
+    orderBy: { createdAt: 'asc' },
+    include: {
+      department: {
+        select: { id: true, name: true, nameAr: true, order: true },
+      },
+    },
+  },
+  requirements: { orderBy: { position: 'asc' } },
   paymentMilestones: { orderBy: { position: 'asc' } },
   approvals: {
     include: {
@@ -82,6 +95,13 @@ const QUOTE_INCLUDE = {
     orderBy: { tier: 'asc' },
   },
   purchaseOrder: true,
+  // DM-11: lead-pricer dept comes first in the rendered document. Null-safe —
+  // a manually-created quote has no linked RFQ.
+  rfq: {
+    select: {
+      assignments: { select: { departmentId: true, isLeadPricer: true } },
+    },
+  },
 } satisfies Prisma.QuoteInclude;
 
 @Injectable()
@@ -374,6 +394,41 @@ export class QuotesService {
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be submitted');
     }
+
+    // DM-9: a submit-ready quote must have a positive total, at least one
+    // payment milestone, and every department section priced (subtotal > 0).
+    if (quote.totalAmount <= 0) {
+      throw new BadRequestException(
+        'Quote total must be greater than zero before submitting.',
+      );
+    }
+    if (quote.paymentMilestones.length === 0) {
+      throw new BadRequestException(
+        'At least one payment milestone is required before submitting.',
+      );
+    }
+    if (quote.departmentSections.length > 0) {
+      const subtotalByDept = new Map<string, number>();
+      for (const it of quote.items) {
+        if (!it.departmentId) continue;
+        subtotalByDept.set(
+          it.departmentId,
+          (subtotalByDept.get(it.departmentId) ?? 0) + it.subtotal,
+        );
+      }
+      const unpriced = quote.departmentSections.filter(
+        (s) => (subtotalByDept.get(s.departmentId) ?? 0) <= 0,
+      );
+      if (unpriced.length) {
+        const names = unpriced.map(
+          (s) => s.department?.nameAr ?? s.department?.name ?? s.departmentId,
+        );
+        throw new BadRequestException(
+          `These department sections are not yet priced: ${names.join('، ')}`,
+        );
+      }
+    }
+
     if (quote.paymentMilestones.length > 0) {
       const sum = quote.paymentMilestones.reduce((s, m) => s + m.percentage, 0);
       if (Math.round(sum * 100) / 100 !== 100) {
@@ -857,9 +912,20 @@ export class QuotesService {
   async revise(id: string, actorId: string) {
     const parent = await this.prisma.quote.findUnique({
       where: { id },
-      include: { items: true, paymentMilestones: true, rfq: true },
+      include: {
+        items: { include: { methodologyCard: true, ganttBlock: true } },
+        departmentSections: true,
+        requirements: true,
+        paymentMilestones: true,
+        rfq: true,
+      },
     });
     if (!parent) throw new NotFoundException();
+    if (parent.status === QuoteStatus.WON) {
+      throw new BadRequestException(
+        'Won quotes cannot be revised — commercial confirmation already issued.',
+      );
+    }
     const REVISABLE: QuoteStatus[] = [
       QuoteStatus.APPROVED,
       QuoteStatus.SENT,
@@ -870,11 +936,6 @@ export class QuotesService {
     if (!REVISABLE.includes(parent.status)) {
       throw new BadRequestException(
         'Quote cannot be revised in its current status',
-      );
-    }
-    if (parent.status === QuoteStatus.WON) {
-      throw new BadRequestException(
-        'Won quotes cannot be revised — commercial confirmation already issued.',
       );
     }
 
@@ -905,19 +966,6 @@ export class QuotesService {
           clientId: parent.clientId,
           leadId: parent.leadId,
           preparedById: actorId,
-          items: {
-            create: parent.items.map((item) => ({
-              serviceId: item.serviceId,
-              description: item.description,
-              quantity: item.quantity,
-              unit: item.unit,
-              unitPrice: item.unitPrice,
-              discountPct: item.discountPct,
-              subtotal: item.subtotal,
-              notes: item.notes,
-              position: item.position,
-            })),
-          },
           paymentMilestones: {
             create: parent.paymentMilestones.map((m) => ({
               description: m.description,
@@ -928,20 +976,98 @@ export class QuotesService {
               position: m.position,
             })),
           },
+          requirements: parent.requirements.length
+            ? {
+                create: parent.requirements.map((r) => ({
+                  type: r.type,
+                  text: r.text,
+                  isShared: r.isShared,
+                  dedupedFromIds: r.dedupedFromIds,
+                  position: r.position,
+                })),
+              }
+            : undefined,
         },
-        include: QUOTE_INCLUDE,
       });
+
+      // DM-8: recreate the department sections and map old → new ids so the
+      // line items keep their section grouping across the revision.
+      const sectionIdMap = new Map<string, string>();
+      for (const s of parent.departmentSections) {
+        const createdSection = await tx.quoteDepartmentSection.create({
+          data: {
+            quoteId: next.id,
+            departmentId: s.departmentId,
+            pricerId: s.pricerId,
+            scopeTextAr: s.scopeTextAr,
+            scopeTextEn: s.scopeTextEn,
+            isLead: s.isLead,
+            status: s.status,
+            pricingModel: s.pricingModel,
+          },
+        });
+        sectionIdMap.set(s.id, createdSection.id);
+      }
+
+      // DM-8: carry departmentId, sectionId, methodologyCard and ganttBlock per
+      // line — a revision must not lose the multi-dept grouping or the doc cards.
+      for (const item of parent.items) {
+        await tx.quoteItem.create({
+          data: {
+            quoteId: next.id,
+            serviceId: item.serviceId,
+            departmentId: item.departmentId,
+            sectionId: item.sectionId
+              ? (sectionIdMap.get(item.sectionId) ?? null)
+              : null,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            discountPct: item.discountPct,
+            subtotal: item.subtotal,
+            notes: item.notes,
+            position: item.position,
+            methodologyCard: item.methodologyCard
+              ? {
+                  create: {
+                    description: item.methodologyCard.description,
+                    steps: item.methodologyCard.steps as Prisma.InputJsonValue,
+                    deliverable: item.methodologyCard.deliverable,
+                  },
+                }
+              : undefined,
+            ganttBlock: item.ganttBlock
+              ? {
+                  create: {
+                    startDay: item.ganttBlock.startDay,
+                    durationDays: item.ganttBlock.durationDays,
+                    categoryTone: item.ganttBlock.categoryTone,
+                  },
+                }
+              : undefined,
+          },
+        });
+      }
+
       await tx.quote.update({
         where: { id: parent.id },
         data: { status: QuoteStatus.REVISED },
       });
+
+      // DM-8: repoint the RFQ (FK @unique) to the latest revision so the sales
+      // tracker + pricing surface follow the new version, and bump the count.
       if (parent.rfq) {
         await tx.rfq.update({
           where: { id: parent.rfq.id },
-          data: { revisionCount: { increment: 1 } },
+          data: { quoteId: next.id, revisionCount: { increment: 1 } },
         });
       }
-      return next;
+
+      return tx.quote.findUniqueOrThrow({
+        where: { id: next.id },
+        include: QUOTE_INCLUDE,
+      });
     });
   }
 

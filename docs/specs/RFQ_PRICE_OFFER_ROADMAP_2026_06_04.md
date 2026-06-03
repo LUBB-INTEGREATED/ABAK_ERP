@@ -84,15 +84,23 @@ Acceptance = the one check that proves it's done.
       _Done 2026-06-04 — deleted assignCoordinator/assignContributor/startPreparation/submitForApproval/
       markApproved/dispatch/recordOutcome/linkQuote + their routes + 4 dead DTOs. submit/approve/send/
       outcome already live on the Quote. Commission re-home onto accept() = DM-10 (next)._
-- [ ] **DM-8 (P1)** Fix `revise()` (`quotes.service.ts:857`): repoint `rfq.quoteId` to the new version
+- [x] **DM-8 (P1)** Fix `revise()` (`quotes.service.ts:857`): repoint `rfq.quoteId` to the new version
       (FK `@unique`), carry `departmentId`/`sectionId`/`methodologyCard`/`ganttBlock`. _Accept:_ regression
       test asserts `rfq.quoteId === latest revision` and sections survive a revision.
-- [ ] **DM-9 (P1)** `submit()` validation: reject if any section subtotal ≤ 0, if
+      _Done 2026-06-04 — revise() recreates department sections (old→new id map), carries
+      departmentId/sectionId/methodologyCard/ganttBlock + requirements, repoints `rfq.quoteId` to the new
+      version + bumps revisionCount. **Regression test green** (`nx test api`, live DB): rfq.quoteId === next.id,
+      version+1, section + item grouping survive._
+- [x] **DM-9 (P1)** `submit()` validation: reject if any section subtotal ≤ 0, if
       `paymentMilestones.length === 0`, or `totalAmount ≤ 0`; surface missing-section list.
+      _Done 2026-06-04 — submit() rejects total ≤ 0, zero milestones, and lists unpriced department
+      sections (subtotal ≤ 0). **2 regression tests green** (`nx test api`, live DB)._
 - [ ] **DM-10 (P1)** Re-home broker `Commission` onto `accept()`; resolve RFQ via repointed quoteId;
       once-per-RFQ guard (no double-accrual on reopen).
-- [ ] **DM-11 (P1)** Extend `QUOTE_INCLUDE` (`quotes.service.ts:46`): `department.order` +
+- [x] **DM-11 (P1)** Extend `QUOTE_INCLUDE` (`quotes.service.ts:46`): `department.order` +
       `rfq.assignments{departmentId,isLeadPricer}` for lead-dept ordering; null-safe for manual quotes.
+      _Done 2026-06-04 — `QUOTE_INCLUDE` now selects `department.order`, includes `rfq.assignments`
+      {departmentId,isLeadPricer} (null-safe — manual quotes have no rfq), plus the DM-3 `departmentSections` + `requirements`._
 - [ ] **DM-12 (P1)** Permissions: split `rfq:request_site_visit` from `rfq:request_docs`; gate
       respond/resolve by `rfq:request` (sales); add `company_profile.manage` (SUPER_ADMIN); seed-rbac.
 - [ ] **DM-13 (P2)** Add `accessContactName`/`accessContactPhone` to `RfqSiteVisitRequest`.
