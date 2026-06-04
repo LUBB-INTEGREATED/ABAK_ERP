@@ -200,7 +200,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       atomic accept+assign=startPricing, so ASSIGNED is zero-duration); §0's two rows merged into one
       PRICING phase with the warm "مع فريق التسعير / with the pricing team" framing; badge stays
       ASSIGNED-tolerant but no UI is built around it._
-- [ ] **SALES-2** Tracker: strip the 5-tab board to a single-scroll tracker (timeline → asks →
+- [x] **SALES-2** Tracker: strip the 5-tab board to a single-scroll tracker (timeline → asks →
       summary → quote). Delete Team tab + assign/prep/submit/dispatch controls.
 - [ ] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit
       confirm with access contact. Replaces the `window.prompt` scheduler.

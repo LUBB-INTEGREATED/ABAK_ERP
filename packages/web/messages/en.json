@@ -761,6 +761,40 @@
         "caughtUp": "You're all caught up. Nothing's waiting on you."
       },
       "error": "We couldn't load your requests. Check your connection and try again."
+    },
+    "tracker": {
+      "back": "All requests",
+      "fromRfq": "from {rfq}",
+      "notFound": "We couldn't find this request. It may have been cancelled or you may not have access.",
+      "status": "Where it stands",
+      "timeline": {
+        "submitted": "Submitted",
+        "pricing": "Pricing",
+        "quoteReady": "Quote ready",
+        "sent": "Sent",
+        "closed": "Closed",
+        "passedBack": "Passed back to you — the pricing team couldn't take this as routed. Re-route it to the right department.",
+        "cancelled": "This request was cancelled."
+      },
+      "summary": {
+        "title": "What you asked for",
+        "services": "Services",
+        "scope": "Project scope",
+        "broker": "Broker"
+      },
+      "quote": {
+        "title": "Quote",
+        "notYet": "No quote yet — the pricing team is still working it up.",
+        "sar": "SAR",
+        "review": "Review quote"
+      },
+      "rail": {
+        "title": "At a glance",
+        "quoteTotal": "Quote total",
+        "client": "Client",
+        "contact": "Contact",
+        "raisedOn": "Raised on"
+      }
     }
   },
   "profile": {
