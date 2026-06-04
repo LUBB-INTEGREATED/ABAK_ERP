@@ -101,10 +101,13 @@ export default function QuoteDetailPage() {
   const decideMutation = useDecideApproval(id);
   const inDiscussionMutation = useSetInDiscussion(id);
   const inNegotiationMutation = useSetInNegotiation(id);
-  // QP-6: a lead-reviewer quote (has department sections) drives its §14 submit
-  // from the compile view below, so the generic header submit is suppressed.
+  // QP-6 / RV3b-3: the §14 lead-reviewer model engages ONLY when a designated
+  // lead section exists — then the compile view owns the submit and the generic
+  // header submit is suppressed. A manually-built quote whose items just carry a
+  // department has leadless auto-sections; it keeps the normal header submit.
   const sectionsQuery = useQuoteSections(id);
   const hasSections = (sectionsQuery.data?.length ?? 0) > 0;
+  const hasLeadSection = (sectionsQuery.data ?? []).some((s) => s.isLead);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectReasonCode, setRejectReasonCode] = useState<LossReason>('OTHER');
@@ -161,7 +164,7 @@ export default function QuoteDetailPage() {
 
   // The single most important next action, gated by quote.status.
   const primary =
-    quote.status === 'DRAFT' && !hasSections ? (
+    quote.status === 'DRAFT' && !hasLeadSection ? (
       <Button
         size="sm"
         onClick={() =>

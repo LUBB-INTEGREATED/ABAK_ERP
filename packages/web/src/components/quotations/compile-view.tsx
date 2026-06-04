@@ -49,6 +49,10 @@ export function CompileView({
   const sections = sectionsQ.data ?? [];
 
   const leadSection = sections.find((s) => s.isLead);
+  // RV3b-3: the §14 submit gate only engages when a lead section is designated
+  // (the lead-reviewer model). A leadless (manual) sectioned quote submits via
+  // the generic header button instead.
+  const hasLead = !!leadSection;
   const isLead = !!currentUserId && leadSection?.pricerId === currentUserId;
   const isPricer =
     !!currentUserId && sections.some((s) => s.pricerId === currentUserId);
@@ -102,7 +106,7 @@ export function CompileView({
           quoteId={quote.id}
           isLead={isLead}
           allSubmitted={allSubmitted}
-          hasSections={sections.length > 0}
+          hasLead={hasLead}
         />
       )}
     </div>
@@ -446,16 +450,18 @@ function SubmitBar({
   quoteId,
   isLead,
   allSubmitted,
-  hasSections,
+  hasLead,
 }: {
   quoteId: string;
   isLead: boolean;
   allSubmitted: boolean;
-  hasSections: boolean;
+  hasLead: boolean;
 }) {
   const t = useTranslations('quotations.compile');
   const submit = useSubmitQuote(quoteId);
-  if (!hasSections) return null;
+  // RV3b-3: only the lead-reviewer model shows the §14 submit; a leadless
+  // (manual) sectioned quote submits via the page's generic header button.
+  if (!hasLead) return null;
 
   const blocked = !isLead || !allSubmitted;
   const hint = !isLead
