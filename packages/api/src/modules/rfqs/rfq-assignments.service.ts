@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -104,17 +105,31 @@ export class RfqAssignmentsService {
           data: { isLeadPricer: false },
         });
       }
-      return tx.rfqAssignment.create({
-        data: {
-          rfqId,
-          departmentId: dto.departmentId,
-          assigneeId: dto.assigneeId,
-          isLeadPricer,
-        },
-        include: {
-          department: { select: { id: true, name: true, nameAr: true } },
-        },
-      });
+      try {
+        return await tx.rfqAssignment.create({
+          data: {
+            rfqId,
+            departmentId: dto.departmentId,
+            assigneeId: dto.assigneeId,
+            isLeadPricer,
+          },
+          include: {
+            department: { select: { id: true, name: true, nameAr: true } },
+          },
+        });
+      } catch (err) {
+        // DM-15b (RV2-2): @@unique([rfqId, departmentId]) — re-accepting an RFQ
+        // that already has a section assigned is a 409, not an unhandled 500.
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Department already assigned on this RFQ',
+          );
+        }
+        throw err;
+      }
     });
   }
 
