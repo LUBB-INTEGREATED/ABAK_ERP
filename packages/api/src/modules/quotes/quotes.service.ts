@@ -99,6 +99,11 @@ const QUOTE_INCLUDE = {
   // a manually-created quote has no linked RFQ.
   rfq: {
     select: {
+      // QP-7/QP-9: the linked RFQ id powers the re-sited requests panel and the
+      // un-accept (return-to-triage) action from the quote.
+      id: true,
+      rfqNumber: true,
+      status: true,
       assignments: { select: { departmentId: true, isLeadPricer: true } },
     },
   },
@@ -277,6 +282,8 @@ export class QuotesService {
           preparedBy: {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
+          // QP-9: the linked RFQ id so the board can un-accept a draft.
+          rfq: { select: { id: true, rfqNumber: true } },
         },
       }),
     ]);

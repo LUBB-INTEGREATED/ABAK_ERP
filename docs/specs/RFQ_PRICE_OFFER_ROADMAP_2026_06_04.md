@@ -228,9 +228,13 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       Role-gated to mirror the fail-closed backend (lead = all actions; co-pricer = read + add reqs).
       Verified live: lead (hashim@) dedup 2→1 + request-revision + submit→PENDING_APPROVAL; co-pricer
       (khaled@) no lead actions; the 400/403 messages surface. RV-19 perm-split covered.
-- [ ] **QP-7** Re-site the raise doc/site-visit panel into Pricing (now `PENDING`-correct after BUG-1).
-- [ ] **QP-8 (P2)** Pricing-column staleness signal (accepted-but-never-opened drafts).
-- [ ] **QP-9 (P2)** Un-accept UI → DM-14.
+- [x] **QP-7** Re-site the raise doc/site-visit panel into Pricing — `<RfqRequestsPanel>` now renders
+      on the quote detail (pricing context) via the quote's linked `rfq`. Verified live (panel + raise).
+- [x] **QP-8 (P2)** Pricing-column staleness signal — `<DraftQuoteCard>` shows a "Stale" chip when a
+      draft has sat >3 days with nothing submitted. Verified live (backdated QUO-2026-0004).
+- [x] **QP-9 (P2)** Un-accept UI → DM-14 — manager-only "Return to triage" on the Pricing card
+      (`useUnacceptRfq`). Verified live: empty draft → RFQ back to Incoming, draft deleted; priced
+      draft surfaces the backend 400.
 - [x] **QP-10** In-approval / Sent / Closed columns map to `QuoteStatus`.
 
 ### DM-15 — Backend pass that unblocks the department side (QP-5/QP-6)

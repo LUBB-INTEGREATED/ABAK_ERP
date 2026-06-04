@@ -74,6 +74,7 @@ import {
   useSubmitQuote,
 } from '@/lib/hooks/use-quotes';
 import { CompileView } from '@/components/quotations/compile-view';
+import { RfqRequestsPanel } from '@/components/rfqs/rfq-requests-panel';
 import { useAuthStore } from '@/lib/auth';
 import {
   LOSS_REASONS,
@@ -419,6 +420,9 @@ export default function QuoteDetailPage() {
             <CompileView quote={quote} currentUserId={user?.id} />
           </section>
         )}
+
+        {/* QP-7: doc / site-visit requests, re-sited into the pricing context. */}
+        {quote.rfq && hasSections && <RfqRequestsPanel rfqId={quote.rfq.id} />}
 
         <DetailSection
           title={td('lineItems')}

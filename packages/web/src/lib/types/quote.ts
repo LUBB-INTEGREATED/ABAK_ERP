@@ -226,4 +226,11 @@ export type Quote = {
     department: { id: string; name: string; nameAr: string | null } | null;
   }>;
   requirements?: QuoteRequirement[];
+  // QP-7/QP-9 — the linked RFQ (present on the detail serializer) for the
+  // re-sited requests panel + the un-accept action.
+  rfq?: {
+    id: string;
+    rfqNumber: string;
+    status: string;
+  } | null;
 };

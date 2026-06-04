@@ -106,6 +106,9 @@ export function useQuoteSections(id: string | undefined) {
       return data.data;
     },
     enabled: Boolean(id),
+    // Don't retry a 404 — e.g. a card still mounted for a just-un-accepted
+    // (deleted) quote refetches once, then the list invalidation unmounts it.
+    retry: false,
   });
 }
 
