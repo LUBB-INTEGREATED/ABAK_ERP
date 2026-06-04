@@ -214,14 +214,25 @@ export class RfqAssignmentsService {
     });
     if (!rfq?.quoteId) return;
     const quoteId = rfq.quoteId;
+
+    // RV3-5: resolve the target section FIRST. If the assignment's department
+    // has no section on this quote there is nothing to mirror — returning early
+    // avoids the bug where clearing every other section's lead flag (below)
+    // would otherwise leave the quote with ZERO lead sections.
+    const target = await tx.quoteDepartmentSection.findFirst({
+      where: { quoteId, departmentId },
+      select: { id: true },
+    });
+    if (!target) return;
+
     if (isLead) {
       await tx.quoteDepartmentSection.updateMany({
-        where: { quoteId, departmentId: { not: departmentId } },
+        where: { quoteId, id: { not: target.id } },
         data: { isLead: false },
       });
     }
-    await tx.quoteDepartmentSection.updateMany({
-      where: { quoteId, departmentId },
+    await tx.quoteDepartmentSection.update({
+      where: { id: target.id },
       data: { pricerId, isLead },
     });
   }

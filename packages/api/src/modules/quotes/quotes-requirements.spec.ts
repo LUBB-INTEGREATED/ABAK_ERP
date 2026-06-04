@@ -167,6 +167,22 @@ test('DM-15d: only the lead reviewer can dedup', async () => {
   );
 });
 
+test('RV3-6: dedup is refused when the quote has no lead section', async () => {
+  const quoteId = await seedQuote(); // no department sections at all
+  const intruder = await seedUser('intruder');
+  const keep = await service.addRequirement(quoteId, { text: 'A' });
+  const dup = await service.addRequirement(quoteId, { text: 'A dup' });
+
+  await assert.rejects(
+    () =>
+      service.dedupRequirements(quoteId, keep.id, [dup.id], {
+        user: { id: intruder },
+      }),
+    (e: unknown) => e instanceof ForbiddenException,
+    'no lead section → dedup is refused (fail closed)',
+  );
+});
+
 test('DM-15d: dedup rejects merge ids not on the quote / empty merge set', async () => {
   const quoteId = await seedQuote();
   const keep = await service.addRequirement(quoteId, { text: 'Keep' });

@@ -689,11 +689,11 @@ export class QuotesService {
     });
     if (!section) throw new NotFoundException('Section not found');
 
-    if (
-      scopeCtx?.user &&
-      section.pricerId &&
-      section.pricerId !== scopeCtx.user.id
-    ) {
+    // Fail closed (RV3-3): an actor may only submit the section they price. A
+    // null pricerId (unassigned section) blocks the submit rather than letting
+    // any quote:build holder flip it — the prior `&& section.pricerId` guard
+    // waved those through (cross-department IDOR).
+    if (scopeCtx?.user && section.pricerId !== scopeCtx.user.id) {
       throw new ForbiddenException(
         'Only the assigned pricer can submit this section',
       );
@@ -745,12 +745,15 @@ export class QuotesService {
     });
     if (!section) throw new NotFoundException('Section not found');
 
+    // Fail closed (RV3-4): only the lead section's pricer may bounce a section
+    // back. No lead section, or a lead with no pricer, refuses the request
+    // instead of letting any quote:build holder DRAFT a co-pricer's work.
     if (scopeCtx?.user) {
       const lead = await this.prisma.quoteDepartmentSection.findFirst({
         where: { quoteId, isLead: true },
         select: { pricerId: true },
       });
-      if (lead?.pricerId && lead.pricerId !== scopeCtx.user.id) {
+      if (!lead?.pricerId || lead.pricerId !== scopeCtx.user.id) {
         throw new ForbiddenException(
           'Only the lead reviewer can request a section revision',
         );
@@ -887,12 +890,15 @@ export class QuotesService {
     mergeIds: string[],
     scopeCtx?: ScopeContext,
   ) {
+    // Fail closed (RV3-6): the dedup is a lead-only action. No lead section, or
+    // a lead with no pricer, refuses rather than letting any quote:build holder
+    // merge/delete requirement rows.
     if (scopeCtx?.user) {
       const lead = await this.prisma.quoteDepartmentSection.findFirst({
         where: { quoteId, isLead: true },
         select: { pricerId: true },
       });
-      if (lead?.pricerId && lead.pricerId !== scopeCtx.user.id) {
+      if (!lead?.pricerId || lead.pricerId !== scopeCtx.user.id) {
         throw new ForbiddenException(
           'Only the lead reviewer can dedup requirements',
         );

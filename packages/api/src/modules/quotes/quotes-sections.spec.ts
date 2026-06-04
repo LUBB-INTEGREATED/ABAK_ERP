@@ -279,3 +279,88 @@ test('DM-15c: listSections returns sections with resolved pricer + items', async
   assert.equal(a.items.length, 1, 'section line items included');
   assert.equal(a.items[0].subtotal, 1500);
 });
+
+async function seedBareQuote(): Promise<string> {
+  const c = await prisma.client.create({
+    data: {
+      clientNumber: `CLI-${TAG}-${trash.clientIds.length}`,
+      contactName: 'Bare quote',
+      phone: '0500000000',
+    },
+    select: { id: true },
+  });
+  trash.clientIds.push(c.id);
+  const q = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-${trash.quoteIds.length}`,
+      clientId: c.id,
+      title: 'Bare',
+      status: 'DRAFT',
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(q.id);
+  return q.id;
+}
+
+test('RV3-3: an unassigned (null-pricer) section cannot be submitted by an arbitrary user', async () => {
+  const quoteId = await seedBareQuote();
+  const [catA] = await twoCategories();
+  const section = await prisma.quoteDepartmentSection.create({
+    data: { quoteId, departmentId: catA }, // pricerId null, DRAFT, not lead
+    select: { id: true },
+  });
+  const intruder = await seedUser('intruder');
+  await assert.rejects(
+    () => quotes.submitSection(quoteId, section.id, { user: { id: intruder } }),
+    (e: unknown) => e instanceof ForbiddenException,
+    'a null-pricer section is not submittable by a random quote:build holder',
+  );
+});
+
+test('RV3-4: request-revision is refused when the quote has no lead section', async () => {
+  const quoteId = await seedBareQuote();
+  const [catA] = await twoCategories();
+  const section = await prisma.quoteDepartmentSection.create({
+    data: {
+      quoteId,
+      departmentId: catA,
+      status: QuoteSectionStatus.SUBMITTED_TO_LEAD,
+    }, // isLead false, pricerId null
+    select: { id: true },
+  });
+  const intruder = await seedUser('intruder2');
+  await assert.rejects(
+    () =>
+      quotes.requestSectionRevision(quoteId, section.id, 'redo', {
+        user: { id: intruder },
+      }),
+    (e: unknown) => e instanceof ForbiddenException,
+    'no lead section → nobody can request a revision (fail closed)',
+  );
+});
+
+test('RV3-5: assigning a department absent from the quote keeps the existing lead', async () => {
+  const cats = await prisma.serviceCategory.findMany({
+    select: { id: true },
+    take: 3,
+  });
+  if (cats.length < 3) return; // needs a third, unrouted category
+  const w = await seedPricingQuote(); // lead on catA, co on catB
+  const thirdCat = cats.find((c) => c.id !== w.catA && c.id !== w.catB)!.id;
+  const engX = await seedUser('thirdDept');
+
+  // Assign a department that is NOT one of the quote's sections, as lead.
+  await assignments.createAssignment(w.rfqId, {
+    departmentId: thirdCat,
+    assigneeId: engX,
+    isLeadPricer: true,
+  });
+
+  const leads = await prisma.quoteDepartmentSection.findMany({
+    where: { quoteId: w.quoteId, isLead: true },
+    select: { departmentId: true },
+  });
+  assert.equal(leads.length, 1, 'still exactly one lead section');
+  assert.equal(leads[0].departmentId, w.catA, 'the original lead is untouched');
+});
