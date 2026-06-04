@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
-import type { Quote, QuoteSection, QuoteStatus } from '@/lib/types/quote';
+import type {
+  Quote,
+  QuoteRequirement,
+  QuoteSection,
+  QuoteStatus,
+} from '@/lib/types/quote';
 
 type ApiEnvelope<T> = { data: T; timestamp: string };
 type Paginated<T> = {
@@ -123,6 +128,90 @@ export function useSubmitSection(quoteId: string) {
       return data.data;
     },
     onSuccess: () => invalidateSections(qc, quoteId),
+  });
+}
+
+// The lead reviewer sends a co-pricer section back for revision.
+export function useRequestSectionRevision(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      sectionId,
+      note,
+    }: {
+      sectionId: string;
+      note?: string;
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<QuoteSection>>(
+        `/quotes/${quoteId}/sections/${sectionId}/request-revision`,
+        { note },
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateSections(qc, quoteId),
+  });
+}
+
+// DM-15d §14 — requirement CRUD (pricer, DRAFT quote) + lead dedup.
+export function useAddRequirement(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { type?: 'DOCUMENT' | 'NOTE'; text: string }) => {
+      const { data } = await apiClient.post<ApiEnvelope<QuoteRequirement>>(
+        `/quotes/${quoteId}/requirements`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, quoteId),
+  });
+}
+
+export function useUpdateRequirement(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requirementId,
+      ...body
+    }: {
+      requirementId: string;
+      type?: 'DOCUMENT' | 'NOTE';
+      text?: string;
+    }) => {
+      const { data } = await apiClient.patch<ApiEnvelope<QuoteRequirement>>(
+        `/quotes/${quoteId}/requirements/${requirementId}`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, quoteId),
+  });
+}
+
+export function useDeleteRequirement(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requirementId: string) => {
+      await apiClient.delete(
+        `/quotes/${quoteId}/requirements/${requirementId}`,
+      );
+      return requirementId;
+    },
+    onSuccess: () => invalidate(qc, quoteId),
+  });
+}
+
+export function useDedupRequirements(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: { keepId: string; mergeIds: string[] }) => {
+      const { data } = await apiClient.post<ApiEnvelope<QuoteRequirement>>(
+        `/quotes/${quoteId}/requirements/dedup`,
+        body,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidate(qc, quoteId),
   });
 }
 

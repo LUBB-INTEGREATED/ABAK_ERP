@@ -223,8 +223,11 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       section pricer sees the quotes they price. Verified live as hashim@ (submit → SUBMITTED_TO_LEAD).
 - [ ] **QP-5b** Pre-linked builder edit-mode at `/quotes/[id]/build` (locked client + per-dept locked
       sections). SPLIT from QP-5 — large new route; `[Open builder]` links to `/quotes/[id]` meanwhile.
-- [ ] **QP-6** **Lead Reviewer compile view** (split spec §14): all sections side by side, dedup shared
+- [x] **QP-6** **Lead Reviewer compile view** (split spec §14): all sections side by side, dedup shared
       requirements/notes, request-revision a section, submit gate (all sections SUBMITTED_TO_LEAD).
+      Role-gated to mirror the fail-closed backend (lead = all actions; co-pricer = read + add reqs).
+      Verified live: lead (hashim@) dedup 2→1 + request-revision + submit→PENDING_APPROVAL; co-pricer
+      (khaled@) no lead actions; the 400/403 messages surface. RV-19 perm-split covered.
 - [ ] **QP-7** Re-site the raise doc/site-visit panel into Pricing (now `PENDING`-correct after BUG-1).
 - [ ] **QP-8 (P2)** Pricing-column staleness signal (accepted-but-never-opened drafts).
 - [ ] **QP-9 (P2)** Un-accept UI → DM-14.

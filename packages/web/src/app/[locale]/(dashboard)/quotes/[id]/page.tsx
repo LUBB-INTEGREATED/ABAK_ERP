@@ -6,15 +6,16 @@ import { useParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  ArrowLeft,
   BadgeCheck,
-  BadgeDollarSign,
   FileText,
   FolderPlus,
+  ListChecks,
   MessageSquare,
+  MoreHorizontal,
   Printer,
   Scale,
   Send,
+  ShieldCheck,
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
@@ -22,7 +23,6 @@ import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { QuoteStatusBadge } from '@/components/ui/entity-status-badges';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -43,16 +51,29 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import {
+  DetailBody,
+  DetailError,
+  DetailHeader,
+  DetailRail,
+  DetailSection,
+  DetailSkeleton,
+  Field,
+  FieldGrid,
+  RailStat,
+} from '@/components/detail/detail-shell';
+import {
   useAcceptQuote,
   useConvertQuoteToProject,
   useDecideApproval,
   useQuote,
+  useQuoteSections,
   useRejectQuote,
   useSendQuote,
   useSetInDiscussion,
   useSetInNegotiation,
   useSubmitQuote,
 } from '@/lib/hooks/use-quotes';
+import { CompileView } from '@/components/quotations/compile-view';
 import { useAuthStore } from '@/lib/auth';
 import {
   LOSS_REASONS,
@@ -60,11 +81,15 @@ import {
   type QuoteStatus,
 } from '@/lib/types/quote';
 
+const BACK_HREF = '/quotes';
+
 export default function QuoteDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const t = useTranslations();
   const tQ = useTranslations('quoteDetail');
+  const td = useTranslations('detail');
+  const BACK_LABEL = td('backToQuotes');
   const { data: quote, isLoading, isError, error } = useQuote(id);
   const user = useAuthStore((state) => state.user);
   const submitMutation = useSubmitQuote(id);
@@ -75,28 +100,22 @@ export default function QuoteDetailPage() {
   const decideMutation = useDecideApproval(id);
   const inDiscussionMutation = useSetInDiscussion(id);
   const inNegotiationMutation = useSetInNegotiation(id);
+  // QP-6: a lead-reviewer quote (has department sections) drives its §14 submit
+  // from the compile view below, so the generic header submit is suppressed.
+  const sectionsQuery = useQuoteSections(id);
+  const hasSections = (sectionsQuery.data?.length ?? 0) > 0;
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectReasonCode, setRejectReasonCode] = useState<LossReason>('OTHER');
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <BackLink />
-        <div className="h-32 w-full animate-pulse rounded-lg bg-muted" />
-      </div>
-    );
-  }
+  if (isLoading) return <DetailSkeleton />;
   if (isError || !quote) {
     return (
-      <div className="space-y-4">
-        <BackLink />
-        <Card>
-          <CardContent className="py-10 text-center text-destructive">
-            {error instanceof Error ? error.message : 'Quote not found'}
-          </CardContent>
-        </Card>
-      </div>
+      <DetailError
+        backHref={BACK_HREF}
+        backLabel={BACK_LABEL}
+        message={error instanceof Error ? error.message : tQ('notFound')}
+      />
     );
   }
 
@@ -111,7 +130,7 @@ export default function QuoteDetailPage() {
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string | string[] } } })
-          ?.response?.data?.message ?? `Failed to ${label.toLowerCase()}`;
+          ?.response?.data?.message ?? tQ('actionFailed');
       toast.error(
         Array.isArray(message) ? message.join(', ') : String(message),
       );
@@ -119,230 +138,339 @@ export default function QuoteDetailPage() {
     }
   }
 
+  // Status-driven flags — gating preserved exactly as the original toolbar.
+  const canReviewing = quote.status === 'SENT';
+  const canNegotiating = (['SENT', 'IN_DISCUSSION'] as QuoteStatus[]).includes(
+    quote.status,
+  );
+  const canDecide = (
+    ['SENT', 'IN_DISCUSSION', 'IN_NEGOTIATION'] as QuoteStatus[]
+  ).includes(quote.status);
+
+  const preparedByName = quote.preparedBy
+    ? [quote.preparedBy.firstName, quote.preparedBy.lastName]
+        .filter(Boolean)
+        .join(' ') || quote.preparedBy.email
+    : null;
+
+  // Surface to an approver that the ball is in their court.
+  const isApprover = quote.approvals.some(
+    (a) => user?.id === a.approver.id && a.status === 'PENDING',
+  );
+
+  // The single most important next action, gated by quote.status.
+  const primary =
+    quote.status === 'DRAFT' && !hasSections ? (
+      <Button
+        size="sm"
+        onClick={() =>
+          callMutation(tQ('submittedToast'), () =>
+            submitMutation.mutateAsync({}),
+          )
+        }
+        disabled={submitMutation.isPending}
+      >
+        <FileText className="me-2 h-4 w-4" /> {tQ('submitForApproval')}
+      </Button>
+    ) : quote.status === 'APPROVED' ? (
+      <Button
+        size="sm"
+        onClick={() =>
+          callMutation(tQ('sentToClientToast'), () =>
+            sendMutation.mutateAsync(),
+          )
+        }
+        disabled={sendMutation.isPending}
+      >
+        <Send className="me-2 h-4 w-4" /> {tQ('sendToClient')}
+      </Button>
+    ) : canDecide ? (
+      <Button
+        size="sm"
+        onClick={() =>
+          callMutation(tQ('acceptedToast'), () => acceptMutation.mutateAsync())
+        }
+        disabled={acceptMutation.isPending}
+      >
+        <ThumbsUp className="me-2 h-4 w-4" /> {tQ('markAccepted')}
+      </Button>
+    ) : quote.status === 'WON' ? (
+      // 1-click conversion: Won → Project. Department Manager surface
+      // (2026-05-21 process correction). Visible only on WON quotes that
+      // don't yet have a project.
+      <Button
+        size="sm"
+        variant="default"
+        onClick={async () => {
+          const project = await callMutation(tQ('convertedToast'), () =>
+            convertMutation.mutateAsync({}),
+          );
+          if (project?.id) {
+            window.location.href = `/projects/${project.id}`;
+          }
+        }}
+        disabled={convertMutation.isPending}
+      >
+        <FolderPlus className="me-2 h-4 w-4" />
+        {convertMutation.isPending ? tQ('converting') : tQ('convertToProject')}
+      </Button>
+    ) : undefined;
+
+  // Has any destructive / read-only items for the overflow menu?
+  const hasMenu = canDecide || Boolean(quote.purchaseOrder);
+
   return (
     <div className="space-y-6">
-      <BackLink />
-
-      <Card>
-        <CardContent className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="font-mono text-sm text-muted-foreground">
-              {quote.quoteNumber}
-              {quote.version > 1 && ` (v${quote.version})`}
-            </div>
-            <h1 className="text-2xl font-bold text-abak-blue">{quote.title}</h1>
-            <div className="mt-1 text-sm text-muted-foreground">
-              <Link
-                href={`/clients/${quote.client.id}`}
-                className="text-abak-blue hover:underline"
-              >
-                {quote.client.companyName ?? quote.client.contactName}
-              </Link>
-              {' · '}
-              {quote.client.clientNumber}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <QuoteStatusBadge status={quote.status} size="md" />
-            <Badge variant="outline">
-              <BadgeDollarSign className="mr-1 h-3.5 w-3.5" />
-              {quote.totalAmount.toLocaleString()} SAR
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/quotes/${id}/print`} target="_blank" rel="noopener">
-            <Printer className="mr-2 h-4 w-4" /> {t('quotePdf.previewButton')}
-          </Link>
-        </Button>
-        {quote.status === 'DRAFT' && (
-          <Button
-            size="sm"
-            onClick={() =>
-              callMutation('Submitted', () => submitMutation.mutateAsync({}))
-            }
-            disabled={submitMutation.isPending}
-          >
-            <FileText className="mr-2 h-4 w-4" /> Submit for approval
-          </Button>
-        )}
-        {quote.status === 'APPROVED' && (
-          <Button
-            size="sm"
-            onClick={() =>
-              callMutation('Sent to client', () => sendMutation.mutateAsync())
-            }
-            disabled={sendMutation.isPending}
-          >
-            <Send className="mr-2 h-4 w-4" /> Send to client
-          </Button>
-        )}
-        {quote.status === 'SENT' && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              callMutation(tQ('clientReviewing'), () =>
-                inDiscussionMutation.mutateAsync(),
-              )
-            }
-            disabled={inDiscussionMutation.isPending}
-          >
-            <MessageSquare className="me-2 h-4 w-4" /> {tQ('clientReviewing')}
-          </Button>
-        )}
-        {(['SENT', 'IN_DISCUSSION'] as QuoteStatus[]).includes(
-          quote.status,
-        ) && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              callMutation(tQ('negotiating'), () =>
-                inNegotiationMutation.mutateAsync(),
-              )
-            }
-            disabled={inNegotiationMutation.isPending}
-          >
-            <Scale className="me-2 h-4 w-4" /> {tQ('negotiating')}
-          </Button>
-        )}
-        {(
-          ['SENT', 'IN_DISCUSSION', 'IN_NEGOTIATION'] as QuoteStatus[]
-        ).includes(quote.status) && (
+      <DetailHeader
+        backHref={BACK_HREF}
+        backLabel={BACK_LABEL}
+        eyebrow={
           <>
-            <Button
-              size="sm"
-              onClick={() =>
-                callMutation('Accepted', () => acceptMutation.mutateAsync())
-              }
-              disabled={acceptMutation.isPending}
-            >
-              <ThumbsUp className="mr-2 h-4 w-4" /> Mark accepted
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-destructive"
-              onClick={() => setRejectOpen(true)}
-            >
-              <ThumbsDown className="mr-2 h-4 w-4" /> Mark rejected
-            </Button>
+            {quote.quoteNumber}
+            {quote.version > 1 && ` (v${quote.version})`}
           </>
-        )}
-        {quote.purchaseOrder && (
-          <Badge variant="outline">
-            <BadgeCheck className="mr-1 h-3.5 w-3.5" />
-            PO {quote.purchaseOrder.poNumber}
-          </Badge>
-        )}
-        {/* 1-click conversion: Won → Project. Department Manager surface
-            (2026-05-21 process correction). Visible only on WON quotes that
-            don't yet have a project. */}
-        {quote.status === 'WON' && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={async () => {
-              const project = await callMutation('Converted to project', () =>
-                convertMutation.mutateAsync({}),
-              );
-              if (project?.id) {
-                window.location.href = `/projects/${project.id}`;
-              }
-            }}
-            disabled={convertMutation.isPending}
-          >
-            <FolderPlus className="mr-2 h-4 w-4" />
-            {convertMutation.isPending ? 'Converting…' : 'Convert to project'}
-          </Button>
-        )}
-      </div>
+        }
+        title={quote.title}
+        subtitle={
+          <span className="inline-flex items-center gap-1.5">
+            <Link
+              href={`/clients/${quote.client.id}`}
+              className="text-abak-blue hover:underline"
+            >
+              {quote.client.companyName ?? quote.client.contactName}
+            </Link>
+            {' · '}
+            {quote.client.clientNumber}
+          </span>
+        }
+        badges={
+          <>
+            <QuoteStatusBadge status={quote.status} size="md" />
+            {isApprover && (
+              <Badge className="border-transparent bg-amber-100 text-amber-700">
+                <ShieldCheck className="me-1 h-3.5 w-3.5" />{' '}
+                {tQ('awaitingYourApproval')}
+              </Badge>
+            )}
+          </>
+        }
+        primary={primary}
+        actions={
+          <>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/quotes/${id}/print`} target="_blank" rel="noopener">
+                <Printer className="me-2 h-4 w-4" />{' '}
+                {t('quotePdf.previewButton')}
+              </Link>
+            </Button>
+            {canReviewing && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  callMutation(tQ('clientReviewing'), () =>
+                    inDiscussionMutation.mutateAsync(),
+                  )
+                }
+                disabled={inDiscussionMutation.isPending}
+              >
+                <MessageSquare className="me-2 h-4 w-4" />{' '}
+                {tQ('clientReviewing')}
+              </Button>
+            )}
+            {canNegotiating && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  callMutation(tQ('negotiating'), () =>
+                    inNegotiationMutation.mutateAsync(),
+                  )
+                }
+                disabled={inNegotiationMutation.isPending}
+              >
+                <Scale className="me-2 h-4 w-4" /> {tQ('negotiating')}
+              </Button>
+            )}
+          </>
+        }
+        menu={
+          hasMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  aria-label={td('moreActions')}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {quote.purchaseOrder && (
+                  <DropdownMenuLabel className="flex items-center font-normal text-muted-foreground">
+                    <BadgeCheck className="me-2 h-4 w-4" />
+                    {tQ('poLabel', { number: quote.purchaseOrder.poNumber })}
+                  </DropdownMenuLabel>
+                )}
+                {quote.purchaseOrder && canDecide && <DropdownMenuSeparator />}
+                {canDecide && (
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setRejectOpen(true);
+                    }}
+                  >
+                    <ThumbsDown className="me-2 h-4 w-4" /> {tQ('markRejected')}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : undefined
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Line items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Unit price</TableHead>
-                  <TableHead>Discount</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {quote.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div>{item.description}</div>
-                      {item.department && (
-                        <Badge variant="outline" className="mt-1 text-[10px]">
-                          {item.department.nameAr ?? item.department.name}
-                        </Badge>
-                      )}
-                      {item.methodologyCard?.deliverable && (
-                        <div className="mt-1 text-xs text-abak-blue/80">
-                          ✓ {item.methodologyCard.deliverable}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.quantity} {item.unit ?? ''}
-                    </TableCell>
-                    <TableCell>{item.unitPrice.toLocaleString()} SAR</TableCell>
-                    <TableCell>{item.discountPct}%</TableCell>
-                    <TableCell className="text-right">
-                      {item.subtotal.toLocaleString()} SAR
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Totals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row
-              label="Subtotal"
-              value={`${quote.subtotal.toLocaleString()} SAR`}
-            />
-            <Row
-              label={`Discount${quote.discountType === 'PERCENTAGE' ? ` (${quote.discountValue}%)` : ''}`}
-              value={`-${quote.discountAmount.toLocaleString()} SAR`}
-            />
-            <Row
-              label={`Tax (${quote.taxRate}%)`}
-              value={`${quote.taxAmount.toLocaleString()} SAR`}
-            />
-            <div className="border-t pt-2">
-              <Row
-                label="Total"
-                value={`${quote.totalAmount.toLocaleString()} SAR`}
-                bold
+      <DetailBody
+        rail={
+          <>
+            <DetailRail title={td('totals')}>
+              <RailStat
+                label={td('total')}
+                value={`${quote.totalAmount.toLocaleString()} ${tQ('currency')}`}
+                tone="success"
               />
-            </div>
-          </CardContent>
-        </Card>
+              <FieldGrid cols={1}>
+                <Field
+                  label={td('subtotal')}
+                  emphasis="money"
+                  value={`${quote.subtotal.toLocaleString()} ${tQ('currency')}`}
+                />
+                <Field
+                  label={`${td('discount')}${quote.discountType === 'PERCENTAGE' ? ` (${quote.discountValue}%)` : ''}`}
+                  emphasis="money"
+                  value={`-${quote.discountAmount.toLocaleString()} ${tQ('currency')}`}
+                />
+                <Field
+                  label={`${td('vat')} (${quote.taxRate}%)`}
+                  emphasis="money"
+                  value={`${quote.taxAmount.toLocaleString()} ${tQ('currency')}`}
+                />
+              </FieldGrid>
+            </DetailRail>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Payment schedule</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+            <DetailRail title={td('atAGlance')}>
+              <FieldGrid cols={1}>
+                <Field label={td('status')}>
+                  <QuoteStatusBadge status={quote.status} size="md" />
+                </Field>
+                <Field
+                  label={td('validUntil')}
+                  emphasis="strong"
+                  value={
+                    quote.validUntil
+                      ? format(new Date(quote.validUntil), 'PP')
+                      : null
+                  }
+                />
+                <Field label={td('preparedBy')} value={preparedByName} />
+                <Field label={td('paymentTerms')} value={quote.paymentTerms} />
+                <Field
+                  label={td('deliveryTimeline')}
+                  value={quote.deliveryTimeline}
+                />
+                <Field label={td('client')}>
+                  <Link
+                    href={`/clients/${quote.client.id}`}
+                    className="text-abak-blue hover:underline"
+                  >
+                    {quote.client.companyName ?? quote.client.contactName}
+                  </Link>
+                </Field>
+              </FieldGrid>
+            </DetailRail>
+
+            <DetailRail title={td('record')}>
+              <FieldGrid cols={1}>
+                <Field
+                  label={td('sentAt')}
+                  emphasis="muted"
+                  value={
+                    quote.sentAt ? format(new Date(quote.sentAt), 'PPp') : null
+                  }
+                />
+                <Field
+                  label={td('wonAt')}
+                  emphasis="muted"
+                  value={
+                    quote.wonAt ? format(new Date(quote.wonAt), 'PPp') : null
+                  }
+                />
+                {quote.lostReason && (
+                  <Field label={td('lostReason')} value={quote.lostReason} />
+                )}
+              </FieldGrid>
+            </DetailRail>
+          </>
+        }
+      >
+        {hasSections && (
+          <section className="rounded-lg border bg-card p-4">
+            <CompileView quote={quote} currentUserId={user?.id} />
+          </section>
+        )}
+
+        <DetailSection
+          title={td('lineItems')}
+          icon={ListChecks}
+          bodyPadded={false}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{tQ('description')}</TableHead>
+                <TableHead>{tQ('qty')}</TableHead>
+                <TableHead>{tQ('unitPrice')}</TableHead>
+                <TableHead>{td('discount')}</TableHead>
+                <TableHead className="text-end">{td('subtotal')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {quote.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div>{item.description}</div>
+                    {item.department && (
+                      <Badge variant="outline" className="mt-1 text-[10px]">
+                        {item.department.nameAr ?? item.department.name}
+                      </Badge>
+                    )}
+                    {item.methodologyCard?.deliverable && (
+                      <div className="mt-1 text-xs text-abak-blue/80">
+                        ✓ {item.methodologyCard.deliverable}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {item.quantity} {item.unit ?? ''}
+                  </TableCell>
+                  <TableCell>
+                    {item.unitPrice.toLocaleString()} {tQ('currency')}
+                  </TableCell>
+                  <TableCell>{item.discountPct}%</TableCell>
+                  <TableCell className="text-end">
+                    {item.subtotal.toLocaleString()} {tQ('currency')}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DetailSection>
+
+        <DetailSection title={td('paymentSchedule')}>
+          <div className="space-y-2 text-sm">
             {quote.paymentMilestones.length === 0 && (
-              <p className="text-muted-foreground">No milestones configured.</p>
+              <p className="text-muted-foreground">{tQ('noMilestones')}</p>
             )}
             {quote.paymentMilestones.map((milestone) => (
               <div
@@ -353,33 +481,28 @@ export default function QuoteDetailPage() {
                   <div className="font-medium">{milestone.description}</div>
                   {milestone.daysFromStart !== null && (
                     <div className="text-xs text-muted-foreground">
-                      {milestone.daysFromStart} days from start
+                      {tQ('daysFromStart', { days: milestone.daysFromStart })}
                     </div>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <div>{milestone.percentage}%</div>
                   <div className="text-xs text-muted-foreground">
-                    {milestone.amount.toLocaleString()} SAR
+                    {milestone.amount.toLocaleString()} {tQ('currency')}
                   </div>
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </DetailSection>
 
         {(quote.scopeOfWork ||
           quote.deliverables ||
           quote.exclusions ||
           quote.assumptions ||
           quote.numberOfRevisions !== null) && (
-          <Card className="md:col-span-3">
-            <CardHeader>
-              <CardTitle className="text-base">
-                {tQ('technicalScope')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
+          <DetailSection title={tQ('technicalScope')}>
+            <div className="space-y-3 text-sm">
               {quote.scopeOfWork && (
                 <ScopeRow label={tQ('scopeOfWork')} value={quote.scopeOfWork} />
               )}
@@ -401,18 +524,15 @@ export default function QuoteDetailPage() {
                   value={String(quote.numberOfRevisions)}
                 />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </DetailSection>
         )}
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Approvals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <DetailSection title={td('approvals')} icon={ShieldCheck}>
+          <div className="space-y-3">
             {quote.approvals.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No approvals required at this amount.
+                {tQ('noApprovalsRequired')}
               </p>
             )}
             {quote.approvals.map((approval) => {
@@ -430,7 +550,8 @@ export default function QuoteDetailPage() {
                 >
                   <div>
                     <div className="font-medium">
-                      Tier {approval.tier} — {approverName}
+                      {tQ('tierLabel', { tier: approval.tier })} —{' '}
+                      {approverName}
                     </div>
                     {approval.comments && (
                       <div className="text-xs text-muted-foreground">
@@ -449,7 +570,7 @@ export default function QuoteDetailPage() {
                             : 'bg-amber-100 text-amber-700',
                       )}
                     >
-                      {approval.status}
+                      {tQ(`approvalStatus.${approval.status}`)}
                     </Badge>
                     {isMine && (
                       <>
@@ -457,7 +578,7 @@ export default function QuoteDetailPage() {
                           size="sm"
                           variant="outline"
                           onClick={() =>
-                            callMutation('Approved', () =>
+                            callMutation(tQ('approvedToast'), () =>
                               decideMutation.mutateAsync({
                                 approvalId: approval.id,
                                 status: 'APPROVED',
@@ -466,14 +587,14 @@ export default function QuoteDetailPage() {
                           }
                           disabled={decideMutation.isPending}
                         >
-                          Approve
+                          {tQ('approve')}
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           className="text-destructive"
                           onClick={() =>
-                            callMutation('Rejected', () =>
+                            callMutation(tQ('rejectedToast'), () =>
                               decideMutation.mutateAsync({
                                 approvalId: approval.id,
                                 status: 'REJECTED',
@@ -482,7 +603,7 @@ export default function QuoteDetailPage() {
                           }
                           disabled={decideMutation.isPending}
                         >
-                          Reject
+                          {tQ('reject')}
                         </Button>
                       </>
                     )}
@@ -490,62 +611,19 @@ export default function QuoteDetailPage() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Metadata</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row
-              label="Prepared by"
-              value={
-                quote.preparedBy
-                  ? [quote.preparedBy.firstName, quote.preparedBy.lastName]
-                      .filter(Boolean)
-                      .join(' ') || quote.preparedBy.email
-                  : null
-              }
-            />
-            <Row
-              label="Valid until"
-              value={
-                quote.validUntil
-                  ? format(new Date(quote.validUntil), 'PP')
-                  : null
-              }
-            />
-            <Row label="Payment terms" value={quote.paymentTerms} />
-            <Row label="Delivery timeline" value={quote.deliveryTimeline} />
-            <Row
-              label="Sent at"
-              value={
-                quote.sentAt ? format(new Date(quote.sentAt), 'PPp') : null
-              }
-            />
-            <Row
-              label="Won at"
-              value={quote.wonAt ? format(new Date(quote.wonAt), 'PPp') : null}
-            />
-            {quote.lostReason && (
-              <Row label="Lost reason" value={quote.lostReason} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </DetailSection>
+      </DetailBody>
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject quote</DialogTitle>
-            <DialogDescription>
-              Optionally record why the client rejected this quote.
-            </DialogDescription>
+            <DialogTitle>{tQ('rejectQuoteTitle')}</DialogTitle>
+            <DialogDescription>{tQ('rejectQuoteDesc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="reasonCode">Reason code</Label>
+              <Label htmlFor="reasonCode">{tQ('reasonCode')}</Label>
               <select
                 id="reasonCode"
                 value={rejectReasonCode}
@@ -556,13 +634,13 @@ export default function QuoteDetailPage() {
               >
                 {LOSS_REASONS.map((code) => (
                   <option key={code} value={code}>
-                    {code.replace(/_/g, ' ').toLowerCase()}
+                    {tQ(`lossReason.${code}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="reason">Notes (optional)</Label>
+              <Label htmlFor="reason">{tQ('notesOptional')}</Label>
               <Textarea
                 id="reason"
                 rows={3}
@@ -573,12 +651,12 @@ export default function QuoteDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectOpen(false)}>
-              Cancel
+              {td('cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={async () => {
-                const result = await callMutation('Marked lost', () =>
+                const result = await callMutation(tQ('markedLostToast'), () =>
                   rejectMutation.mutateAsync({
                     reasonCode: rejectReasonCode,
                     reason: rejectReason.trim() || undefined,
@@ -592,35 +670,11 @@ export default function QuoteDetailPage() {
               }}
               disabled={rejectMutation.isPending}
             >
-              Reject
+              {tQ('reject')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  value,
-  bold,
-}: {
-  label: string;
-  value: string | null | undefined;
-  bold?: boolean;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span
-        className={cn(
-          'text-right',
-          bold && 'text-base font-semibold text-abak-blue',
-        )}
-      >
-        {value && value !== '' ? value : '—'}
-      </span>
     </div>
   );
 }
@@ -631,16 +685,5 @@ function ScopeRow({ label, value }: { label: string; value: string }) {
       <div className="font-medium text-muted-foreground">{label}</div>
       <div className="whitespace-pre-wrap text-sm">{value}</div>
     </div>
-  );
-}
-
-function BackLink() {
-  return (
-    <Link
-      href="/quotes"
-      className="inline-flex items-center gap-1 text-sm text-abak-blue hover:underline"
-    >
-      <ArrowLeft className="h-4 w-4" /> Back to quotes
-    </Link>
   );
 }

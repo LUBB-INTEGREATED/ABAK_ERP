@@ -214,4 +214,16 @@ export type Quote = {
   paymentMilestones: PaymentMilestone[];
   approvals: QuoteApproval[];
   purchaseOrder: PurchaseOrderRef | null;
+  // DM-15c/d §14 — present in QUOTE_INCLUDE. departmentSections here are the
+  // light scalars (no items/pricer-user); use useQuoteSections for the rich
+  // compile view. requirements is the flat lead-reviewer list.
+  departmentSections?: Array<{
+    id: string;
+    departmentId: string;
+    isLead: boolean;
+    pricerId: string | null;
+    status: QuoteSectionStatus;
+    department: { id: string; name: string; nameAr: string | null } | null;
+  }>;
+  requirements?: QuoteRequirement[];
 };
