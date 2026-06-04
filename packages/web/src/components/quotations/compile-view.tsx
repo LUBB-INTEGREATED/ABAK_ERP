@@ -129,6 +129,7 @@ function SectionCard({
   mine: boolean;
 }) {
   const t = useTranslations('quotations.compile');
+  const tCur = useTranslations('quoteDetail'); // RV3b-6: shared translated currency
   const requestRevision = useRequestSectionRevision(quoteId);
   const [revising, setRevising] = useState(false);
   const [note, setNote] = useState('');
@@ -196,7 +197,7 @@ function SectionCard({
           {subtotalOf(section).toLocaleString(
             locale === 'ar' ? 'ar-SA' : 'en-US',
           )}{' '}
-          SAR
+          {tCur('currency')}
         </span>
       </div>
 

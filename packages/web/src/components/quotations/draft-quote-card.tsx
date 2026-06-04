@@ -34,6 +34,7 @@ export function DraftQuoteCard({
   locale: string;
 }) {
   const t = useTranslations('quotations.pricing');
+  const tCur = useTranslations('quoteDetail'); // RV3b-6: shared translated currency
   const dir = useLocale() === 'ar' ? 'rtl' : 'ltr';
   const sections = useQuoteSections(quote.id);
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -102,7 +103,9 @@ export function DraftQuoteCard({
       </p>
       <p className="mt-0.5 text-sm font-semibold text-abak-blue" dir="ltr">
         {quote.totalAmount.toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')}{' '}
-        <span className="text-xs font-normal text-muted-foreground">SAR</span>
+        <span className="text-xs font-normal text-muted-foreground">
+          {tCur('currency')}
+        </span>
       </p>
 
       {sections.isLoading ? (

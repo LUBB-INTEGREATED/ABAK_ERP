@@ -283,7 +283,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
 - [x] **RV3b-5 (P2)** `removeAssignment` doesn't clear `QuoteDepartmentSection.pricerId` (`rfq-assignments.service.ts:240`)
       → a removed co-pricer keeps read access forever (read-scope `some({pricerId})`). Clear the section pricer
       in the same tx.
-- [ ] **RV3b-6 (P2, i18n)** Hardcoded `'SAR'` literal in `compile-view.tsx:195` + `draft-quote-card.tsx:105`
+- [x] **RV3b-6 (P2, i18n)** Hardcoded `'SAR'` literal in `compile-view.tsx:195` + `draft-quote-card.tsx:105`
       (the rest of the app uses the translated `currency` key) → wrong on the Arabic doc. Use the translated key.
 - [ ] **RV3b-7 (P2)** Un-accept is one-click destructive (deletes the draft + assignments, no confirm,
       `draft-quote-card.tsx:64`). Gate behind an AlertDialog naming the consequence.

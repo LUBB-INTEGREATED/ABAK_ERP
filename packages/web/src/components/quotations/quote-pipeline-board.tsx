@@ -329,6 +329,7 @@ function IncomingRfqCard({
 }
 
 function QuoteCard({ quote, locale }: { quote: Quote; locale: string }) {
+  const tCur = useTranslations('quoteDetail'); // RV3b-6: shared translated currency
   return (
     <Link
       href={`/quotes/${quote.id}`}
@@ -345,7 +346,9 @@ function QuoteCard({ quote, locale }: { quote: Quote; locale: string }) {
       </p>
       <p className="mt-1 text-sm font-semibold text-abak-blue" dir="ltr">
         {quote.totalAmount.toLocaleString(locale === 'ar' ? 'ar-SA' : 'en-US')}{' '}
-        <span className="text-xs font-normal text-muted-foreground">SAR</span>
+        <span className="text-xs font-normal text-muted-foreground">
+          {tCur('currency')}
+        </span>
       </p>
     </Link>
   );
