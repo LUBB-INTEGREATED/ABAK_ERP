@@ -10,7 +10,7 @@ const money = (n: number) =>
   formatCurrency(n, { locale: 'ar', numerals: 'latin' });
 const num = (n: number) =>
   formatNumber(n, { numerals: 'latin', grouping: false });
-const esc = (s: string) =>
+export const esc = (s: string) =>
   s.replace(
     /[&<>"']/g,
     (c) =>

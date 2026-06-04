@@ -138,7 +138,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **RV-3 (P1)** Upload **OOM**: multer buffers the whole body into RAM before the size check → any
       authed user can crash the process with a multi-GB POST. `FileInterceptor('file',{limits:{fileSize,files:1}})`.
       `files.controller.ts:97-112`.
-- [ ] **RV-4 (P1)** Zero tests on `files/**` + `pdf/**` (path-traversal in `pathFor`, magic-number gate,
+- [x] **RV-4 (P1)** Zero tests on `files/**` + `pdf/**` (path-traversal in `pathFor`, magic-number gate,
       size cap, render auth, HTML-escape). Add storage + upload-e2e + render-smoke tests.
 
 ### Group B — P2 correctness / security (same pass)

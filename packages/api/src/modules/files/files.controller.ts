@@ -25,9 +25,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { FilesService, type UploadedFileLike } from './files.service';
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_MIME =
-  /^(image\/(png|jpe?g|webp|gif|svg\+xml)|application\/pdf)$/;
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
+// RV-4: SVG dropped from the allowlist — it is an active-content (XSS) vector
+// when served inline. Raster images + PDF only.
+export const ALLOWED_MIME = /^(image\/(png|jpe?g|webp|gif)|application\/pdf)$/;
 
 export class RegisterFileDto {
   @ApiProperty()
