@@ -282,6 +282,19 @@ export class RfqsService {
     ) {
       throw new ForbiddenException('Cannot cancel a terminal RFQ');
     }
+    // RV-7: rfq.status stays PRICING even after the linked quote is
+    // approved/sent/won, so guard on the quote's state too — cancelling a WON
+    // deal's RFQ would display CANCELLED while the quote/PO/commission stay WON.
+    const PRE_PRICING: QuoteStatus[] = [
+      QuoteStatus.DRAFT,
+      QuoteStatus.IN_REVISION,
+      QuoteStatus.REVISED,
+    ];
+    if (rfq.quote && !PRE_PRICING.includes(rfq.quote.status)) {
+      throw new ForbiddenException(
+        'Cannot cancel: the linked quote has already advanced past pricing',
+      );
+    }
     const updated = await this.prisma.rfq.update({
       where: { id },
       data: { status: RfqStatus.CANCELLED },

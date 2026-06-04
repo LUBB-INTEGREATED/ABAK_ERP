@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { after, test } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { RfqStatus } from '@prisma/client';
+import { QuoteStatus, RfqStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RfqsService } from './rfqs.service';
@@ -113,4 +113,41 @@ test('RV-5: idempotent re-call returns the same quote', async () => {
     first.quoteId,
     'second call returns the same quote',
   );
+});
+
+test('RV-7: cancel() is rejected once the linked quote is WON', async () => {
+  const rfq = await seedRfq(); // SUBMITTED
+  const client = await prisma.rfq.findUnique({
+    where: { id: rfq.id },
+    select: { clientId: true },
+  });
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-WON-${trash.quoteIds.length}`,
+      clientId: client!.clientId,
+      title: 'Won quote',
+      status: QuoteStatus.WON,
+      subtotal: 1000,
+      totalAmount: 1000,
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(quote.id);
+  // thin model: rfq stays PRICING + links the (now WON) quote
+  await prisma.rfq.update({
+    where: { id: rfq.id },
+    data: { quoteId: quote.id, status: RfqStatus.PRICING },
+  });
+
+  await assert.rejects(
+    () => service.cancel(rfq.id, undefined),
+    /advanced past pricing/i,
+    'cancel rejected on a WON-linked RFQ',
+  );
+});
+
+test('RV-7: cancel() still works on a pre-pricing RFQ', async () => {
+  const rfq = await seedRfq(); // SUBMITTED, no quote
+  const cancelled = await service.cancel(rfq.id, undefined);
+  assert.equal(cancelled.status, RfqStatus.CANCELLED);
 });

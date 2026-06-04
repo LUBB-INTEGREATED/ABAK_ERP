@@ -146,7 +146,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **RV-5 (P2)** `startPricing` TOCTOU: two concurrent calls both read `quoteId=null` outside the tx →
       two quotes, last-writer-wins repoint **orphans** the first. `@unique` does NOT catch it (same row,
       distinct values). `updateMany({where:{id,quoteId:null}})` + `count===0 → ConflictException`. `rfqs.service.ts:300-372`.
-- [ ] **RV-7 (P2)** `cancel()` can flip a **WON** deal's RFQ to CANCELLED (rfq.status stays PRICING after
+- [x] **RV-7 (P2)** `cancel()` can flip a **WON** deal's RFQ to CANCELLED (rfq.status stays PRICING after
       WON) → display shows CANCELLED while quote/PO/commission are WON. Guard on linked quote state. `rfqs.service.ts:273-290`.
 - [ ] **RV-9 (P2)** Broker commission accrued with `baseAmount=0, amount=0` and nothing grows it → a
       commission can be approved + PAID for SAR 0. Compute on accrual or wire to validated PO payments. `quotes.service.ts:800-806`.
