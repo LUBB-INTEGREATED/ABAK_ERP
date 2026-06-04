@@ -1097,6 +1097,7 @@
     "previewButton": "معاينة وطباعة",
     "backToQuote": "العودة إلى العرض",
     "printOrSave": "طباعة / حفظ كـ PDF",
+    "downloadPdf": "تنزيل PDF",
     "printHint": "استخدم «حفظ كـ PDF» في مربع حوار الطباعة.",
     "documentType": "عرض سعر",
     "preparedFor": "موجّه إلى",

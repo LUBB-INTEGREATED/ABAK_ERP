@@ -299,7 +299,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
       existing quotes still render.
 - [x] **DOC-2** `Quote.renderManifest` snapshot-on-issue (as-issued rendering). Key artifact by
       `Quote.id` (version row), not (quoteId,version); `revise()` starts fresh.
-- [ ] **DOC-3 (P1)** Rebuild `print/page.tsx` as 8 paged blocks: per-section (Department) fan-out for
+- [x] **DOC-3 (P1)** Rebuild `print/page.tsx` as 8 paged blocks: per-section (Department) fan-out for
       scope/methodology/timeline; **pre-VAT per-dept subtotals → one combined discount+VAT+grand-total
       band** (per blocker #2); pagination (break-before, running header/footer, page counters), RTL.
 - [ ] **DOC-4** Per-quote authored fields (subject, greeting/intro, site location + area, validity,

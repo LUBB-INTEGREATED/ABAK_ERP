@@ -6,6 +6,9 @@ export interface PdfRenderOptions {
   headerHtml?: string;
   /** Footer template HTML (page counters etc.). */
   footerHtml?: string;
+  /** Page margins. DOC-3 passes 0 for the full-bleed 8-block document (the
+   *  cover/thanks pages bleed to the edge; content pages pad internally). */
+  margin?: { top: string; bottom: string; left: string; right: string };
 }
 
 /**
@@ -44,7 +47,12 @@ export class PdfRenderService implements OnModuleDestroy {
         displayHeaderFooter,
         headerTemplate: opts.headerHtml ?? '<span></span>',
         footerTemplate: opts.footerHtml ?? '<span></span>',
-        margin: { top: '18mm', bottom: '18mm', left: '14mm', right: '14mm' },
+        margin: opts.margin ?? {
+          top: '18mm',
+          bottom: '18mm',
+          left: '14mm',
+          right: '14mm',
+        },
       });
       this.logger.debug(`rendered ${pdf.byteLength}B A4 PDF`);
       return pdf;
