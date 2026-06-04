@@ -54,6 +54,9 @@ export interface UpdateSiteVisitRequestDto {
   scheduledAt?: string;
   completedAt?: string;
   notes?: string;
+  // DM-13: access contact captured by the sales responder when scheduling.
+  accessContactName?: string;
+  accessContactPhone?: string;
 }
 
 @Injectable()
@@ -297,6 +300,10 @@ export class RfqAssignmentsService {
     if (dto.completedAt !== undefined)
       data.completedAt = dto.completedAt ? new Date(dto.completedAt) : null;
     if (dto.notes !== undefined) data.notes = dto.notes;
+    if (dto.accessContactName !== undefined)
+      data.accessContactName = dto.accessContactName;
+    if (dto.accessContactPhone !== undefined)
+      data.accessContactPhone = dto.accessContactPhone;
     return this.prisma.rfqSiteVisitRequest.update({
       where: { id: requestId },
       data,

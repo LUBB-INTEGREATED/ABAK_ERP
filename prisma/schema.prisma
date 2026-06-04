@@ -1351,6 +1351,10 @@ model RfqSiteVisitRequest {
   completedAt       DateTime?
   notes             String?
 
+  // DM-13: on-site access contact the sales responder confirms when scheduling.
+  accessContactName  String?
+  accessContactPhone String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

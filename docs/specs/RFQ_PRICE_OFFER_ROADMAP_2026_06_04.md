@@ -110,7 +110,10 @@ Acceptance = the one check that proves it's done.
       global `company_profile.manage` (auto-granted to Super Admin via allKeys). Assignments controller:
       raise doc=`rfq:request_docs`, raise site-visit=`rfq:request_site_visit`, resolve/respond both
       gated by `rfq:request` (sales). api typecheck green; apply with `prisma db seed` (idempotent upserts).*
-- [ ] **DM-13 (P2)** Add `accessContactName`/`accessContactPhone` to `RfqSiteVisitRequest`.
+- [x] **DM-13 (P2)** Add `accessContactName`/`accessContactPhone` to `RfqSiteVisitRequest`.
+      _Done 2026-06-04 — migration `20260604000718_dm13_site_visit_access_contact` (2 nullable columns,
+      applied to live DB); wired into `UpdateSiteVisitRequestDto` + `updateSiteVisitRequest` so the sales
+      responder can capture them on schedule. (Also removed 3 dead DTOs the DM-7 batch `git rm` missed.)_
 - [ ] **DM-14 (P2)** Un-accept / return-to-triage (DRAFT quote + no priced items → delete draft, null
       quoteId, status→SUBMITTED).
 
