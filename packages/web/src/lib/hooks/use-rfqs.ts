@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 import type {
-  ConfirmationType,
+  RfqDeclineType,
   RfqDetail,
-  RfqDispatchChannel,
   RfqListResponse,
   RfqPriority,
   RfqSource,
@@ -17,7 +16,6 @@ const LIST_QK = ['rfqs', 'list'] as const;
 export interface RfqListFilter {
   status?: RfqStatus;
   clientId?: string;
-  coordinatorId?: string;
   source?: RfqSource;
   priority?: RfqPriority;
   search?: string;
@@ -80,12 +78,42 @@ function invalidateOne(qc: ReturnType<typeof useQueryClient>, id: string) {
   qc.invalidateQueries({ queryKey: ['rfqs', 'detail', id] });
 }
 
-export function useAssignCoordinator(id: string) {
+// ── Thin-RFQ seam endpoints (DM-4/5/6/14) ───────────────────────────────────
+
+export interface StartPricingResult {
+  quoteId: string;
+  quoteNumber: string;
+}
+
+/** Accept + assign: mint the Draft Quote and flip the RFQ to PRICING. */
+export function useStartPricing(id: string) {
   const qc = useQueryClient();
-  return useMutation<RfqDetail, unknown, { coordinatorId: string }>({
+  return useMutation<StartPricingResult, unknown, void>({
+    mutationFn: async () => {
+      const res = await apiClient.post<ApiEnvelope<StartPricingResult>>(
+        `/rfqs/${id}/start-pricing`,
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      invalidateOne(qc, id);
+      qc.invalidateQueries({ queryKey: ['quotes'] });
+    },
+  });
+}
+
+export interface DeclineRfqInput {
+  type: RfqDeclineType;
+  reason: string;
+}
+
+/** Dept manager declines ("Not us") with a required reason. */
+export function useDeclineRfq(id: string) {
+  const qc = useQueryClient();
+  return useMutation<RfqDetail, unknown, DeclineRfqInput>({
     mutationFn: async (body) => {
-      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/assign-coordinator`,
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        `/rfqs/${id}/decline`,
         body,
       );
       return res.data.data;
@@ -94,16 +122,17 @@ export function useAssignCoordinator(id: string) {
   });
 }
 
-export function useAssignContributor(id: string) {
+export interface RerouteRfqInput {
+  requestedCategoryIds: string[];
+}
+
+/** Sales re-routes a wrong-department decline back into triage. */
+export function useRerouteRfq(id: string) {
   const qc = useQueryClient();
-  return useMutation<
-    RfqDetail,
-    unknown,
-    { role: 'TECHNICAL' | 'FINANCIAL'; userId: string }
-  >({
+  return useMutation<RfqDetail, unknown, RerouteRfqInput>({
     mutationFn: async (body) => {
-      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/assign-contributor`,
+      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
+        `/rfqs/${id}/reroute`,
         body,
       );
       return res.data.data;
@@ -112,67 +141,20 @@ export function useAssignContributor(id: string) {
   });
 }
 
-export function useStartPreparation(id: string) {
+/** Un-accept: return an in-pricing RFQ with an empty draft to triage. */
+export function useUnacceptRfq(id: string) {
   const qc = useQueryClient();
   return useMutation<RfqDetail, unknown, void>({
     mutationFn: async () => {
-      const res = await apiClient.patch<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/start-preparation`,
-      );
-      return res.data.data;
-    },
-    onSuccess: () => invalidateOne(qc, id),
-  });
-}
-
-export function useSubmitForApproval(id: string) {
-  const qc = useQueryClient();
-  return useMutation<RfqDetail, unknown, void>({
-    mutationFn: async () => {
       const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/submit-for-approval`,
+        `/rfqs/${id}/unaccept`,
       );
       return res.data.data;
     },
-    onSuccess: () => invalidateOne(qc, id),
-  });
-}
-
-export function useDispatchRfq(id: string) {
-  const qc = useQueryClient();
-  return useMutation<RfqDetail, unknown, { channel: RfqDispatchChannel }>({
-    mutationFn: async (body) => {
-      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/dispatch`,
-        body,
-      );
-      return res.data.data;
+    onSuccess: () => {
+      invalidateOne(qc, id);
+      qc.invalidateQueries({ queryKey: ['quotes'] });
     },
-    onSuccess: () => invalidateOne(qc, id),
-  });
-}
-
-export interface OutcomeInput {
-  outcome: 'WON' | 'LOST' | 'POSTPONED';
-  confirmationType?: ConfirmationType;
-  confirmationAt?: string;
-  confirmationValue?: number;
-  confirmationDocUrl?: string;
-  lostReason?: string;
-  postponedUntil?: string;
-}
-
-export function useRecordOutcome(id: string) {
-  const qc = useQueryClient();
-  return useMutation<RfqDetail, unknown, OutcomeInput>({
-    mutationFn: async (body) => {
-      const res = await apiClient.post<ApiEnvelope<RfqDetail>>(
-        `/rfqs/${id}/outcome`,
-        body,
-      );
-      return res.data.data;
-    },
-    onSuccess: () => invalidateOne(qc, id),
   });
 }
 

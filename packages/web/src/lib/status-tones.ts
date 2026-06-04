@@ -8,7 +8,7 @@ import type { GovTxStatus } from './types/gov';
 import type { LeadPriority, LeadStatus, SLAStatus } from './types/lead';
 import type { PhaseStatus, ProjectStatus, TaskStatus } from './types/project';
 import type { QuoteStatus } from './types/quote';
-import type { RfqPriority, RfqStatus } from './types/rfq';
+import type { RfqDisplayStatus, RfqPriority, RfqStatus } from './types/rfq';
 import type { InvoiceStatus } from './types/finance';
 
 /**
@@ -46,21 +46,38 @@ export function quoteStatusVariant(s: QuoteStatus): StatusVariant {
   }
 }
 
+// Thin RFQ intake status (DM-1). For the sales-facing phase use
+// rfqDisplayStatusVariant below.
 export function rfqStatusVariant(s: RfqStatus): StatusVariant {
+  switch (s) {
+    case 'SUBMITTED':
+    case 'ASSIGNED':
+    case 'PRICING':
+      return 'info';
+    case 'CANCELLED':
+      return 'muted';
+    case 'DECLINED':
+      return 'error';
+  }
+}
+
+// DM-2 derived sales-facing phase → tone (the <RequestPhaseBadge> source).
+export function rfqDisplayStatusVariant(s: RfqDisplayStatus): StatusVariant {
   switch (s) {
     case 'WON':
       return 'success';
-    case 'PENDING_APPROVAL':
-      return 'warning';
+    case 'QUOTE_READY':
+    case 'IN_APPROVAL':
+    case 'DECLINED_WRONG_DEPT':
+      return 'warning'; // needs a decision / action
     case 'LOST':
+    case 'DECLINED_NO_BID':
       return 'error';
-    case 'POSTPONED':
     case 'CANCELLED':
+    case 'POSTPONED':
       return 'muted';
-    case 'RECEIVED':
-    case 'ASSIGNED':
-    case 'IN_PREPARATION':
-    case 'APPROVED_READY_FOR_DISPATCH':
+    case 'SUBMITTED':
+    case 'PRICING':
     case 'SENT':
       return 'info';
   }
