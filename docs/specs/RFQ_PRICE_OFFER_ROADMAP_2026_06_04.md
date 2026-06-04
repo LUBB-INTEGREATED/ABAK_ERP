@@ -280,7 +280,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
       Accept picker can resolve to the wrong Department, `listMembers` 403s the manager, and the row is
       un-assignable (Confirm stays disabled). Add deterministic order (isPrimary/order/createdAt) + let the
       picker fall back over `departmentIds` (it's already returned, web ignores it).
-- [ ] **RV3b-5 (P2)** `removeAssignment` doesn't clear `QuoteDepartmentSection.pricerId` (`rfq-assignments.service.ts:240`)
+- [x] **RV3b-5 (P2)** `removeAssignment` doesn't clear `QuoteDepartmentSection.pricerId` (`rfq-assignments.service.ts:240`)
       → a removed co-pricer keeps read access forever (read-scope `some({pricerId})`). Clear the section pricer
       in the same tx.
 - [ ] **RV3b-6 (P2, i18n)** Hardcoded `'SAR'` literal in `compile-view.tsx:195` + `draft-quote-card.tsx:105`

@@ -252,7 +252,29 @@ export class RfqAssignmentsService {
         'Cannot remove the Lead Pricer. Designate another assignee as Lead first.',
       );
     }
-    return this.prisma.rfqAssignment.delete({ where: { id: assignmentId } });
+    // RV3b-5: deleting the assignment must also detach the pricer from the linked
+    // quote section — otherwise the removed co-pricer keeps read access forever
+    // via the quote read-scope (`departmentSections.some({ pricerId })`).
+    return this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.rfqAssignment.delete({
+        where: { id: assignmentId },
+      });
+      const rfq = await tx.rfq.findUnique({
+        where: { id: rfqId },
+        select: { quoteId: true },
+      });
+      if (rfq?.quoteId) {
+        await tx.quoteDepartmentSection.updateMany({
+          where: {
+            quoteId: rfq.quoteId,
+            departmentId: existing.departmentId,
+            pricerId: existing.assigneeId,
+          },
+          data: { pricerId: null },
+        });
+      }
+      return deleted;
+    });
   }
 
   /**
