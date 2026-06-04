@@ -104,8 +104,12 @@ Acceptance = the one check that proves it's done.
       `rfq.assignments{departmentId,isLeadPricer}` for lead-dept ordering; null-safe for manual quotes.
       _Done 2026-06-04 — `QUOTE_INCLUDE` now selects `department.order`, includes `rfq.assignments`
       {departmentId,isLeadPricer} (null-safe — manual quotes have no rfq), plus the DM-3 `departmentSections` + `requirements`._
-- [ ] **DM-12 (P1)** Permissions: split `rfq:request_site_visit` from `rfq:request_docs`; gate
-      respond/resolve by `rfq:request` (sales); add `company_profile.manage` (SUPER_ADMIN); seed-rbac.
+- [x] **DM-12 (P1)** Permissions: split `rfq:request_site_visit` from `rfq:request_docs`; gate
+      respond/resolve by `rfq:request` (sales); add `company_profile.manage` (SUPER*ADMIN); seed-rbac.
+      \_Done 2026-06-04 — seed-rbac adds `rfq:request_site_visit` (Engineer + Technical Director grants) +
+      global `company_profile.manage` (auto-granted to Super Admin via allKeys). Assignments controller:
+      raise doc=`rfq:request_docs`, raise site-visit=`rfq:request_site_visit`, resolve/respond both
+      gated by `rfq:request` (sales). api typecheck green; apply with `prisma db seed` (idempotent upserts).*
 - [ ] **DM-13 (P2)** Add `accessContactName`/`accessContactPhone` to `RfqSiteVisitRequest`.
 - [ ] **DM-14 (P2)** Un-accept / return-to-triage (DRAFT quote + no priced items → delete draft, null
       quoteId, status→SUBMITTED).

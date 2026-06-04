@@ -125,7 +125,7 @@ export class RfqAssignmentsController {
   }
 
   @Patch('doc-requests/:requestId')
-  @RequirePermission('rfq:request_docs')
+  @RequirePermission('rfq:request')
   @ApiOperation({
     summary: 'Mark a doc request resolved (or attach response / cancel).',
   })
@@ -135,7 +135,7 @@ export class RfqAssignmentsController {
     @Body() dto: UpdateDocRequestDto,
     @CurrentUser('id') actorId: string,
     @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:request_docs') scope: PermissionScope | undefined,
+    @CurrentScope('rfq:request') scope: PermissionScope | undefined,
   ) {
     return this.service.updateDocRequest(rfqId, requestId, dto, actorId, {
       user,
@@ -159,7 +159,7 @@ export class RfqAssignmentsController {
   }
 
   @Post('site-visit-requests')
-  @RequirePermission('rfq:request_docs')
+  @RequirePermission('rfq:request_site_visit')
   @ApiOperation({
     summary:
       'Request a site visit before pricing. Sales person is notified for first contact; engineer can then coordinate logistics directly with the client.',
@@ -169,7 +169,7 @@ export class RfqAssignmentsController {
     @Body() dto: CreateSiteVisitRequestDto,
     @CurrentUser('id') actorId: string,
     @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:request_docs') scope: PermissionScope | undefined,
+    @CurrentScope('rfq:request_site_visit') scope: PermissionScope | undefined,
   ) {
     return this.service.createSiteVisitRequest(rfqId, dto, actorId, {
       user,
@@ -178,7 +178,7 @@ export class RfqAssignmentsController {
   }
 
   @Patch('site-visit-requests/:requestId')
-  @RequirePermission('rfq:request_docs')
+  @RequirePermission('rfq:request')
   @ApiOperation({
     summary: 'Update site-visit request (schedule, complete, cancel).',
   })
@@ -187,7 +187,7 @@ export class RfqAssignmentsController {
     @Param('requestId') requestId: string,
     @Body() dto: UpdateSiteVisitRequestDto,
     @CurrentUser() user: ScopeUser,
-    @CurrentScope('rfq:request_docs') scope: PermissionScope | undefined,
+    @CurrentScope('rfq:request') scope: PermissionScope | undefined,
   ) {
     return this.service.updateSiteVisitRequest(rfqId, requestId, dto, {
       user,

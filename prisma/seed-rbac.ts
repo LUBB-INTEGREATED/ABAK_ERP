@@ -55,7 +55,12 @@ const PERMISSIONS = [
   mk('rfq:assign_pricers', true, 'Assign pricers to RFQ sections (manager)'),
   mk('rfq:set_lead_pricer', true, 'Designate the Lead Pricer (manager)'),
   mk('rfq:price_section', true, 'Price an RFQ section'),
-  mk('rfq:request_docs', true, 'Request missing docs / site visit'),
+  mk('rfq:request_docs', true, 'Request missing docs (pricer → sales)'),
+  mk(
+    'rfq:request_site_visit',
+    true,
+    'Request a site visit before pricing (pricer → sales)',
+  ),
   mk('quote:view', true, 'View quotes'),
   mk('quote:build', true, 'Build / edit a quote section'),
   mk('quote:submit_approval', true, 'Assemble & submit a quote for approval'),
@@ -95,6 +100,11 @@ const PERMISSIONS = [
   ),
   mk('settings:manage_holidays', false, 'Manage the public-holiday calendar'),
   mk('audit:view', false, 'View the audit log'),
+  mk(
+    'company_profile.manage',
+    false,
+    'Manage the company profile + bank details (price-offer document)',
+  ),
   mk('roles:view', false, 'View roles & permissions (Phase 2)'),
   mk('roles:manage', false, 'Create / edit roles & permissions (Phase 2)'),
 ];
@@ -230,6 +240,7 @@ function resolveGrants(roleName: string): { key: string; scope: Scope }[] {
           'rfq:view',
           'rfq:price_section',
           'rfq:request_docs',
+          'rfq:request_site_visit',
           'quote:view',
           'quote:build',
           'quote:submit_approval',
@@ -247,6 +258,7 @@ function resolveGrants(roleName: string): { key: string; scope: Scope }[] {
           [
             'rfq:view',
             'rfq:request_docs',
+            'rfq:request_site_visit',
             'rfq:price_section',
             'rfq:assign_pricers',
             'rfq:set_lead_pricer',
