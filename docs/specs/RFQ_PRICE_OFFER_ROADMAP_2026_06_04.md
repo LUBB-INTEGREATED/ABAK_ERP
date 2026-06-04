@@ -132,7 +132,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **RV-1 (P1)** `revise()` drops technical-scope fields (scopeOfWork/deliverables/exclusions/
       assumptions/numberOfRevisions) → revision loses the scope the renderer prints. Add them to the
       revise() create data. `quotes.service.ts:986-1031`. _(same class as DM-8; missed fields)_
-- [ ] **RV-2 (P1)** decline→reroute leaves **stale `RfqAssignment` rows** → the wrong dept's manager +
+- [x] **RV-2 (P1)** decline→reroute leaves **stale `RfqAssignment` rows** → the wrong dept's manager +
       engineer keep scope/visibility on the re-routed RFQ (data leak). `deleteMany({where:{rfqId}})` on
       WRONG_DEPT decline. `rfqs.service.ts:459-554`.
 - [ ] **RV-3 (P1)** Upload **OOM**: multer buffers the whole body into RAM before the size check → any

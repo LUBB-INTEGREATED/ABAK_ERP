@@ -470,16 +470,24 @@ export class RfqsService {
     if (rfq.quoteId) {
       throw new BadRequestException('Cannot decline after pricing started');
     }
-    const updated = await this.prisma.rfq.update({
-      where: { id },
-      data: {
-        status: RfqStatus.DECLINED,
-        declineType: dto.type,
-        declineReason: dto.reason,
-        declinedById: actorId,
-        declinedAt: new Date(),
-      },
-      include: RFQ_DETAIL_INCLUDE,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // RV-2: a wrong-dept decline must strip the RFQ's assignment rows so the
+      // wrong department's manager + engineer lose scope/visibility once it is
+      // re-routed elsewhere (assignments are the DEPARTMENT-scope predicate).
+      if (dto.type === RfqDeclineType.WRONG_DEPT) {
+        await tx.rfqAssignment.deleteMany({ where: { rfqId: id } });
+      }
+      return tx.rfq.update({
+        where: { id },
+        data: {
+          status: RfqStatus.DECLINED,
+          declineType: dto.type,
+          declineReason: dto.reason,
+          declinedById: actorId,
+          declinedAt: new Date(),
+        },
+        include: RFQ_DETAIL_INCLUDE,
+      });
     });
 
     const recipients = [
