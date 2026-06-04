@@ -165,14 +165,26 @@ function arThree(n: number): string {
   return parts.join(' و');
 }
 
+/**
+ * RV-21: construct-state (iḍāfa) form of a three-digit group when it directly
+ * governs a following scale word. A trailing مئتان (exactly 200, remainder 0)
+ * drops its nun → مئتا (e.g. مئتا ألف, مئتا مليون). When a remainder follows
+ * (250 → مئتان وخمسون) the مئتان is no longer adjacent to the scale word, so it
+ * keeps the nun.
+ */
+function arThreeConstruct(n: number): string {
+  const base = arThree(n);
+  return base === AR_HUNDREDS[2] ? base.slice(0, -1) : base;
+}
+
 function arGroup(g: number, scaleIndex: number): string {
   const scale = AR_SCALES[scaleIndex];
   if (!scale) return arThree(g);
   const [singular, dual, plural] = scale;
   if (g === 1) return singular;
   if (g === 2) return dual;
-  if (g >= 3 && g <= 10) return `${arThree(g)} ${plural}`;
-  return `${arThree(g)} ${singular}`;
+  if (g >= 3 && g <= 10) return `${arThreeConstruct(g)} ${plural}`;
+  return `${arThreeConstruct(g)} ${singular}`;
 }
 
 function arInteger(value: number): string {

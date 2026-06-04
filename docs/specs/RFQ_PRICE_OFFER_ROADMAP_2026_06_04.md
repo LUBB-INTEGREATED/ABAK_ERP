@@ -159,7 +159,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       returns to SUBMITTED but lands in **no inbox** (orphaned). Validate `DepartmentService` links first. `rfqs.service.ts:519-552`.
 - [x] **RV-20 (P2)** Raw-file route authorizes by **UUID-as-bearer** only — no ACL/expiry → anyone with the
       URL fetches client docs forever. Gate sensitive assets behind auth or signed URLs. `files.controller.ts:114-127`.
-- [ ] **RV-21 (P2)** tafqit: "two hundred" before a scale word not in idāfa → emits `مئتان ألف` instead of
+- [x] **RV-21 (P2)** tafqit: "two hundred" before a scale word not in idāfa → emits `مئتان ألف` instead of
       `مئتا ألف` (200k–299k / 200M wrong). Drop the nun in construct state. `amount-in-words.ts:163`.
 - [ ] **RV-12 (P2)** DM-1 migration is semantically lossy (6 legacy states → PRICING, outcome discarded).
       No-op on this empty DB; **for any populated env** add a one-off reconciliation migration advancing

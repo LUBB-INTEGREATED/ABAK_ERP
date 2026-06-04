@@ -98,4 +98,25 @@ describe('amountInWords — SAR tafqit', () => {
   it('defaults to English', () => {
     assert.equal(amountInWords(5), 'Five Saudi Riyals only');
   });
+
+  it('RV-21: مئتان drops the nun (iḍāfa) before a scale word', () => {
+    // 200,000 -> مئتا ألف (not مئتان ألف)
+    assert.equal(
+      amountInWords(200000, { locale: 'ar' }),
+      'مئتا ألف ريال سعودي فقط لا غير',
+    );
+    // 200,000,000 -> مئتا مليون
+    assert.equal(
+      amountInWords(200000000, { locale: 'ar' }),
+      'مئتا مليون ريال سعودي فقط لا غير',
+    );
+  });
+
+  it('RV-21: مئتان keeps the nun when a remainder breaks the iḍāfa', () => {
+    // 250,000 -> مئتان وخمسون ألف (مئتان not adjacent to the scale word)
+    assert.equal(
+      amountInWords(250000, { locale: 'ar' }),
+      'مئتان وخمسون ألف ريال سعودي فقط لا غير',
+    );
+  });
 });
