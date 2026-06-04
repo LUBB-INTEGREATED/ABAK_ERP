@@ -22,6 +22,7 @@ const trash = {
   rfqIds: [] as string[],
   oppIds: [] as string[],
   clientIds: [] as string[],
+  catIds: [] as string[],
 };
 
 async function seedClient(): Promise<string> {
@@ -44,6 +45,8 @@ after(async () => {
     await prisma.pipelineEntry.deleteMany({ where: { id } });
   for (const id of trash.clientIds)
     await prisma.client.deleteMany({ where: { id } });
+  for (const id of trash.catIds)
+    await prisma.serviceCategory.deleteMany({ where: { id } });
   await prisma.$disconnect();
 });
 
@@ -93,6 +96,58 @@ test('RV-2: WRONG_DEPT decline strips the RFQ assignment rows (scope leak closed
   assert.equal(after, 0, 'wrong-dept decline deleted the assignment rows');
   assert.equal(declined.status, RfqStatus.DECLINED, 'RFQ is DECLINED');
   assert.equal(declined.declineType, RfqDeclineType.WRONG_DEPT);
+});
+
+test('RV-18: reroute rejects categories that map to no active dept/manager', async () => {
+  const clientId = await seedClient();
+  const dept = await prisma.serviceCategory.findFirst({ select: { id: true } });
+  const user = await prisma.user.findFirst({ select: { id: true } });
+  if (!dept || !user) throw new Error('seed prerequisites missing');
+
+  const opp = await prisma.pipelineEntry.create({
+    data: { clientId },
+    select: { id: true },
+  });
+  trash.oppIds.push(opp.id);
+  const rfq = await prisma.rfq.create({
+    data: {
+      rfqNumber: `RFQ-${TAG}-RR`,
+      opportunityId: opp.id,
+      clientId,
+      serviceType: 'TEST',
+      projectScope: 'TEST',
+      requestedByChannel: 'INTERNAL_REP',
+      status: RfqStatus.SUBMITTED,
+      requestedCategoryIds: [dept.id],
+    },
+    select: { id: true },
+  });
+  trash.rfqIds.push(rfq.id);
+
+  await service.declineRfq(
+    rfq.id,
+    { type: RfqDeclineType.WRONG_DEPT, reason: 'wrong dept' },
+    user.id,
+    undefined,
+  );
+
+  // an orphan category: no DepartmentService link → no inbox.
+  const orphanCat = await prisma.serviceCategory.create({
+    data: { name: `Orphan ${TAG}`, order: 999 },
+    select: { id: true },
+  });
+  trash.catIds.push(orphanCat.id);
+
+  await assert.rejects(
+    () =>
+      service.reroute(
+        rfq.id,
+        { requestedCategoryIds: [orphanCat.id] },
+        undefined,
+      ),
+    /no inbox|active department/i,
+    'reroute into an orphan category is rejected',
+  );
 });
 
 test('RV-2: a NO_BID decline keeps the assignment rows (only WRONG_DEPT strips)', async () => {

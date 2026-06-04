@@ -591,6 +591,22 @@ export class RfqsService {
       );
     }
 
+    // RV-18: a re-route must land in a real inbox. Resolve the new categories
+    // to active departments that have a manager; reject if none do, so the RFQ
+    // doesn't return to SUBMITTED invisible to every department-manager queue.
+    const routableLinks = await this.prisma.departmentService.findMany({
+      where: {
+        serviceCategoryId: { in: dto.requestedCategoryIds },
+        department: { isActive: true, managerId: { not: null } },
+      },
+      select: { departmentId: true },
+    });
+    if (routableLinks.length === 0) {
+      throw new BadRequestException(
+        'None of the selected categories map to an active department with a manager — the RFQ would land in no inbox.',
+      );
+    }
+
     const updated = await this.prisma.rfq.update({
       where: { id },
       data: {

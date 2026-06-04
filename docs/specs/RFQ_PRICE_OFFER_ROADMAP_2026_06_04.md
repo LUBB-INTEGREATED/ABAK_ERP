@@ -155,7 +155,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **RV-16 (P2)** No write path sets `QuoteItem.sectionId` (item DTOs accept only `departmentId`) → all
       items `sectionId=null`; revise()'s section remap operates on data the app can't produce. Add sectionId
       to item DTO + set in create/update, OR derive from departmentId. `dto/index.ts:86`.
-- [ ] **RV-18 (P2)** `reroute` doesn't validate the new categories resolve to an active department → RFQ
+- [x] **RV-18 (P2)** `reroute` doesn't validate the new categories resolve to an active department → RFQ
       returns to SUBMITTED but lands in **no inbox** (orphaned). Validate `DepartmentService` links first. `rfqs.service.ts:519-552`.
 - [ ] **RV-20 (P2)** Raw-file route authorizes by **UUID-as-bearer** only — no ACL/expiry → anyone with the
       URL fetches client docs forever. Gate sensitive assets behind auth or signed URLs. `files.controller.ts:114-127`.
