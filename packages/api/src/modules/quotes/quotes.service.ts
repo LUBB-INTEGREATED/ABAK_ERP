@@ -791,17 +791,24 @@ export class QuotesService {
             where: { key: 'commission_rate_broker_default' },
           });
           const rate = rateSetting ? Number(rateSetting.value) : 3;
+          // RV-9: accrue against the confirmed contract value at win so the
+          // commission is non-zero (it was permanently 0 — nothing else ever
+          // grew it, so a broker payout could be approved/PAID for SAR 0).
+          // baseAmount = contract value, amount = base * rate%. A later
+          // enhancement can recompute amount from validated PO payments.
+          const baseAmount = quote.totalAmount;
+          const amount = Math.round(baseAmount * rate) / 100;
           await tx.commission.create({
             data: {
               rfqId: linkedRfq.id,
               beneficiaryType: 'BROKER',
               beneficiaryName: linkedRfq.brokerName,
               beneficiaryPhone: linkedRfq.brokerPhone,
-              baseAmount: 0, // grows as validated payments come in
+              baseAmount,
               rate,
-              amount: 0,
+              amount,
               status: 'ACCRUING',
-              notes: `Auto-accrued on RFQ ${linkedRfq.rfqNumber} WON (quote ${quote.quoteNumber}).`,
+              notes: `Auto-accrued on RFQ ${linkedRfq.rfqNumber} WON (quote ${quote.quoteNumber}): ${rate}% of ${baseAmount}.`,
             },
           });
         }

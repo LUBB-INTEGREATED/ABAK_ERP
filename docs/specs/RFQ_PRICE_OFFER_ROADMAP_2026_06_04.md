@@ -148,7 +148,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       distinct values). `updateMany({where:{id,quoteId:null}})` + `count===0 → ConflictException`. `rfqs.service.ts:300-372`.
 - [x] **RV-7 (P2)** `cancel()` can flip a **WON** deal's RFQ to CANCELLED (rfq.status stays PRICING after
       WON) → display shows CANCELLED while quote/PO/commission are WON. Guard on linked quote state. `rfqs.service.ts:273-290`.
-- [ ] **RV-9 (P2)** Broker commission accrued with `baseAmount=0, amount=0` and nothing grows it → a
+- [x] **RV-9 (P2)** Broker commission accrued with `baseAmount=0, amount=0` and nothing grows it → a
       commission can be approved + PAID for SAR 0. Compute on accrual or wire to validated PO payments. `quotes.service.ts:800-806`.
 - [x] **RV-13 (P2)** `revise()` concurrency: parent status checked outside the tx → duplicate version N+1
       quotes, orphaned loser. Conditional `updateMany({where:{id,status:{in:REVISABLE}}})` flip. `quotes.service.ts:953-1112`.
