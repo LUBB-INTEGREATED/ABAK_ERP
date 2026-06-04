@@ -2,11 +2,11 @@
 
 import { use } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import { useRfq } from '@/lib/hooks/use-rfqs';
 import type { RfqDetail, RfqDisplayStatus } from '@/lib/types/rfq';
 import { RequestPhaseBadge } from '@/components/ui/entity-status-badges';
 import { OpenAsksCard } from '@/components/rfqs/open-asks-card';
+import { QuoteActionCard } from '@/components/rfqs/quote-action-card';
 import {
   DetailHeader,
   DetailBody,
@@ -110,42 +110,18 @@ function StatusTimeline({ rfq }: { rfq: RfqDetail }) {
   );
 }
 
-function QuoteCard({ rfq }: { rfq: RfqDetail }) {
-  const t = useTranslations('rfq.tracker');
-  const q = rfq.quote;
-
-  if (!q) {
+function QuoteSection({ rfqId, rfq }: { rfqId: string; rfq: RfqDetail }) {
+  const t = useTranslations('rfq.tracker.quote');
+  // No quote yet → calm "still being worked up". Otherwise hand off to the
+  // action card (SALES-4: send / record outcome, permission-gated).
+  if (!rfq.quote) {
     return (
-      <DetailSection title={t('quote.title')}>
-        <p className="text-sm text-muted-foreground">{t('quote.notYet')}</p>
+      <DetailSection title={t('title')}>
+        <p className="text-sm text-muted-foreground">{t('notYet')}</p>
       </DetailSection>
     );
   }
-
-  return (
-    <DetailSection title={t('quote.title')}>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
-        <div>
-          <p className="font-mono text-sm" dir="ltr">
-            {q.quoteNumber}
-          </p>
-          <p className="mt-1 text-lg font-bold text-abak-blue" dir="ltr">
-            {q.totalAmount.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-            })}{' '}
-            <span className="text-sm font-normal">{t('quote.sar')}</span>
-          </p>
-        </div>
-        <Link
-          href={`/quotes/${q.id}`}
-          className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/40"
-        >
-          {t('quote.review')} ↗
-        </Link>
-      </div>
-      {/* Send / Won-Lost-Postpone actions land in SALES-4. */}
-    </DetailSection>
-  );
+  return <QuoteActionCard rfqId={rfqId} quoteId={rfq.quote.id} />;
 }
 
 export default function RfqDetailPage({
@@ -241,7 +217,7 @@ export default function RfqDetailPage({
           </DetailSection>
 
           {/* ④ QUOTE */}
-          <QuoteCard rfq={rfq} />
+          <QuoteSection rfqId={id} rfq={rfq} />
         </DetailBody>
       </div>
     </div>

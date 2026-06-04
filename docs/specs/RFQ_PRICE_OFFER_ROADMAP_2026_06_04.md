@@ -204,7 +204,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       summary → quote). Delete Team tab + assign/prep/submit/dispatch controls.
 - [x] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit
       confirm with access contact. Replaces the `window.prompt` scheduler.
-- [ ] **SALES-4** Quote card: review → `Send to client` → `Won/Lost/Postpone` (maps to quote actions).
+- [x] **SALES-4** Quote card: review → `Send to client` → `Won/Lost/Postpone` (maps to quote actions).
 - [ ] **SALES-5** Re-route UI after decline (shows decline reason, edit services, resubmit → DM-6).
 - [ ] **SALES-6 (P2)** Client-silent sub-state (IN_DISCUSSION/IN_NEGOTIATION) or explicit "log reply".
 
