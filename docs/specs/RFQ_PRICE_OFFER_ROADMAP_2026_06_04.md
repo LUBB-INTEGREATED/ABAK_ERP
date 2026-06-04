@@ -225,6 +225,21 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [ ] **QP-9 (P2)** Un-accept UI → DM-14.
 - [x] **QP-10** In-approval / Sent / Closed columns map to `QuoteStatus`.
 
+### DM-15 — Backend pass that unblocks the department side (QP-5/QP-6)
+
+Model already exists (no migration). Splits §14 lifecycle + the manager pricer-picker
+across the API. See `EPIC23_REVIEW.md` (RV2-1/RV2-2 are the flagged blockers).
+
+- [x] **DM-15a (RV2-1)** `GET /departments/:departmentId/members` → members + manager;
+      perm `rfq:assign_pricers`, manager-scoped (own dept unless ALL). Unblocks the Accept picker.
+- [ ] **DM-15b (RV2-2)** `createAssignment` P2002 on `@@unique([rfqId,departmentId])` → `409`, not `500`.
+- [ ] **DM-15c** Section pricer wiring + lifecycle: `startPricing` seeds section `pricerId`/`isLead`
+      from assignments; create/update mirrors onto the section; `PATCH /quotes/:id/sections/:sid/submit`
+      (DRAFT→SUBMITTED_TO_LEAD); `…/request-revision` (lead sends back); `GET /quotes/:id/sections`.
+- [ ] **DM-15d** Requirement CRUD + lead dedup (`POST/PATCH/DELETE /quotes/:id/requirements`,
+      `POST …/requirements/dedup`). Quote-level flat list for v1 (no `sectionId` — would be a migration).
+- [ ] **DM-15e** §14 submit-gate in `submit()`: every section `SUBMITTED_TO_LEAD` + only the lead pricer submits.
+
 ---
 
 ## EPIC 4 — Price-offer document (the renderer)
