@@ -109,6 +109,55 @@ export class QuotesController {
     return this.quotes.submit(id, dto, { user, scope });
   }
 
+  // Department sections — §14 lead-reviewer lifecycle (DM-15c) -----
+
+  @Get('quotes/:id/sections')
+  @ApiOperation({
+    summary:
+      'Compile view: all department sections with status, pricer, and line items.',
+  })
+  listSections(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:view') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.listSections(id, { user, scope });
+  }
+
+  @Patch('quotes/:id/sections/:sectionId/submit')
+  @RequirePermission('quote:build')
+  @ApiOperation({
+    summary:
+      'A dept pricer submits their own section to the lead (DRAFT → SUBMITTED_TO_LEAD).',
+  })
+  submitSection(
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.submitSection(id, sectionId, { user, scope });
+  }
+
+  @Patch('quotes/:id/sections/:sectionId/request-revision')
+  @RequirePermission('quote:build')
+  @ApiOperation({
+    summary:
+      'The lead reviewer sends a co-pricer section back for revision (SUBMITTED_TO_LEAD → DRAFT).',
+  })
+  requestSectionRevision(
+    @Param('id') id: string,
+    @Param('sectionId') sectionId: string,
+    @Body() dto: { note?: string },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.requestSectionRevision(id, sectionId, dto?.note, {
+      user,
+      scope,
+    });
+  }
+
   @Patch('quotes/:id/send')
   @RequirePermission('quote:send')
   @ApiOperation({

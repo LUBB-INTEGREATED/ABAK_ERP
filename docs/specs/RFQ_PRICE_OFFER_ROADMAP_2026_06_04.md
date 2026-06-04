@@ -233,7 +233,7 @@ across the API. See `EPIC23_REVIEW.md` (RV2-1/RV2-2 are the flagged blockers).
 - [x] **DM-15a (RV2-1)** `GET /departments/:departmentId/members` → members + manager;
       perm `rfq:assign_pricers`, manager-scoped (own dept unless ALL). Unblocks the Accept picker.
 - [x] **DM-15b (RV2-2)** `createAssignment` P2002 on `@@unique([rfqId,departmentId])` → `409`, not `500`.
-- [ ] **DM-15c** Section pricer wiring + lifecycle: `startPricing` seeds section `pricerId`/`isLead`
+- [x] **DM-15c** Section pricer wiring + lifecycle: `startPricing` seeds section `pricerId`/`isLead`
       from assignments; create/update mirrors onto the section; `PATCH /quotes/:id/sections/:sid/submit`
       (DRAFT→SUBMITTED_TO_LEAD); `…/request-revision` (lead sends back); `GET /quotes/:id/sections`.
 - [ ] **DM-15d** Requirement CRUD + lead dedup (`POST/PATCH/DELETE /quotes/:id/requirements`,

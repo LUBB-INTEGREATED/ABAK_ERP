@@ -370,6 +370,19 @@ export class RfqsService {
         });
         const quoteNumber = nextEntityNumber('QUO', last?.quoteNumber);
 
+        // DM-15c: seed each section's pricer + lead flag from the assignments
+        // the manager already made on this RFQ (the Accept seam writes them
+        // before calling startPricing). Section.departmentId and
+        // RfqAssignment.departmentId share the ServiceCategory id space, so they
+        // join directly. Sections without an assignment yet stay unpriced/null.
+        const assignments = await tx.rfqAssignment.findMany({
+          where: { rfqId: id },
+          select: { departmentId: true, assigneeId: true, isLeadPricer: true },
+        });
+        const assignByDept = new Map(
+          assignments.map((a) => [a.departmentId, a]),
+        );
+
         const quote = await tx.quote.create({
           data: {
             quoteNumber,
@@ -379,10 +392,18 @@ export class RfqsService {
             status: QuoteStatus.DRAFT,
             preparedById: actorId,
             // One section per involved Department (DM-3). Pricers add their line
-            // items + scope text under their section in the builder.
+            // items + scope text under their section in the builder. pricerId /
+            // isLead mirror the assignment (DM-15c).
             departmentSections: categoryIds.length
               ? {
-                  create: categoryIds.map((departmentId) => ({ departmentId })),
+                  create: categoryIds.map((departmentId) => {
+                    const a = assignByDept.get(departmentId);
+                    return {
+                      departmentId,
+                      pricerId: a?.assigneeId ?? undefined,
+                      isLead: a?.isLeadPricer ?? false,
+                    };
+                  }),
                 }
               : undefined,
           },

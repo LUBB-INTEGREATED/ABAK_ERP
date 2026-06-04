@@ -106,7 +106,7 @@ export class RfqAssignmentsService {
         });
       }
       try {
-        return await tx.rfqAssignment.create({
+        const created = await tx.rfqAssignment.create({
           data: {
             rfqId,
             departmentId: dto.departmentId,
@@ -117,6 +117,16 @@ export class RfqAssignmentsService {
             department: { select: { id: true, name: true, nameAr: true } },
           },
         });
+        // DM-15c: keep the linked quote's section pricer/lead in lockstep with
+        // the assignment (no-op until startPricing has minted the quote).
+        await this.syncSectionFromAssignment(
+          tx,
+          rfqId,
+          dto.departmentId,
+          dto.assigneeId,
+          isLeadPricer,
+        );
+        return created;
       } catch (err) {
         // DM-15b (RV2-2): @@unique([rfqId, departmentId]) — re-accepting an RFQ
         // that already has a section assigned is a 409, not an unhandled 500.
@@ -163,13 +173,56 @@ export class RfqAssignmentsService {
       }
       if (dto.notes !== undefined) data.notes = dto.notes;
 
-      return tx.rfqAssignment.update({
+      const updated = await tx.rfqAssignment.update({
         where: { id: assignmentId },
         data,
         include: {
           department: { select: { id: true, name: true, nameAr: true } },
         },
       });
+      // DM-15c: re-assigning a pricer or moving the ⭐ Lead after pricing has
+      // started must re-point the matching quote section too.
+      await this.syncSectionFromAssignment(
+        tx,
+        rfqId,
+        existing.departmentId,
+        dto.assigneeId ?? existing.assigneeId,
+        dto.isLeadPricer ?? existing.isLeadPricer,
+      );
+      return updated;
+    });
+  }
+
+  /**
+   * DM-15c: mirror an RfqAssignment onto its QuoteDepartmentSection once the
+   * RFQ has a linked quote (post-startPricing). Sets the section's pricer and,
+   * for a Lead, enforces the single-lead-per-quote invariant. A no-op while the
+   * RFQ has no quote yet — startPricing seeds the sections from the assignments
+   * at mint time instead. Section.departmentId and RfqAssignment.departmentId
+   * share the ServiceCategory id space, so they join directly.
+   */
+  private async syncSectionFromAssignment(
+    tx: Prisma.TransactionClient,
+    rfqId: string,
+    departmentId: string,
+    pricerId: string,
+    isLead: boolean,
+  ) {
+    const rfq = await tx.rfq.findUnique({
+      where: { id: rfqId },
+      select: { quoteId: true },
+    });
+    if (!rfq?.quoteId) return;
+    const quoteId = rfq.quoteId;
+    if (isLead) {
+      await tx.quoteDepartmentSection.updateMany({
+        where: { quoteId, departmentId: { not: departmentId } },
+        data: { isLead: false },
+      });
+    }
+    await tx.quoteDepartmentSection.updateMany({
+      where: { quoteId, departmentId },
+      data: { pricerId, isLead },
     });
   }
 

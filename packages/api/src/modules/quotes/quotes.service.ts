@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,7 +13,9 @@ import {
   POStatus,
   Prisma,
   ProjectStatus,
+  QuoteSectionStatus,
   QuoteStatus,
+  RfqAssignmentStatus,
   UserRole,
 } from '@prisma/client';
 import { DEFAULT_PHASE_TEMPLATE } from '../projects/phase-template';
@@ -591,6 +594,179 @@ export class QuotesService {
         }`,
         deepLink: `/quotes/${id}`,
         payload: { quoteId: id, quoteNumber: quote.quoteNumber, tier: 1 },
+      });
+    }
+
+    return updated;
+  }
+
+  // ----------------------------------------------------------------
+  // DM-15c — §14 department-section lifecycle (lead-reviewer model)
+  // ----------------------------------------------------------------
+
+  /**
+   * Compile view: every section of a quote with its status, the pricer (resolved
+   * from the scalar pricerId), and the section's line items. Lead first. Scoped
+   * by `quote:view` via findOne.
+   */
+  async listSections(quoteId: string, scopeCtx?: ScopeContext) {
+    await this.findOne(quoteId, scopeCtx); // 404 + quote:view scope guard
+    const sections = await this.prisma.quoteDepartmentSection.findMany({
+      where: { quoteId },
+      include: {
+        department: {
+          select: { id: true, name: true, nameAr: true, order: true },
+        },
+        items: { orderBy: { position: 'asc' } },
+      },
+      orderBy: [{ isLead: 'desc' }, { createdAt: 'asc' }],
+    });
+    const pricerIds = [
+      ...new Set(
+        sections.map((s) => s.pricerId).filter((x): x is string => !!x),
+      ),
+    ];
+    const pricers = pricerIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: pricerIds } },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        })
+      : [];
+    const byId = new Map(pricers.map((p) => [p.id, p]));
+    return sections.map((s) => ({
+      ...s,
+      pricer: s.pricerId ? (byId.get(s.pricerId) ?? null) : null,
+    }));
+  }
+
+  /**
+   * A dept pricer submits their own section to the lead (DRAFT →
+   * SUBMITTED_TO_LEAD). Guards: the caller is the section's pricer, the section
+   * is priced (subtotal > 0), and it is currently DRAFT. Perm `quote:build`.
+   */
+  async submitSection(
+    quoteId: string,
+    sectionId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    const section = await this.prisma.quoteDepartmentSection.findFirst({
+      where: { id: sectionId, quoteId },
+      include: {
+        items: { select: { subtotal: true } },
+        department: { select: { name: true, nameAr: true } },
+      },
+    });
+    if (!section) throw new NotFoundException('Section not found');
+
+    if (
+      scopeCtx?.user &&
+      section.pricerId &&
+      section.pricerId !== scopeCtx.user.id
+    ) {
+      throw new ForbiddenException(
+        'Only the assigned pricer can submit this section',
+      );
+    }
+    if (section.status !== QuoteSectionStatus.DRAFT) {
+      throw new BadRequestException(
+        'Only a DRAFT section can be submitted to the lead',
+      );
+    }
+    const subtotal = section.items.reduce((s, it) => s + it.subtotal, 0);
+    if (subtotal <= 0) {
+      throw new BadRequestException(
+        'Price the section before submitting it to the lead',
+      );
+    }
+
+    return this.prisma.quoteDepartmentSection.update({
+      where: { id: sectionId },
+      data: { status: QuoteSectionStatus.SUBMITTED_TO_LEAD },
+      include: {
+        department: { select: { id: true, name: true, nameAr: true } },
+      },
+    });
+  }
+
+  /**
+   * The lead reviewer sends a co-pricer's submitted section back for revision
+   * (SUBMITTED_TO_LEAD → DRAFT) with a note. Guards: the caller is the LEAD
+   * section's pricer; the target section is currently SUBMITTED_TO_LEAD. The
+   * note is recorded durably on the matching RfqAssignment (existing column,
+   * status → REVISION_REQUESTED) and pushed to the section's pricer. Perm
+   * `quote:build`.
+   */
+  async requestSectionRevision(
+    quoteId: string,
+    sectionId: string,
+    note: string | undefined,
+    scopeCtx?: ScopeContext,
+  ) {
+    const section = await this.prisma.quoteDepartmentSection.findFirst({
+      where: { id: sectionId, quoteId },
+      select: {
+        id: true,
+        status: true,
+        pricerId: true,
+        departmentId: true,
+        isLead: true,
+      },
+    });
+    if (!section) throw new NotFoundException('Section not found');
+
+    if (scopeCtx?.user) {
+      const lead = await this.prisma.quoteDepartmentSection.findFirst({
+        where: { quoteId, isLead: true },
+        select: { pricerId: true },
+      });
+      if (lead?.pricerId && lead.pricerId !== scopeCtx.user.id) {
+        throw new ForbiddenException(
+          'Only the lead reviewer can request a section revision',
+        );
+      }
+    }
+    if (section.isLead) {
+      throw new BadRequestException(
+        'The lead section cannot request a revision on itself',
+      );
+    }
+    if (section.status !== QuoteSectionStatus.SUBMITTED_TO_LEAD) {
+      throw new BadRequestException(
+        'Only a section submitted to the lead can be sent back for revision',
+      );
+    }
+
+    const updated = await this.prisma.quoteDepartmentSection.update({
+      where: { id: sectionId },
+      data: { status: QuoteSectionStatus.DRAFT },
+      include: {
+        department: { select: { id: true, name: true, nameAr: true } },
+      },
+    });
+
+    // Durably record the revision note on the linked RFQ assignment (existing
+    // column — no migration) and notify the section's pricer.
+    const rfq = await this.prisma.rfq.findFirst({
+      where: { quoteId },
+      select: { id: true },
+    });
+    if (rfq) {
+      await this.prisma.rfqAssignment.updateMany({
+        where: { rfqId: rfq.id, departmentId: section.departmentId },
+        data: {
+          status: RfqAssignmentStatus.REVISION_REQUESTED,
+          notes: note ?? null,
+        },
+      });
+    }
+    if (section.pricerId) {
+      void this.notifications.send({
+        recipientId: section.pricerId,
+        eventCode: 'quote.section_revision_requested',
+        subject: 'طلب تعديل على قسمك في عرض السعر',
+        body: note ?? 'يرجى مراجعة القسم وإعادة إرساله للمراجع الرئيسي.',
+        deepLink: `/quotes/${quoteId}`,
+        payload: { quoteId, sectionId },
       });
     }
 
