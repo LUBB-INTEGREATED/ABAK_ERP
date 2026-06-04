@@ -157,7 +157,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       to item DTO + set in create/update, OR derive from departmentId. `dto/index.ts:86`.
 - [x] **RV-18 (P2)** `reroute` doesn't validate the new categories resolve to an active department → RFQ
       returns to SUBMITTED but lands in **no inbox** (orphaned). Validate `DepartmentService` links first. `rfqs.service.ts:519-552`.
-- [ ] **RV-20 (P2)** Raw-file route authorizes by **UUID-as-bearer** only — no ACL/expiry → anyone with the
+- [x] **RV-20 (P2)** Raw-file route authorizes by **UUID-as-bearer** only — no ACL/expiry → anyone with the
       URL fetches client docs forever. Gate sensitive assets behind auth or signed URLs. `files.controller.ts:114-127`.
 - [ ] **RV-21 (P2)** tafqit: "two hundred" before a scale word not in idāfa → emits `مئتان ألف` instead of
       `مئتا ألف` (200k–299k / 200M wrong). Drop the nun in construct state. `amount-in-words.ts:163`.

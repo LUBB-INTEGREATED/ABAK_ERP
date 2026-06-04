@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -7,6 +12,12 @@ import {
   STORAGE_PROVIDER,
   type StorageProvider,
 } from './storage/storage.provider';
+
+/**
+ * RV-20: assets owned by these resources are confidential and must not be
+ * served over the @Public raw capability URL.
+ */
+const SENSITIVE_OWNER_RESOURCES = ['client', 'quote', 'rfq'];
 
 export interface RegisterFileInput {
   url: string;
@@ -86,9 +97,21 @@ export class FilesService {
   }
 
   /** Resolve a stored asset + open its byte stream for the raw-serve route. */
-  async openStored(id: string) {
+  async openStored(id: string, opts: { allowSensitive?: boolean } = {}) {
     if (!SAFE_STORAGE_KEY.test(id)) throw new NotFoundException();
     const asset = await this.findOne(id);
+    // RV-20: confidential assets (client docs, quote PDFs, RFQ attachments) are
+    // not served over the @Public capability URL — the unguessable id is no
+    // longer a permanent public bearer for them; they need an authed route.
+    if (
+      !opts.allowSensitive &&
+      asset.ownerResource &&
+      SENSITIVE_OWNER_RESOURCES.includes(asset.ownerResource)
+    ) {
+      throw new ForbiddenException(
+        'This file is private and requires authentication',
+      );
+    }
     if (!(await this.storage.exists(id))) {
       // Registered-by-URL assets have no stored bytes.
       throw new NotFoundException();

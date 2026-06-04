@@ -123,10 +123,31 @@ export class FilesController {
   @Get(':id/raw')
   @ApiOperation({
     summary:
-      'Serve the raw bytes of an uploaded file by id (public capability URL — the id is an unguessable token).',
+      'Serve the raw bytes of a NON-sensitive file by id (public capability URL). client/quote/rfq assets are refused here — use the authenticated download route.',
   })
   async raw(@Param('id') id: string): Promise<StreamableFile> {
+    // RV-20: public route refuses sensitive (client/quote/rfq) assets.
     const { asset, stream } = await this.service.openStored(id);
+    return new StreamableFile(stream, {
+      type: asset.mimeType,
+      disposition: `inline; filename="${encodeURIComponent(asset.originalName)}"`,
+      length: asset.sizeBytes,
+    });
+  }
+
+  @Get(':id/download')
+  @ApiOperation({
+    summary:
+      'Download any file (authenticated). Serves private client/quote/rfq assets the public raw route refuses.',
+  })
+  // TODO(spec): add a per-resource ACL (owner/department) once the owning
+  // surfaces wire FileAsset.ownerResourceId; today this requires a valid JWT
+  // (global JwtAuthGuard) but not a per-asset permission. Signed short-lived
+  // URLs are the longer-term fix (RV-20).
+  async download(@Param('id') id: string): Promise<StreamableFile> {
+    const { asset, stream } = await this.service.openStored(id, {
+      allowSensitive: true,
+    });
     return new StreamableFile(stream, {
       type: asset.mimeType,
       disposition: `inline; filename="${encodeURIComponent(asset.originalName)}"`,
