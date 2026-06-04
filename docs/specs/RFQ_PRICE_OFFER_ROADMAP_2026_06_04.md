@@ -143,7 +143,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 
 ### Group B — P2 correctness / security (same pass)
 
-- [ ] **RV-5 (P2)** `startPricing` TOCTOU: two concurrent calls both read `quoteId=null` outside the tx →
+- [x] **RV-5 (P2)** `startPricing` TOCTOU: two concurrent calls both read `quoteId=null` outside the tx →
       two quotes, last-writer-wins repoint **orphans** the first. `@unique` does NOT catch it (same row,
       distinct values). `updateMany({where:{id,quoteId:null}})` + `count===0 → ConflictException`. `rfqs.service.ts:300-372`.
 - [ ] **RV-7 (P2)** `cancel()` can flip a **WON** deal's RFQ to CANCELLED (rfq.status stays PRICING after

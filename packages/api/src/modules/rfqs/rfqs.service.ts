@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -338,37 +339,74 @@ export class RfqsService {
     });
     const categoryIds = rfq.requestedCategoryIds ?? [];
 
-    return this.prisma.$transaction(async (tx) => {
-      const last = await tx.quote.findFirst({
-        orderBy: { createdAt: 'desc' },
-        select: { quoteNumber: true },
-      });
-      const quoteNumber = nextEntityNumber('QUO', last?.quoteNumber);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const last = await tx.quote.findFirst({
+          orderBy: { createdAt: 'desc' },
+          select: { quoteNumber: true },
+        });
+        const quoteNumber = nextEntityNumber('QUO', last?.quoteNumber);
 
-      const quote = await tx.quote.create({
-        data: {
-          quoteNumber,
-          clientId: rfq.clientId,
-          leadId: opp?.leadId ?? undefined,
-          title: `عرض سعر — ${rfq.rfqNumber}`,
-          status: QuoteStatus.DRAFT,
-          preparedById: actorId,
-          // One section per involved Department (DM-3). Pricers add their line
-          // items + scope text under their section in the builder.
-          departmentSections: categoryIds.length
-            ? { create: categoryIds.map((departmentId) => ({ departmentId })) }
-            : undefined,
-        },
-        select: { id: true, quoteNumber: true },
-      });
+        const quote = await tx.quote.create({
+          data: {
+            quoteNumber,
+            clientId: rfq.clientId,
+            leadId: opp?.leadId ?? undefined,
+            title: `عرض سعر — ${rfq.rfqNumber}`,
+            status: QuoteStatus.DRAFT,
+            preparedById: actorId,
+            // One section per involved Department (DM-3). Pricers add their line
+            // items + scope text under their section in the builder.
+            departmentSections: categoryIds.length
+              ? {
+                  create: categoryIds.map((departmentId) => ({ departmentId })),
+                }
+              : undefined,
+          },
+          select: { id: true, quoteNumber: true },
+        });
 
-      await tx.rfq.update({
-        where: { id },
-        data: { quoteId: quote.id, status: RfqStatus.PRICING },
-      });
+        // RV-5: link conditionally on quoteId still being null. The findUnique
+        // idempotency guard above runs OUTSIDE this tx, so two concurrent calls
+        // can both reach here; the @unique on rfq.quoteId does NOT catch a
+        // same-row write-write race. updateMany with the quoteId:null predicate
+        // makes exactly one writer win; the loser's count is 0 → it throws and
+        // rolls back, discarding its just-created quote + sections.
+        const linked = await tx.rfq.updateMany({
+          where: { id, quoteId: null },
+          data: { quoteId: quote.id, status: RfqStatus.PRICING },
+        });
+        if (linked.count === 0) {
+          throw new ConflictException('RFQ pricing already started');
+        }
 
-      return { quoteId: quote.id, quoteNumber: quote.quoteNumber };
-    });
+        return { quoteId: quote.id, quoteNumber: quote.quoteNumber };
+      });
+    } catch (err) {
+      // RV-5: the loser of the race returns the winner's quote (idempotent),
+      // not an error — startPricing is a "join the in-flight quote" operation.
+      // Two signals can mark the loser: our own ConflictException (the
+      // quoteId-null link guard), or a P2002 on the same-quoteNumber create
+      // (both txns derive the same number from an uncommitted `last`).
+      const lostRace =
+        err instanceof ConflictException ||
+        (err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002');
+      if (lostRace) {
+        const winner = await this.prisma.rfq.findUnique({
+          where: { id },
+          select: { quoteId: true },
+        });
+        if (winner?.quoteId) {
+          const q = await this.prisma.quote.findUnique({
+            where: { id: winner.quoteId },
+            select: { id: true, quoteNumber: true },
+          });
+          if (q) return { quoteId: q.id, quoteNumber: q.quoteNumber };
+        }
+      }
+      throw err;
+    }
   }
 
   async stats() {
