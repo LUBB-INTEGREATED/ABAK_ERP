@@ -195,9 +195,11 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       _Done 2026-06-04 — `/rfqs` rebuilt: urgency bands (reroute/quote-ready/asks/sent/inflight/closed)
       from `displayStatus` + `openAskCount`, "Needs you · N" chip (bands 1-3), segmented
       [Needs me][In progress][Sent][Closed][All], waiting-on column, `<RequestPhaseBadge>`, `<DataState>`
-      (loading/first-run/filtered/caught-up/error). **Verified live in AR/RTL** (phase badges + waiting-on
-      render). NB: derived status never emits ASSIGNED (collapses → SUBMITTED), so the §0 "With pricing
-      team" phase label is unused; stacked cards used for desktop too (mobile-first)._
+      (loading/first-run/filtered/caught-up/error). Responsive: stacked cards <1024px + 6-col table ≥1024px
+      (§1.5/§1.6) — **both verified live in AR/RTL**. Per owner ruling: ASSIGNED phase dropped (the seam is
+      atomic accept+assign=startPricing, so ASSIGNED is zero-duration); §0's two rows merged into one
+      PRICING phase with the warm "مع فريق التسعير / with the pricing team" framing; badge stays
+      ASSIGNED-tolerant but no UI is built around it._
 - [ ] **SALES-2** Tracker: strip the 5-tab board to a single-scroll tracker (timeline → asks →
       summary → quote). Delete Team tab + assign/prep/submit/dispatch controls.
 - [ ] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit

@@ -231,61 +231,137 @@ function RfqRows({ rows, locale }: { rows: RfqListItem[]; locale: string }) {
     }
   }
 
+  const COLS = 'grid-cols-[7rem_1.4fr_1.2fr_auto_1fr_5rem]';
+
   return (
-    <ul className="space-y-2">
-      {rows.map((r) => {
-        const band = bandOf(r);
-        const w = waitingOn(band, r);
-        return (
-          <li key={r.id}>
+    <>
+      {/* Desktop table (≥1024px) — the wide-screen triage surface (§1.5). */}
+      <div className="hidden overflow-hidden rounded-lg border lg:block">
+        <div
+          className={cn(
+            'grid items-center gap-x-4 border-b bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground',
+            COLS,
+          )}
+        >
+          <span>{t('col.ref')}</span>
+          <span>{t('col.client')}</span>
+          <span>{t('col.scope')}</span>
+          <span>{t('col.phase')}</span>
+          <span>{t('col.waitingOn')}</span>
+          <span className="text-end">{t('col.updated')}</span>
+        </div>
+        {rows.map((r) => {
+          const band = bandOf(r);
+          const w = waitingOn(band, r);
+          return (
             <Link
+              key={r.id}
               href={`/rfqs/${r.id}`}
               className={cn(
-                'flex items-start gap-3 rounded-lg border border-s-[3px] bg-card p-3 transition hover:bg-muted/40',
+                'grid items-center gap-x-4 border-b border-s-[3px] px-4 py-3 text-sm transition last:border-b-0 hover:bg-muted/40',
+                COLS,
                 BAND_BORDER[band],
                 band === 'closed' && 'opacity-60',
               )}
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-medium" dir="ltr">
-                    {r.rfqNumber}
-                  </span>
-                  {r.quote?.quoteNumber && (
-                    <span
-                      className="font-mono text-xs text-muted-foreground"
-                      dir="ltr"
-                    >
-                      {r.quote.quoteNumber}
-                    </span>
-                  )}
-                  <RequestPhaseBadge status={r.displayStatus} />
-                </div>
-                <p className="mt-1 truncate text-sm font-medium">
-                  {r.client?.companyName ?? r.client?.contactName ?? '—'}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {r.serviceType}
-                </p>
-                <div
-                  className={cn(
-                    'mt-2 inline-flex rounded-md px-2 py-1 text-xs',
-                    w.you
-                      ? 'bg-amber-100 font-semibold text-amber-900'
-                      : 'text-muted-foreground',
-                  )}
+              <span className="min-w-0">
+                <span
+                  className="block truncate font-mono font-medium"
+                  dir="ltr"
                 >
-                  {w.you && <span className="me-1">⚠</span>}
-                  {w.text}
-                </div>
-              </div>
-              <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                  {r.rfqNumber}
+                </span>
+                {r.quote?.quoteNumber && (
+                  <span
+                    className="block truncate font-mono text-xs text-muted-foreground"
+                    dir="ltr"
+                  >
+                    {r.quote.quoteNumber}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 truncate font-medium">
+                {r.client?.companyName ?? r.client?.contactName ?? '—'}
+              </span>
+              <span className="min-w-0 truncate text-muted-foreground">
+                {r.serviceType}
+              </span>
+              <span>
+                <RequestPhaseBadge status={r.displayStatus} />
+              </span>
+              <span
+                className={cn(
+                  'min-w-0 truncate',
+                  w.you && 'font-semibold text-amber-900',
+                )}
+              >
+                {w.you && <span className="me-1">⚠</span>}
+                {w.text}
+              </span>
+              <span className="text-end text-xs text-muted-foreground">
                 {relativeTime(r.createdAt, locale)}
               </span>
             </Link>
-          </li>
-        );
-      })}
-    </ul>
+          );
+        })}
+      </div>
+
+      {/* Mobile stacked cards (<1024px) — the rep's primary device (§1.6). */}
+      <ul className="space-y-2 lg:hidden">
+        {rows.map((r) => {
+          const band = bandOf(r);
+          const w = waitingOn(band, r);
+          return (
+            <li key={r.id}>
+              <Link
+                href={`/rfqs/${r.id}`}
+                className={cn(
+                  'flex items-start gap-3 rounded-lg border border-s-[3px] bg-card p-3 transition hover:bg-muted/40',
+                  BAND_BORDER[band],
+                  band === 'closed' && 'opacity-60',
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm font-medium" dir="ltr">
+                      {r.rfqNumber}
+                    </span>
+                    {r.quote?.quoteNumber && (
+                      <span
+                        className="font-mono text-xs text-muted-foreground"
+                        dir="ltr"
+                      >
+                        {r.quote.quoteNumber}
+                      </span>
+                    )}
+                    <RequestPhaseBadge status={r.displayStatus} />
+                  </div>
+                  <p className="mt-1 truncate text-sm font-medium">
+                    {r.client?.companyName ?? r.client?.contactName ?? '—'}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {r.serviceType}
+                  </p>
+                  <div
+                    className={cn(
+                      'mt-2 inline-flex rounded-md px-2 py-1 text-xs',
+                      w.you
+                        ? 'bg-amber-100 font-semibold text-amber-900'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {w.you && <span className="me-1">⚠</span>}
+                    {w.text}
+                  </div>
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                  {relativeTime(r.createdAt, locale)}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

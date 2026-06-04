@@ -710,7 +710,7 @@
     "phase": {
       "SUBMITTED": "Submitted",
       "ASSIGNED": "With pricing team",
-      "PRICING": "Pricing in progress",
+      "PRICING": "With the pricing team",
       "IN_APPROVAL": "In approval",
       "QUOTE_READY": "Quote ready",
       "SENT": "Sent to client",
