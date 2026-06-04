@@ -51,10 +51,12 @@ export function QuotationsShell() {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<View | null>(null);
 
-  // RV2-6 / spec §1.2: the Board is the department surface. Only managers
-  // (rfq:assign_pricers) get it; a sales rep who reaches /quotes (they hold
-  // quote:view) sees the flat List only — never the pipeline.
-  const canBoard = can('rfq:assign_pricers');
+  // RV2-6 + §6.2: the Board is the DEPARTMENT surface — managers (who triage +
+  // assign) AND pricers (who price + submit their section) both work it. Gate it
+  // to department roles (rfq:assign_pricers OR rfq:price_section); a sales rep /
+  // sales manager (neither) sees the flat List only. The Accept/Decline + submit
+  // controls inside the board stay separately permission-gated.
+  const canBoard = can('rfq:assign_pricers') || can('rfq:price_section');
 
   // Default view by role on first mount; then user toggle wins (persisted).
   useEffect(() => {

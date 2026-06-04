@@ -217,7 +217,12 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **QP-3** `<AcceptAssignSheet>` (the seam): per-Department rows, one ⭐ Lead, confirm → DM-4.
       Handle the accept-race (P2): if quoteId set between open & confirm, tell manager B.
 - [x] **QP-4** `<DeclineRfqDialog>` (wrong-dept → suggest re-route; no-bid → reason) → DM-5.
-- [ ] **QP-5** Pricing column + `<DraftQuoteCard>` + section progress ("2/3 sections submitted").
+- [x] **QP-5** Pricing column + `<DraftQuoteCard>` + section progress ("2/3 sections submitted"),
+      per-section pricer + status, per-section [Submit to lead] (pricer-only, disabled when subtotal=0).
+      Board now admits pricers (rfq:price_section), not just managers. Quote read-scope broadened so a
+      section pricer sees the quotes they price. Verified live as hashim@ (submit → SUBMITTED_TO_LEAD).
+- [ ] **QP-5b** Pre-linked builder edit-mode at `/quotes/[id]/build` (locked client + per-dept locked
+      sections). SPLIT from QP-5 — large new route; `[Open builder]` links to `/quotes/[id]` meanwhile.
 - [ ] **QP-6** **Lead Reviewer compile view** (split spec §14): all sections side by side, dedup shared
       requirements/notes, request-revision a section, submit gate (all sections SUBMITTED_TO_LEAD).
 - [ ] **QP-7** Re-site the raise doc/site-visit panel into Pricing (now `PENDING`-correct after BUG-1).

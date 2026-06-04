@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
-import type { Quote, QuoteStatus } from '@/lib/types/quote';
+import type { Quote, QuoteSection, QuoteStatus } from '@/lib/types/quote';
 
 type ApiEnvelope<T> = { data: T; timestamp: string };
 type Paginated<T> = {
@@ -87,6 +87,42 @@ export function useSubmitQuote(id: string) {
       return data.data;
     },
     onSuccess: () => invalidate(qc, id),
+  });
+}
+
+// DM-15c §14 — per-department sections (compile view + section lifecycle).
+export function useQuoteSections(id: string | undefined) {
+  return useQuery({
+    queryKey: ['quotes', id, 'sections'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<ApiEnvelope<QuoteSection[]>>(
+        `/quotes/${id}/sections`,
+      );
+      return data.data;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+function invalidateSections(
+  qc: ReturnType<typeof useQueryClient>,
+  quoteId: string,
+) {
+  qc.invalidateQueries({ queryKey: ['quotes', quoteId, 'sections'] });
+  invalidate(qc, quoteId);
+}
+
+// A dept pricer submits their own section to the lead (DRAFT → SUBMITTED_TO_LEAD).
+export function useSubmitSection(quoteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (sectionId: string) => {
+      const { data } = await apiClient.patch<ApiEnvelope<QuoteSection>>(
+        `/quotes/${quoteId}/sections/${sectionId}/submit`,
+      );
+      return data.data;
+    },
+    onSuccess: () => invalidateSections(qc, quoteId),
   });
 }
 

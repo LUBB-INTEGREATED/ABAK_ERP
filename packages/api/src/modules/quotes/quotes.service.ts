@@ -24,11 +24,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import {
-  assertOwnership,
-  ownerScopeFilter,
-  type ScopeContext,
-} from '../auth/scope.util';
+import { isUnrestricted, type ScopeContext } from '../auth/scope.util';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import type {
   AcceptRejectQuoteDto,
@@ -224,12 +220,28 @@ export class QuotesService {
     });
   }
 
+  /**
+   * Row-level quote scope for a non-ALL viewer: a quote is visible if they
+   * prepared it OR they price one of its department sections (§14 — a pricer
+   * must see the quotes they work, not only ones they authored). ALL/absent
+   * scope is unrestricted. Returns null when no filter is needed.
+   */
+  private quoteScopeOr(scopeCtx?: ScopeContext): Prisma.QuoteWhereInput | null {
+    if (isUnrestricted(scopeCtx)) return null;
+    const uid = scopeCtx!.user.id;
+    return {
+      OR: [
+        { preparedById: uid },
+        { departmentSections: { some: { pricerId: uid } } },
+      ],
+    };
+  }
+
   async findAll(filter: QuoteFilterDto, scopeCtx?: ScopeContext) {
     const where: Prisma.QuoteWhereInput = { deletedAt: null };
-    // Row-level scope: non-ALL viewers see only quotes they prepared.
-    const quoteScope = ownerScopeFilter(scopeCtx, 'preparedById');
-    if (Object.keys(quoteScope).length) {
-      where.AND = [quoteScope as Prisma.QuoteWhereInput];
+    const quoteScope = this.quoteScopeOr(scopeCtx);
+    if (quoteScope) {
+      where.AND = [quoteScope];
     }
     if (filter.status) where.status = filter.status;
     if (filter.clientId) where.clientId = filter.clientId;
@@ -286,7 +298,19 @@ export class QuotesService {
       include: QUOTE_INCLUDE,
     });
     if (!quote) throw new NotFoundException('Quote not found');
-    assertOwnership(scopeCtx, quote, 'preparedById');
+    // Object-level companion to quoteScopeOr: a non-ALL viewer may read a quote
+    // they prepared OR price a section of (§14). Mutations stay separately
+    // gated (perms + DRAFT + the §14 submit/lead checks).
+    if (!isUnrestricted(scopeCtx)) {
+      const uid = scopeCtx!.user.id;
+      const isPreparer = quote.preparedById === uid;
+      const isPricer = quote.departmentSections.some((s) => s.pricerId === uid);
+      if (!isPreparer && !isPricer) {
+        throw new ForbiddenException(
+          'You do not have permission to access this resource',
+        );
+      }
+    }
     return quote;
   }
 

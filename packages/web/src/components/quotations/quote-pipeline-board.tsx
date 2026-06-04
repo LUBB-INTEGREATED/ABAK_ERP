@@ -15,6 +15,7 @@ import { ListSkeleton } from '@/components/ui/skeleton-layouts';
 import { cn } from '@/lib/utils';
 import { AcceptAssignSheet } from './accept-assign-sheet';
 import { DeclineRfqDialog } from './decline-rfq-dialog';
+import { DraftQuoteCard } from './draft-quote-card';
 
 // QP-1/2/10 — the department pipeline board. Five fixed columns; RTL flow puts
 // Incoming at the reading start (right). Incoming is sourced from the thin RFQ
@@ -202,9 +203,17 @@ export function QuotePipelineBoard({ search }: { search: string }) {
               ) : counts[col] === 0 ? (
                 <ColumnEmpty text={t(`empty.${col}`)} />
               ) : (
-                byColumn[col].map((quote) => (
-                  <QuoteCard key={quote.id} quote={quote} locale={locale} />
-                ))
+                byColumn[col].map((quote) =>
+                  col === 'pricing' ? (
+                    <DraftQuoteCard
+                      key={quote.id}
+                      quote={quote}
+                      locale={locale}
+                    />
+                  ) : (
+                    <QuoteCard key={quote.id} quote={quote} locale={locale} />
+                  ),
+                )
               )}
             </div>
           </section>

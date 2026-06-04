@@ -1772,6 +1772,18 @@
         "closed": "لا شيء مُغلق بعد."
       }
     },
+    "pricing": {
+      "openBuilder": "فتح المُنشئ",
+      "progress": "{done}/{total} مُرسَل",
+      "progressTitle": "الأقسام المُرسَلة للمراجع الرئيسي",
+      "submitToLead": "إرسال للرئيسي",
+      "statusDraft": "مسودّة",
+      "statusSubmitted": "مُرسَل",
+      "noPricer": "غير مُعيّن",
+      "unpricedHint": "أضف بندًا مُسعّرًا قبل الإرسال",
+      "submitToast": "تم إرسال القسم للمراجع الرئيسي.",
+      "submitFailed": "تعذّر إرسال القسم."
+    },
     "accept": {
       "title": "قبول الطلب وتعيين المُسعّرين",
       "consequence": "سيتم إنشاء مسودّة عرض سعر (QUO) جديدة عند التأكيد.",

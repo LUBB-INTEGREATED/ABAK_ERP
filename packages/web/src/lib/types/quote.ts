@@ -119,6 +119,49 @@ export type PurchaseOrderRef = {
   poDate: string;
 };
 
+// DM-15c §14 — per-department section (lead-reviewer model).
+export type QuoteSectionStatus = 'DRAFT' | 'SUBMITTED_TO_LEAD';
+
+export type QuoteSectionPricer = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+} | null;
+
+export type QuoteSection = {
+  id: string;
+  quoteId: string;
+  departmentId: string;
+  isLead: boolean;
+  pricerId: string | null;
+  status: QuoteSectionStatus;
+  scopeTextAr: string | null;
+  scopeTextEn: string | null;
+  pricingModel: 'LUMP_SUM' | 'PER_VISIT' | 'PER_UNIT';
+  department: {
+    id: string;
+    name: string;
+    nameAr: string | null;
+    order: number;
+  } | null;
+  items: QuoteItem[];
+  pricer: QuoteSectionPricer;
+};
+
+// DM-15d §14 — quote requirement / note (flat v1 list).
+export type QuoteRequirementType = 'DOCUMENT' | 'NOTE';
+
+export type QuoteRequirement = {
+  id: string;
+  quoteId: string;
+  type: QuoteRequirementType;
+  text: string;
+  isShared: boolean;
+  dedupedFromIds: string[];
+  position: number;
+};
+
 export type Quote = {
   id: string;
   quoteNumber: string;

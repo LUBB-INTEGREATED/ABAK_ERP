@@ -1772,6 +1772,18 @@
         "closed": "Nothing closed yet."
       }
     },
+    "pricing": {
+      "openBuilder": "Open builder",
+      "progress": "{done}/{total} submitted",
+      "progressTitle": "Sections submitted to the lead",
+      "submitToLead": "Submit to lead",
+      "statusDraft": "Draft",
+      "statusSubmitted": "Submitted",
+      "noPricer": "Unassigned",
+      "unpricedHint": "Add a priced line before submitting",
+      "submitToast": "Section submitted to the lead.",
+      "submitFailed": "Couldn't submit the section."
+    },
     "accept": {
       "title": "Accept request & assign pricers",
       "consequence": "A new draft quote (QUO) will be created on confirm.",
