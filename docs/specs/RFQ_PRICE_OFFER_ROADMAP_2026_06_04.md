@@ -161,7 +161,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       URL fetches client docs forever. Gate sensitive assets behind auth or signed URLs. `files.controller.ts:114-127`.
 - [x] **RV-21 (P2)** tafqit: "two hundred" before a scale word not in idāfa → emits `مئتان ألف` instead of
       `مئتا ألف` (200k–299k / 200M wrong). Drop the nun in construct state. `amount-in-words.ts:163`.
-- [ ] **RV-12 (P2)** DM-1 migration is semantically lossy (6 legacy states → PRICING, outcome discarded).
+- [x] **RV-12 (P2)** DM-1 migration is semantically lossy (6 legacy states → PRICING, outcome discarded).
       No-op on this empty DB; **for any populated env** add a one-off reconciliation migration advancing
       `quote.status` from the preserved deprecated columns. `migrations/...dm1_thin_rfq_status`.
 - [ ] **RV-8 (P2)** _Covered by EPIC 2/3._ Web `rfqs/[id]` still wires REMOVED endpoints (assign-coordinator/
