@@ -496,6 +496,33 @@ export class QuotesService {
           `These department sections are not yet priced: ${names.join('، ')}`,
         );
       }
+
+      // §14 (DM-15e): the lead-reviewer compile gate. Every section must be
+      // submitted to the lead, and only the lead section's pricer may fire the
+      // submit. (Checked after the priced check so an unpriced section still
+      // surfaces the more specific "not yet priced" message. A single-section
+      // quote's one section is the lead — the normal path.)
+      const notSubmitted = quote.departmentSections.filter(
+        (s) => s.status !== QuoteSectionStatus.SUBMITTED_TO_LEAD,
+      );
+      if (notSubmitted.length) {
+        const names = notSubmitted.map(
+          (s) => s.department?.nameAr ?? s.department?.name ?? s.departmentId,
+        );
+        throw new BadRequestException(
+          `These sections haven't been submitted to the lead yet: ${names.join('، ')}`,
+        );
+      }
+      const leadSection = quote.departmentSections.find((s) => s.isLead);
+      if (
+        leadSection?.pricerId &&
+        scopeCtx?.user &&
+        leadSection.pricerId !== scopeCtx.user.id
+      ) {
+        throw new ForbiddenException(
+          'Only the lead reviewer can submit the offer for approval.',
+        );
+      }
     }
 
     if (quote.paymentMilestones.length > 0) {

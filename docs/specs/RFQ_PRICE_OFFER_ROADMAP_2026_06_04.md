@@ -238,7 +238,7 @@ across the API. See `EPIC23_REVIEW.md` (RV2-1/RV2-2 are the flagged blockers).
       (DRAFT→SUBMITTED_TO_LEAD); `…/request-revision` (lead sends back); `GET /quotes/:id/sections`.
 - [x] **DM-15d** Requirement CRUD + lead dedup (`POST/PATCH/DELETE /quotes/:id/requirements`,
       `POST …/requirements/dedup`). Quote-level flat list for v1 (no `sectionId` — would be a migration).
-- [ ] **DM-15e** §14 submit-gate in `submit()`: every section `SUBMITTED_TO_LEAD` + only the lead pricer submits.
+- [x] **DM-15e** §14 submit-gate in `submit()`: every section `SUBMITTED_TO_LEAD` + only the lead pricer submits.
 
 ---
 
