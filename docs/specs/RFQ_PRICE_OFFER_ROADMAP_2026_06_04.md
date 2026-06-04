@@ -152,7 +152,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       commission can be approved + PAID for SAR 0. Compute on accrual or wire to validated PO payments. `quotes.service.ts:800-806`.
 - [x] **RV-13 (P2)** `revise()` concurrency: parent status checked outside the tx → duplicate version N+1
       quotes, orphaned loser. Conditional `updateMany({where:{id,status:{in:REVISABLE}}})` flip. `quotes.service.ts:953-1112`.
-- [ ] **RV-16 (P2)** No write path sets `QuoteItem.sectionId` (item DTOs accept only `departmentId`) → all
+- [x] **RV-16 (P2)** No write path sets `QuoteItem.sectionId` (item DTOs accept only `departmentId`) → all
       items `sectionId=null`; revise()'s section remap operates on data the app can't produce. Add sectionId
       to item DTO + set in create/update, OR derive from departmentId. `dto/index.ts:86`.
 - [ ] **RV-18 (P2)** `reroute` doesn't validate the new categories resolve to an active department → RFQ

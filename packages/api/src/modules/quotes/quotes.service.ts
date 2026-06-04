@@ -130,7 +130,7 @@ export class QuotesService {
       taxRate: dto.taxRate ?? 15,
     });
 
-    return this.prisma.quote.create({
+    const created = await this.prisma.quote.create({
       data: {
         quoteNumber,
         clientId: dto.clientId,
@@ -208,6 +208,14 @@ export class QuotesService {
           })),
         },
       },
+      include: QUOTE_INCLUDE,
+    });
+    // RV-16: group the created items under (auto-created) department sections.
+    await this.prisma.$transaction((tx) =>
+      this.syncItemSections(tx, created.id),
+    );
+    return this.prisma.quote.findUniqueOrThrow({
+      where: { id: created.id },
       include: QUOTE_INCLUDE,
     });
   }
@@ -381,12 +389,69 @@ export class QuotesService {
         };
       }
 
-      return tx.quote.update({
+      const updated = await tx.quote.update({
         where: { id },
         data,
         include: QUOTE_INCLUDE,
       });
+      // RV-16: group the (re)created items under their department sections.
+      if (items !== undefined) {
+        await this.syncItemSections(tx, id);
+        return tx.quote.findUniqueOrThrow({
+          where: { id },
+          include: QUOTE_INCLUDE,
+        });
+      }
+      return updated;
     });
+  }
+
+  /**
+   * RV-16: derive QuoteItem.sectionId from departmentId. No item input DTO sets
+   * sectionId, so priced items would never group under their
+   * QuoteDepartmentSection (the §14 lead-reviewer model) — every item stayed
+   * sectionId=null and revise()'s remap operated on data the app couldn't
+   * produce. Ensure a section exists per distinct item departmentId and point
+   * each item at it. Idempotent; a no-op for section-less manual quotes.
+   */
+  private async syncItemSections(
+    tx: Prisma.TransactionClient,
+    quoteId: string,
+  ): Promise<void> {
+    const items = await tx.quoteItem.findMany({
+      where: { quoteId, departmentId: { not: null } },
+      select: { id: true, departmentId: true, sectionId: true },
+    });
+    if (!items.length) return;
+    const deptIds = [
+      ...new Set(
+        items.map((i) => i.departmentId).filter((d): d is string => Boolean(d)),
+      ),
+    ];
+    const existing = await tx.quoteDepartmentSection.findMany({
+      where: { quoteId, departmentId: { in: deptIds } },
+      select: { id: true, departmentId: true },
+    });
+    const sectionByDept = new Map(existing.map((s) => [s.departmentId, s.id]));
+    for (const deptId of deptIds) {
+      if (!sectionByDept.has(deptId)) {
+        const created = await tx.quoteDepartmentSection.create({
+          data: { quoteId, departmentId: deptId },
+        });
+        sectionByDept.set(deptId, created.id);
+      }
+    }
+    for (const item of items) {
+      const sectionId = item.departmentId
+        ? sectionByDept.get(item.departmentId)
+        : undefined;
+      if (sectionId && item.sectionId !== sectionId) {
+        await tx.quoteItem.update({
+          where: { id: item.id },
+          data: { sectionId },
+        });
+      }
+    }
   }
 
   async submit(id: string, dto: SubmitQuoteDto, scopeCtx?: ScopeContext) {

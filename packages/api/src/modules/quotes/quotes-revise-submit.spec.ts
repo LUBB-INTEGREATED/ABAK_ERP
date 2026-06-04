@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
-import type { SubmitQuoteDto } from './dto';
+import type { CreateQuoteDto, SubmitQuoteDto } from './dto';
 
 // DM-8 / DM-9 regression tests. Runs against the live dev Postgres (DATABASE_URL
 // via --env-file). Instantiates QuotesService directly with a real Prisma client
@@ -169,6 +169,40 @@ test('DM-8: revise() repoints rfq.quoteId to the new version and sections surviv
   assert.equal(next.exclusions, 'Soil testing');
   assert.equal(next.assumptions, 'Existing as-built is accurate');
   assert.equal(next.numberOfRevisions, 2);
+});
+
+test('RV-16: a created item is grouped under its department section', async () => {
+  const clientId = await seedClient();
+  const [departmentId] = await departmentIds();
+
+  const created = await service.create(
+    {
+      clientId,
+      title: 'Section grouping',
+      items: [{ description: 'L1', quantity: 1, unitPrice: 100, departmentId }],
+    } as unknown as CreateQuoteDto,
+    undefined,
+  );
+  trash.quoteIds.push(created.id);
+
+  const item = await prisma.quoteItem.findFirst({
+    where: { quoteId: created.id },
+    select: { sectionId: true, departmentId: true },
+  });
+  assert.ok(
+    item?.sectionId,
+    'item received a sectionId (derived from departmentId)',
+  );
+  const section = await prisma.quoteDepartmentSection.findUnique({
+    where: { id: item.sectionId! },
+    select: { quoteId: true, departmentId: true },
+  });
+  assert.equal(section?.quoteId, created.id, 'section belongs to the quote');
+  assert.equal(
+    section?.departmentId,
+    departmentId,
+    'section is for the item department',
+  );
 });
 
 test('RV-13: concurrent revise() mints exactly one revision; the loser is rejected', async () => {
