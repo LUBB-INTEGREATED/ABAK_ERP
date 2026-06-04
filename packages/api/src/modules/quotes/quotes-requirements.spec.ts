@@ -167,6 +167,44 @@ test('DM-15d: only the lead reviewer can dedup', async () => {
   );
 });
 
+test('RV3-7: requirements are immutable once the quote leaves DRAFT', async () => {
+  const quoteId = await seedQuote();
+  const r = await service.addRequirement(quoteId, { text: 'while draft' });
+  await prisma.quote.update({
+    where: { id: quoteId },
+    data: { status: QuoteStatus.SENT },
+  });
+
+  await assert.rejects(
+    () => service.addRequirement(quoteId, { text: 'too late' }),
+    /DRAFT/,
+    'cannot add a requirement to a SENT quote',
+  );
+  await assert.rejects(
+    () => service.updateRequirement(quoteId, r.id, { text: 'edit' }),
+    /DRAFT/,
+    'cannot edit a requirement on a SENT quote',
+  );
+  await assert.rejects(
+    () => service.deleteRequirement(quoteId, r.id),
+    /DRAFT/,
+    'cannot delete a requirement on a SENT quote',
+  );
+});
+
+test('RV3-9: requirements on a soft-deleted quote are immutable', async () => {
+  const quoteId = await seedQuote();
+  await prisma.quote.update({
+    where: { id: quoteId },
+    data: { deletedAt: new Date() },
+  });
+  await assert.rejects(
+    () => service.addRequirement(quoteId, { text: 'zombie' }),
+    /not found/i,
+    'a soft-deleted quote rejects requirement mutations',
+  );
+});
+
 test('RV3-6: dedup is refused when the quote has no lead section', async () => {
   const quoteId = await seedQuote(); // no department sections at all
   const intruder = await seedUser('intruder');

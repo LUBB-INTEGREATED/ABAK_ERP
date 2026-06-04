@@ -811,12 +811,24 @@ export class QuotesService {
   // DM-15d — quote requirements / notes + lead dedup (§14, v1 flat list)
   // ----------------------------------------------------------------
 
-  private async assertQuoteExists(quoteId: string) {
+  /**
+   * Requirements may only be mutated while the parent quote is an editable
+   * DRAFT (RV3-7) and not soft-deleted (RV3-9) — mirrors update()/submit(). This
+   * stops requirements from being changed on an already SENT/APPROVED/WON quote
+   * (they feed the §14 requirements page of the issued document) or on a
+   * soft-deleted quote.
+   */
+  private async assertQuoteEditable(quoteId: string) {
     const quote = await this.prisma.quote.findFirst({
       where: { id: quoteId, deletedAt: null },
-      select: { id: true },
+      select: { status: true },
     });
     if (!quote) throw new NotFoundException('Quote not found');
+    if (quote.status !== QuoteStatus.DRAFT) {
+      throw new BadRequestException(
+        'Requirements can only be edited while the quote is a DRAFT',
+      );
+    }
   }
 
   /** A pricer adds a requirement (DOCUMENT) or note (NOTE). Perm quote:build. */
@@ -824,7 +836,7 @@ export class QuotesService {
     quoteId: string,
     dto: { type?: QuoteRequirementType; text: string; position?: number },
   ) {
-    await this.assertQuoteExists(quoteId);
+    await this.assertQuoteEditable(quoteId);
     if (!dto.text?.trim())
       throw new BadRequestException('Requirement text is required');
     const max = await this.prisma.quoteRequirement.aggregate({
@@ -847,6 +859,7 @@ export class QuotesService {
     requirementId: string,
     dto: { type?: QuoteRequirementType; text?: string; position?: number },
   ) {
+    await this.assertQuoteEditable(quoteId);
     const existing = await this.prisma.quoteRequirement.findFirst({
       where: { id: requirementId, quoteId },
       select: { id: true },
@@ -868,6 +881,7 @@ export class QuotesService {
 
   /** Delete a requirement. Perm quote:build. */
   async deleteRequirement(quoteId: string, requirementId: string) {
+    await this.assertQuoteEditable(quoteId);
     const existing = await this.prisma.quoteRequirement.findFirst({
       where: { id: requirementId, quoteId },
       select: { id: true },
@@ -890,6 +904,8 @@ export class QuotesService {
     mergeIds: string[],
     scopeCtx?: ScopeContext,
   ) {
+    await this.assertQuoteEditable(quoteId);
+
     // Fail closed (RV3-6): the dedup is a lead-only action. No lead section, or
     // a lead with no pricer, refuses rather than letting any quote:build holder
     // merge/delete requirement rows.
@@ -904,10 +920,12 @@ export class QuotesService {
         );
       }
     }
-    const keep = await this.prisma.quoteRequirement.findFirst({
+    const keepExists = await this.prisma.quoteRequirement.findFirst({
       where: { id: keepId, quoteId },
+      select: { id: true },
     });
-    if (!keep) throw new NotFoundException('Requirement to keep not found');
+    if (!keepExists)
+      throw new NotFoundException('Requirement to keep not found');
 
     const toMergeIds = [...new Set(mergeIds)].filter((id) => id !== keepId);
     if (toMergeIds.length === 0) {
@@ -924,6 +942,13 @@ export class QuotesService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      // RV3-8: re-read the kept row's dedupedFromIds INSIDE the transaction so
+      // two concurrent dedups don't both snapshot a stale array and clobber each
+      // other's accumulated source ids with `set:`.
+      const keep = await tx.quoteRequirement.findUniqueOrThrow({
+        where: { id: keepId },
+        select: { dedupedFromIds: true },
+      });
       const updated = await tx.quoteRequirement.update({
         where: { id: keepId },
         data: {
