@@ -397,6 +397,61 @@ export class RfqsService {
   }
 
   /**
+   * DM-14: un-accept / return-to-triage. A dept manager reverses an accidental
+   * accept while the draft quote is still empty: only allowed when the RFQ is
+   * PRICING, its quote is still DRAFT, and no line has been priced. Nulls the
+   * quoteId (FK must clear before the quote is deleted), deletes the draft (its
+   * sections cascade), and returns the RFQ to SUBMITTED.
+   */
+  async unaccept(id: string, scopeCtx?: ScopeContext) {
+    await this.assertRfqInScope(id, scopeCtx);
+    const rfq = await this.prisma.rfq.findUnique({
+      where: { id },
+      select: { id: true, quoteId: true, status: true },
+    });
+    if (!rfq) throw new NotFoundException();
+    if (rfq.status !== RfqStatus.PRICING || !rfq.quoteId) {
+      throw new BadRequestException(
+        'Only an in-pricing RFQ can be returned to triage',
+      );
+    }
+
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: rfq.quoteId },
+      select: {
+        id: true,
+        status: true,
+        items: {
+          where: { subtotal: { gt: 0 } },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    if (quote && quote.status !== QuoteStatus.DRAFT) {
+      throw new BadRequestException(
+        'Cannot return to triage: the quote is no longer a draft',
+      );
+    }
+    if (quote && quote.items.length > 0) {
+      throw new BadRequestException(
+        'Cannot return to triage: the quote already has priced items',
+      );
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const next = await tx.rfq.update({
+        where: { id },
+        data: { quoteId: null, status: RfqStatus.SUBMITTED },
+        include: RFQ_DETAIL_INCLUDE,
+      });
+      if (quote) await tx.quote.delete({ where: { id: quote.id } });
+      return next;
+    });
+    return { ...updated, displayStatus: deriveRfqDisplayStatus(updated) };
+  }
+
+  /**
    * DM-5: decline ("Not us"). A dept manager rejects an RFQ before pricing with
    * a required reason. WRONG_DEPT routes back to sales for re-route (DM-6);
    * NO_BID closes it out. Notifies the originating sales rep + creator.

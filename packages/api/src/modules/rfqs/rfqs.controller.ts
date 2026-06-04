@@ -99,6 +99,20 @@ export class RfqsController {
     return this.service.reroute(id, dto, { user, scope });
   }
 
+  @Post(':id/unaccept')
+  @RequirePermission('rfq:assign_pricers')
+  @ApiOperation({
+    summary:
+      'Un-accept: return an in-pricing RFQ with an empty draft to triage',
+  })
+  unaccept(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:assign_pricers') scope: PermissionScope | undefined,
+  ) {
+    return this.service.unaccept(id, { user, scope });
+  }
+
   @Post(':id/cancel')
   @RequirePermission('rfq:request')
   @ApiOperation({ summary: 'Cancel RFQ (non-terminal only)' })

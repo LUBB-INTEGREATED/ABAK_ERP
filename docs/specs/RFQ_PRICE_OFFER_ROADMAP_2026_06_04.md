@@ -114,8 +114,11 @@ Acceptance = the one check that proves it's done.
       _Done 2026-06-04 — migration `20260604000718_dm13_site_visit_access_contact` (2 nullable columns,
       applied to live DB); wired into `UpdateSiteVisitRequestDto` + `updateSiteVisitRequest` so the sales
       responder can capture them on schedule. (Also removed 3 dead DTOs the DM-7 batch `git rm` missed.)_
-- [ ] **DM-14 (P2)** Un-accept / return-to-triage (DRAFT quote + no priced items → delete draft, null
+- [x] **DM-14 (P2)** Un-accept / return-to-triage (DRAFT quote + no priced items → delete draft, null
       quoteId, status→SUBMITTED).
+      _Done 2026-06-04 — `RfqsService.unaccept` + `POST /rfqs/:id/unaccept` (`rfq:assign_pricers`).
+      Guards PRICING + DRAFT quote + no priced items; tx nulls `quoteId` then deletes the draft
+      (sections cascade), status→SUBMITTED. api typecheck + regression suite green._
 
 ---
 
