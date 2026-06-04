@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { useRfq } from '@/lib/hooks/use-rfqs';
 import type { RfqDetail, RfqDisplayStatus } from '@/lib/types/rfq';
 import { RequestPhaseBadge } from '@/components/ui/entity-status-badges';
+import { OpenAsksCard } from '@/components/rfqs/open-asks-card';
 import {
   DetailHeader,
   DetailBody,
@@ -215,6 +216,9 @@ export default function RfqDetailPage({
             </DetailRail>
           }
         >
+          {/* ① OPEN ASKS — self-hides when nothing is owed (SALES-3) */}
+          <OpenAsksCard rfqId={id} />
+
           {/* ② STATUS TIMELINE */}
           <DetailSection title={t('status')}>
             <StatusTimeline rfq={rfq} />

@@ -202,7 +202,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       ASSIGNED-tolerant but no UI is built around it._
 - [x] **SALES-2** Tracker: strip the 5-tab board to a single-scroll tracker (timeline → asks →
       summary → quote). Delete Team tab + assign/prep/submit/dispatch controls.
-- [ ] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit
+- [x] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit
       confirm with access contact. Replaces the `window.prompt` scheduler.
 - [ ] **SALES-4** Quote card: review → `Send to client` → `Won/Lost/Postpone` (maps to quote actions).
 - [ ] **SALES-5** Re-route UI after decline (shows decline reason, edit services, resubmit → DM-6).

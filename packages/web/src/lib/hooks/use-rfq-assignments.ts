@@ -146,6 +146,9 @@ export type RfqSiteVisitRequest = {
   completedAt: string | null;
   status: RfqRequestStatus;
   notes: string | null;
+  // DM-13: site-access contact the sales rep captures when confirming a visit.
+  accessContactName: string | null;
+  accessContactPhone: string | null;
   createdAt: string;
 };
 
@@ -195,8 +198,9 @@ export function useUpdateRfqDocRequest(rfqId: string) {
       );
       return data.data;
     },
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ['rfqs', rfqId, 'doc-requests'] }),
+    // Broad ['rfqs'] invalidation: resolving an ask drops the rfq's openAskCount,
+    // so the list ("Needs you · N") + tracker + this sublist all refresh.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rfqs'] }),
   });
 }
 
@@ -246,6 +250,9 @@ export function useUpdateRfqSiteVisitRequest(rfqId: string) {
       scheduledAt?: string;
       completedAt?: string;
       notes?: string;
+      // DM-13: written by the sales responder when confirming the visit.
+      accessContactName?: string;
+      accessContactPhone?: string;
     }) => {
       const { data } = await apiClient.patch<ApiEnvelope<RfqSiteVisitRequest>>(
         `/rfqs/${rfqId}/site-visit-requests/${requestId}`,
@@ -253,9 +260,8 @@ export function useUpdateRfqSiteVisitRequest(rfqId: string) {
       );
       return data.data;
     },
-    onSuccess: () =>
-      qc.invalidateQueries({
-        queryKey: ['rfqs', rfqId, 'site-visit-requests'],
-      }),
+    // Broad ['rfqs'] invalidation: confirming a visit drops the rfq's
+    // openAskCount, so the list + tracker + this sublist all refresh.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rfqs'] }),
   });
 }

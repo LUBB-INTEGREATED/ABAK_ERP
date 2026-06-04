@@ -767,6 +767,30 @@
       "fromRfq": "from {rfq}",
       "notFound": "We couldn't find this request. It may have been cancelled or you may not have access.",
       "status": "Where it stands",
+      "asks": {
+        "title": "Open asks · {count}",
+        "subtitle": "The pricing team needs this from you before they can move forward.",
+        "error": "Something went wrong. Please try again.",
+        "saving": "Saving…",
+        "doc": {
+          "label": "Document",
+          "attach": "Attach a file",
+          "clear": "Remove",
+          "notePlaceholder": "Add a note (optional)",
+          "markProvided": "Mark as provided",
+          "uploading": "Uploading…",
+          "tooBig": "That file is too large (max 10 MB).",
+          "badType": "Only images (PNG, JPG, WebP, GIF) or PDF files are allowed."
+        },
+        "visit": {
+          "label": "Site visit",
+          "when": "Visit date & time",
+          "contactName": "Site contact name",
+          "contactNamePlaceholder": "Who gives access on site?",
+          "contactPhone": "Site contact phone",
+          "confirm": "Confirm visit"
+        }
+      },
       "timeline": {
         "submitted": "Submitted",
         "pricing": "Pricing",
