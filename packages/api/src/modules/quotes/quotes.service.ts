@@ -866,7 +866,12 @@ export class QuotesService {
   async addRequirement(
     quoteId: string,
     dto: { type?: QuoteRequirementType; text: string; position?: number },
+    scopeCtx?: ScopeContext,
   ) {
+    // RV3b-1: object-level scope FIRST (isPreparer||isPricer) — a non-ALL actor
+    // can only touch requirements on a quote they prepared or price a section
+    // of, not any DRAFT quote by id. Then the DRAFT-editability gate.
+    await this.findOne(quoteId, scopeCtx);
     await this.assertQuoteEditable(quoteId);
     if (!dto.text?.trim())
       throw new BadRequestException('Requirement text is required');
@@ -889,7 +894,9 @@ export class QuotesService {
     quoteId: string,
     requirementId: string,
     dto: { type?: QuoteRequirementType; text?: string; position?: number },
+    scopeCtx?: ScopeContext,
   ) {
+    await this.findOne(quoteId, scopeCtx); // RV3b-1 object-level scope
     await this.assertQuoteEditable(quoteId);
     const existing = await this.prisma.quoteRequirement.findFirst({
       where: { id: requirementId, quoteId },
@@ -911,7 +918,12 @@ export class QuotesService {
   }
 
   /** Delete a requirement. Perm quote:build. */
-  async deleteRequirement(quoteId: string, requirementId: string) {
+  async deleteRequirement(
+    quoteId: string,
+    requirementId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(quoteId, scopeCtx); // RV3b-1 object-level scope
     await this.assertQuoteEditable(quoteId);
     const existing = await this.prisma.quoteRequirement.findFirst({
       where: { id: requirementId, quoteId },

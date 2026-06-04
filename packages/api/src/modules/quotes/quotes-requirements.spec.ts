@@ -205,6 +205,29 @@ test('RV3-9: requirements on a soft-deleted quote are immutable', async () => {
   );
 });
 
+test('RV3b-1: a non-preparer / non-pricer quote:build user is 403 on add/update/delete', async () => {
+  const quoteId = await seedQuote(); // preparedById null, no sections
+  // Seed a requirement as an unrestricted (system) caller for the edit/delete targets.
+  const r = await service.addRequirement(quoteId, { text: 'seed' });
+  const foreign = { user: { id: 'foreign-user-xyz' }, scope: 'OWN' as const };
+
+  await assert.rejects(
+    () => service.addRequirement(quoteId, { text: 'x' }, foreign),
+    (e: unknown) => e instanceof ForbiddenException,
+    'foreign user cannot add a requirement to a quote they do not prepare/price',
+  );
+  await assert.rejects(
+    () => service.updateRequirement(quoteId, r.id, { text: 'y' }, foreign),
+    (e: unknown) => e instanceof ForbiddenException,
+    'foreign user cannot edit a requirement',
+  );
+  await assert.rejects(
+    () => service.deleteRequirement(quoteId, r.id, foreign),
+    (e: unknown) => e instanceof ForbiddenException,
+    'foreign user cannot delete a requirement',
+  );
+});
+
 test('RV3-6: dedup is refused when the quote has no lead section', async () => {
   const quoteId = await seedQuote(); // no department sections at all
   const intruder = await seedUser('intruder');

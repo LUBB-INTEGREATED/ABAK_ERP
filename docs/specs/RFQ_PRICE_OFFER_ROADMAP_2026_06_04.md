@@ -254,6 +254,44 @@ across the API. See `EPIC23_REVIEW.md` (RV2-1/RV2-2 are the flagged blockers).
 
 ---
 
+## EPIC 3.5 — Review fixes (verified 2026-06-04)
+
+From the adversarial review of the EPIC-3 batch — **9 confirmed (8 unique), 0 refuted**. Evidence
+per item in `EPIC3_REVIEW_FINDINGS_2026_06_04.md`. **Group A (P1) blocks EPIC 4.**
+
+### Group A — P1
+
+- [x] **RV3b-1 (P1, IDOR)** Requirement add/update/delete pass NO scope (`quotes.controller.ts:164-195`,
+      `quotes.service.ts:866-923`) → any `quote:build` holder mutates §14 requirements of ANY draft quote
+      by id (cross-tenant write). Thread `{user,scope}` like `dedupRequirements`; call `findOne(quoteId,
+    scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-user-403 spec.
+- [ ] **RV3b-2 (P1, scope-leak)** The QP-5 read-scope broadening leaked into WRITE: `update()`/`softDelete()`
+      use `findOne` as their only authz gate (`quotes.service.ts:324,1410`), so a co-pricer can edit/soft-delete
+      the WHOLE quote. Decouple write authz from the broadened read gate — require preparer (or lead pricer)
+      for update/softDelete; a co-pricer edits only their own section's items.
+- [ ] **RV3b-3 (P1, regression)** Manual multi-dept DRAFT quotes are un-submittable: UI suppresses header
+      Submit when `hasSections`, but a manual quote has auto-sections with no lead → CompileView's lead-gated
+      submit never fires (`quotes/[id]/page.tsx:164,418`). Mirror the backend RV3-1 guard: engage the §14 UI
+      gate ONLY when a lead section exists; else keep the normal header submit.
+
+### Group B — P2
+
+- [ ] **RV3b-4 (P2)** SC→Dept fold is non-deterministic (`services.service.ts:106-114`, no orderBy) → the
+      Accept picker can resolve to the wrong Department, `listMembers` 403s the manager, and the row is
+      un-assignable (Confirm stays disabled). Add deterministic order (isPrimary/order/createdAt) + let the
+      picker fall back over `departmentIds` (it's already returned, web ignores it).
+- [ ] **RV3b-5 (P2)** `removeAssignment` doesn't clear `QuoteDepartmentSection.pricerId` (`rfq-assignments.service.ts:240`)
+      → a removed co-pricer keeps read access forever (read-scope `some({pricerId})`). Clear the section pricer
+      in the same tx.
+- [ ] **RV3b-6 (P2, i18n)** Hardcoded `'SAR'` literal in `compile-view.tsx:195` + `draft-quote-card.tsx:105`
+      (the rest of the app uses the translated `currency` key) → wrong on the Arabic doc. Use the translated key.
+- [ ] **RV3b-7 (P2)** Un-accept is one-click destructive (deletes the draft + assignments, no confirm,
+      `draft-quote-card.tsx:64`). Gate behind an AlertDialog naming the consequence.
+- [ ] **RV3b-8 (P2)** CompileView + DraftQuoteCard swallow a `/sections` fetch error (silent empty array →
+      whole compile UI vanishes). Add an `isError` branch with retry (mirror `ErrorState` in the board).
+
+---
+
 ## EPIC 4 — Price-offer document (the renderer)
 
 - [ ] **DOC-1** Models: `QuoteTemplate`, `QuoteTemplateSection` (sectionType + bindingType),

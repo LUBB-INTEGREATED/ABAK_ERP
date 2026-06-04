@@ -168,8 +168,10 @@ export class QuotesController {
     @Param('id') id: string,
     @Body()
     dto: { type?: QuoteRequirementType; text: string; position?: number },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.addRequirement(id, dto);
+    return this.quotes.addRequirement(id, dto, { user, scope });
   }
 
   @Patch('quotes/:id/requirements/:requirementId')
@@ -180,8 +182,13 @@ export class QuotesController {
     @Param('requirementId') requirementId: string,
     @Body()
     dto: { type?: QuoteRequirementType; text?: string; position?: number },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.updateRequirement(id, requirementId, dto);
+    return this.quotes.updateRequirement(id, requirementId, dto, {
+      user,
+      scope,
+    });
   }
 
   @Delete('quotes/:id/requirements/:requirementId')
@@ -190,8 +197,10 @@ export class QuotesController {
   deleteRequirement(
     @Param('id') id: string,
     @Param('requirementId') requirementId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.deleteRequirement(id, requirementId);
+    return this.quotes.deleteRequirement(id, requirementId, { user, scope });
   }
 
   @Post('quotes/:id/requirements/dedup')
