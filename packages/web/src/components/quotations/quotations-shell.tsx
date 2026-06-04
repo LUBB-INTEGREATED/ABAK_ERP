@@ -51,6 +51,11 @@ export function QuotationsShell() {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<View | null>(null);
 
+  // RV2-6 / spec §1.2: the Board is the department surface. Only managers
+  // (rfq:assign_pricers) get it; a sales rep who reaches /quotes (they hold
+  // quote:view) sees the flat List only — never the pipeline.
+  const canBoard = can('rfq:assign_pricers');
+
   // Default view by role on first mount; then user toggle wins (persisted).
   useEffect(() => {
     if (view !== null || permsLoading) return;
@@ -58,15 +63,16 @@ export function QuotationsShell() {
       typeof window !== 'undefined'
         ? (localStorage.getItem('quotes.view') as View | null)
         : null;
-    setView(stored ?? (can('rfq:assign_pricers') ? 'board' : 'list'));
-  }, [view, permsLoading, can]);
+    setView(canBoard ? (stored ?? 'board') : 'list');
+  }, [view, permsLoading, canBoard]);
 
   function pick(v: View) {
     setView(v);
     if (typeof window !== 'undefined') localStorage.setItem('quotes.view', v);
   }
 
-  const resolved: View = view ?? 'list';
+  // Non-managers are pinned to List regardless of any stored preference.
+  const resolved: View = canBoard ? (view ?? 'list') : 'list';
 
   return (
     <div className="space-y-6">
@@ -114,20 +120,22 @@ export function QuotationsShell() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-md border p-0.5">
-          <ViewBtn
-            active={resolved === 'board'}
-            onClick={() => pick('board')}
-            icon={LayoutGrid}
-            label={t('viewBoard')}
-          />
-          <ViewBtn
-            active={resolved === 'list'}
-            onClick={() => pick('list')}
-            icon={ListIcon}
-            label={t('viewList')}
-          />
-        </div>
+        {canBoard && (
+          <div className="inline-flex rounded-md border p-0.5">
+            <ViewBtn
+              active={resolved === 'board'}
+              onClick={() => pick('board')}
+              icon={LayoutGrid}
+              label={t('viewBoard')}
+            />
+            <ViewBtn
+              active={resolved === 'list'}
+              onClick={() => pick('list')}
+              icon={ListIcon}
+              label={t('viewList')}
+            />
+          </div>
+        )}
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
