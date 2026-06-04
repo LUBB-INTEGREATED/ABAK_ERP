@@ -150,7 +150,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
       WON) → display shows CANCELLED while quote/PO/commission are WON. Guard on linked quote state. `rfqs.service.ts:273-290`.
 - [ ] **RV-9 (P2)** Broker commission accrued with `baseAmount=0, amount=0` and nothing grows it → a
       commission can be approved + PAID for SAR 0. Compute on accrual or wire to validated PO payments. `quotes.service.ts:800-806`.
-- [ ] **RV-13 (P2)** `revise()` concurrency: parent status checked outside the tx → duplicate version N+1
+- [x] **RV-13 (P2)** `revise()` concurrency: parent status checked outside the tx → duplicate version N+1
       quotes, orphaned loser. Conditional `updateMany({where:{id,status:{in:REVISABLE}}})` flip. `quotes.service.ts:953-1112`.
 - [ ] **RV-16 (P2)** No write path sets `QuoteItem.sectionId` (item DTOs accept only `departmentId`) → all
       items `sectionId=null`; revise()'s section remap operates on data the app can't produce. Add sectionId

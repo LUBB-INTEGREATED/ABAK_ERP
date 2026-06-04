@@ -171,6 +171,63 @@ test('DM-8: revise() repoints rfq.quoteId to the new version and sections surviv
   assert.equal(next.numberOfRevisions, 2);
 });
 
+test('RV-13: concurrent revise() mints exactly one revision; the loser is rejected', async () => {
+  const clientId = await seedClient();
+  const opp = await prisma.pipelineEntry.create({
+    data: { clientId },
+    select: { id: true },
+  });
+  trash.oppIds.push(opp.id);
+  const rfq = await prisma.rfq.create({
+    data: {
+      rfqNumber: `RFQ-${TAG}-REV`,
+      opportunityId: opp.id,
+      clientId,
+      serviceType: 'TEST',
+      projectScope: 'TEST',
+      requestedByChannel: 'INTERNAL_REP',
+      status: 'PRICING',
+    },
+    select: { id: true },
+  });
+  trash.rfqIds.push(rfq.id);
+  const parent = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-REVPARENT`,
+      clientId,
+      title: 'Concurrent revise parent',
+      status: QuoteStatus.APPROVED,
+      subtotal: 1000,
+      totalAmount: 1000,
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(parent.id);
+  await prisma.rfq.update({
+    where: { id: rfq.id },
+    data: { quoteId: parent.id },
+  });
+  const actorId = await aUserId();
+
+  const results = await Promise.allSettled([
+    service.revise(parent.id, actorId),
+    service.revise(parent.id, actorId),
+  ]);
+  const fulfilled = results.filter((r) => r.status === 'fulfilled');
+  const rejected = results.filter((r) => r.status === 'rejected');
+  assert.equal(fulfilled.length, 1, 'exactly one revise succeeds');
+  assert.equal(rejected.length, 1, 'the other revise is rejected');
+  const reason = (rejected[0] as PromiseRejectedResult).reason as Error;
+  assert.match(reason?.message ?? '', /already revised/i);
+  for (const r of fulfilled) {
+    if (r.status === 'fulfilled') trash.quoteIds.push(r.value.id);
+  }
+  const children = await prisma.quote.count({
+    where: { parentQuoteId: parent.id },
+  });
+  assert.equal(children, 1, 'exactly one revision minted — no orphan');
+});
+
 test('DM-9: submit() rejects a quote with an unpriced department section', async () => {
   const clientId = await seedClient();
   const [deptA, deptB] = await departmentIds();

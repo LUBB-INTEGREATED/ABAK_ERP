@@ -983,6 +983,19 @@ export class QuotesService {
     const number = await this.nextQuoteNumber();
 
     return this.prisma.$transaction(async (tx) => {
+      // RV-13: the WON/REVISABLE gate ran OUTSIDE the tx, so two concurrent
+      // revise() calls both pass it. Re-assert + flip the parent conditionally
+      // here — updateMany on status∈REVISABLE lets exactly one win; the loser
+      // sees count 0 and aborts BEFORE minting a duplicate version N+1 (which
+      // would orphan a quote on the RFQ repoint).
+      const flipped = await tx.quote.updateMany({
+        where: { id: parent.id, status: { in: REVISABLE } },
+        data: { status: QuoteStatus.REVISED },
+      });
+      if (flipped.count === 0) {
+        throw new BadRequestException('Quote already revised');
+      }
+
       const next = await tx.quote.create({
         data: {
           quoteNumber: number,
@@ -1098,10 +1111,7 @@ export class QuotesService {
         });
       }
 
-      await tx.quote.update({
-        where: { id: parent.id },
-        data: { status: QuoteStatus.REVISED },
-      });
+      // (parent already flipped to REVISED at the top of the tx — RV-13.)
 
       // DM-8: repoint the RFQ (FK @unique) to the latest revision so the sales
       // tracker + pricing surface follow the new version, and bump the count.
