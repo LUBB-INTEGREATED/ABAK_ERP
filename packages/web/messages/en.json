@@ -494,16 +494,11 @@
     "recordOutcome": "Record outcome",
     "cancel": "Cancel RFQ",
     "status": {
-      "RECEIVED": "Received",
+      "SUBMITTED": "Submitted",
       "ASSIGNED": "Assigned",
-      "IN_PREPARATION": "In preparation",
-      "PENDING_APPROVAL": "Pending approval",
-      "APPROVED_READY_FOR_DISPATCH": "Ready to dispatch",
-      "SENT": "Sent",
-      "WON": "Won",
-      "LOST": "Lost",
-      "POSTPONED": "Postponed",
-      "CANCELLED": "Cancelled"
+      "PRICING": "Pricing",
+      "CANCELLED": "Cancelled",
+      "DECLINED": "Declined"
     },
     "priorityLabel": {
       "NORMAL": "Normal",
@@ -548,7 +543,62 @@
     "empty": "No RFQs yet.",
     "createFromOpportunity": "Create RFQ",
     "readyForRfqHint": "Ready to convert to RFQ",
-    "mustBeReadyForRfq": "Opportunity must be in READY_FOR_RFQ first."
+    "mustBeReadyForRfq": "Opportunity must be in READY_FOR_RFQ first.",
+    "phase": {
+      "SUBMITTED": "Submitted",
+      "ASSIGNED": "With pricing team",
+      "PRICING": "Pricing in progress",
+      "IN_APPROVAL": "In approval",
+      "QUOTE_READY": "Quote ready",
+      "SENT": "Sent to client",
+      "WON": "Won",
+      "LOST": "Lost",
+      "POSTPONED": "Postponed",
+      "DECLINED_WRONG_DEPT": "Passed back",
+      "DECLINED_NO_BID": "No bid",
+      "CANCELLED": "Cancelled"
+    },
+    "list": {
+      "title": "My Requests",
+      "subtitle": "Quotes you've raised — track them and act when something's waiting on you.",
+      "raiseFromLead": "Raise from a lead →",
+      "needsYou": "Needs you · {count}",
+      "segment": {
+        "needsMe": "Needs me",
+        "inProgress": "In progress",
+        "sent": "Sent",
+        "closed": "Closed",
+        "all": "All"
+      },
+      "search": "Search client / RFQ / quote no.",
+      "col": {
+        "ref": "Ref",
+        "client": "Client",
+        "scope": "Scope",
+        "phase": "Phase",
+        "waitingOn": "Waiting on",
+        "updated": "Updated"
+      },
+      "waitingOn": {
+        "youReroute": "You · re-route",
+        "youSend": "You · send it",
+        "youAsks": "You · {count} ask(s)",
+        "client": "Client",
+        "pricingTeam": "Pricing team",
+        "none": "—"
+      },
+      "closedDisclosure": "Closed ({count})",
+      "empty": {
+        "firstTitle": "No requests yet",
+        "firstBody": "When you need a price for a client, raise it from their lead. It'll show up here and we'll keep you posted as the departments work it up.",
+        "firstAction": "Go to leads",
+        "filteredTitle": "Nothing here",
+        "filteredBody": "No requests match this filter.",
+        "filteredAction": "Show all",
+        "caughtUp": "You're all caught up. Nothing's waiting on you."
+      },
+      "error": "We couldn't load your requests. Check your connection and try again."
+    }
   },
   "profile": {
     "title": "Personal settings",

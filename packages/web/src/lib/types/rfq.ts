@@ -59,6 +59,8 @@ export interface RfqListItem {
   requestedByChannel: RfqSource;
   serviceType: string;
   createdAt: string;
+  // SALES-1: count of PENDING doc + site-visit requests owed by the rep.
+  openAskCount: number;
   client: {
     id: string;
     contactName: string;

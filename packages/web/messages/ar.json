@@ -494,16 +494,11 @@
     "recordOutcome": "تسجيل النتيجة",
     "cancel": "إلغاء الطلب",
     "status": {
-      "RECEIVED": "مستلم",
-      "ASSIGNED": "تم التعيين",
-      "IN_PREPARATION": "قيد التحضير",
-      "PENDING_APPROVAL": "بانتظار الاعتماد",
-      "APPROVED_READY_FOR_DISPATCH": "جاهز للإرسال",
-      "SENT": "تم الإرسال",
-      "WON": "فائز",
-      "LOST": "خاسر",
-      "POSTPONED": "مؤجل",
-      "CANCELLED": "ملغى"
+      "SUBMITTED": "مُقدَّم",
+      "ASSIGNED": "مُسنَد",
+      "PRICING": "قيد التسعير",
+      "CANCELLED": "مُلغى",
+      "DECLINED": "مرفوض"
     },
     "priorityLabel": {
       "NORMAL": "عادي",
@@ -548,7 +543,62 @@
     "empty": "لا توجد طلبات حتى الآن.",
     "createFromOpportunity": "إنشاء طلب عرض",
     "readyForRfqHint": "جاهز للتحويل إلى طلب عرض",
-    "mustBeReadyForRfq": "يجب أن تكون الفرصة في حالة READY_FOR_RFQ أولاً."
+    "mustBeReadyForRfq": "يجب أن تكون الفرصة في حالة READY_FOR_RFQ أولاً.",
+    "phase": {
+      "SUBMITTED": "بانتظار قبول القسم",
+      "ASSIGNED": "لدى فريق التسعير",
+      "PRICING": "جارٍ إعداد العرض",
+      "IN_APPROVAL": "قيد الاعتماد",
+      "QUOTE_READY": "العرض جاهز",
+      "SENT": "أُرسِل للعميل",
+      "WON": "تم الفوز",
+      "LOST": "خسارة",
+      "POSTPONED": "مؤجَّل",
+      "DECLINED_WRONG_DEPT": "أُعيد إليك",
+      "DECLINED_NO_BID": "لن يُقدَّم عرض",
+      "CANCELLED": "أُلغي"
+    },
+    "list": {
+      "title": "طلباتي",
+      "subtitle": "عروض الأسعار التي طلبتها — تابِعها وتصرّف عندما ينتظرك شيء.",
+      "raiseFromLead": "ابدأ من عميل محتمل →",
+      "needsYou": "ينتظرك · {count}",
+      "segment": {
+        "needsMe": "ينتظرني",
+        "inProgress": "قيد العمل",
+        "sent": "أُرسِل",
+        "closed": "مغلق",
+        "all": "الكل"
+      },
+      "search": "ابحث بالعميل / رقم الطلب / رقم العرض",
+      "col": {
+        "ref": "المرجع",
+        "client": "العميل",
+        "scope": "النطاق",
+        "phase": "المرحلة",
+        "waitingOn": "بانتظار",
+        "updated": "آخر تحديث"
+      },
+      "waitingOn": {
+        "youReroute": "أنت · إعادة توجيه",
+        "youSend": "أنت · أرسِله",
+        "youAsks": "أنت · {count} طلب",
+        "client": "العميل",
+        "pricingTeam": "فريق التسعير",
+        "none": "—"
+      },
+      "closedDisclosure": "المغلقة ({count})",
+      "empty": {
+        "firstTitle": "لا توجد طلبات بعد",
+        "firstBody": "عندما تحتاج سعرًا لعميل، ابدأه من بطاقته. سيظهر هنا وسنُبقيك على اطّلاع بينما تعمل عليه الأقسام.",
+        "firstAction": "إلى العملاء المحتملين",
+        "filteredTitle": "لا شيء هنا",
+        "filteredBody": "لا توجد طلبات تطابق هذه التصفية.",
+        "filteredAction": "عرض الكل",
+        "caughtUp": "أنجزت كل شيء. لا شيء ينتظرك."
+      },
+      "error": "تعذّر تحميل طلباتك. تحقّق من اتصالك وحاول مجددًا."
+    }
   },
   "profile": {
     "title": "الإعدادات الشخصية",

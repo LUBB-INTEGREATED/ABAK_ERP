@@ -15,7 +15,7 @@ import type {
   TaskStatus,
 } from '@/lib/types/project';
 import type { QuoteStatus } from '@/lib/types/quote';
-import type { RfqPriority, RfqStatus } from '@/lib/types/rfq';
+import type { RfqDisplayStatus, RfqPriority, RfqStatus } from '@/lib/types/rfq';
 import type { InvoiceStatus } from '@/lib/types/finance';
 import {
   clientClassificationVariant,
@@ -28,6 +28,7 @@ import {
   phaseStatusVariant,
   projectStatusVariant,
   quoteStatusVariant,
+  rfqDisplayStatusVariant,
   rfqPriorityVariant,
   rfqStatusVariant,
   slaStatusVariant,
@@ -67,6 +68,22 @@ export function RfqStatusBadge({
     <StatusBadge
       variant={rfqStatusVariant(status)}
       label={t(`rfq.status.${status}`)}
+      {...rest}
+    />
+  );
+}
+
+// SALES-1: the sales-facing phase badge — reads the API-derived display status
+// (DM-2), NOT the raw thin enum. The rep thinks in phases, not 11 enum values.
+export function RequestPhaseBadge({
+  status,
+  ...rest
+}: { status: RfqDisplayStatus } & EntityProps) {
+  const t = useTranslations();
+  return (
+    <StatusBadge
+      variant={rfqDisplayStatusVariant(status)}
+      label={t(`rfq.phase.${status}`)}
       {...rest}
     />
   );

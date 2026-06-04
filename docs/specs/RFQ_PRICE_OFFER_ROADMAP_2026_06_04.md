@@ -190,8 +190,14 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 
 ## EPIC 2 — Sales "My Requests" surface
 
-- [ ] **SALES-1** List rebuild: urgency-sorted ("Needs you · N"), mobile stacked cards, `<DataState>`
+- [x] **SALES-1** List rebuild: urgency-sorted ("Needs you · N"), mobile stacked cards, `<DataState>`
       empty/error, `<RequestPhaseBadge>`. Remove coordinator/priority/source columns.
+      _Done 2026-06-04 — `/rfqs` rebuilt: urgency bands (reroute/quote-ready/asks/sent/inflight/closed)
+      from `displayStatus` + `openAskCount`, "Needs you · N" chip (bands 1-3), segmented
+      [Needs me][In progress][Sent][Closed][All], waiting-on column, `<RequestPhaseBadge>`, `<DataState>`
+      (loading/first-run/filtered/caught-up/error). **Verified live in AR/RTL** (phase badges + waiting-on
+      render). NB: derived status never emits ASSIGNED (collapses → SUBMITTED), so the §0 "With pricing
+      team" phase label is unused; stacked cards used for desktop too (mobile-first)._
 - [ ] **SALES-2** Tracker: strip the 5-tab board to a single-scroll tracker (timeline → asks →
       summary → quote). Delete Team tab + assign/prep/submit/dispatch controls.
 - [ ] **SALES-3** `<OpenAsksCard>` responder (the net-new): doc upload (needs UP-1) + site-visit
