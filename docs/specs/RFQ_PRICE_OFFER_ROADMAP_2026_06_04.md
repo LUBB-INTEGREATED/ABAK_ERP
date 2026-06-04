@@ -297,7 +297,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
 - [x] **DOC-1** Models: `QuoteTemplate`, `QuoteTemplateSection` (sectionType + bindingType),
       `QuoteAsset`, `CompanyProfile` + `CompanyProfileHistory`. Seed the default 8-block template so
       existing quotes still render.
-- [ ] **DOC-2** `Quote.renderManifest` snapshot-on-issue (as-issued rendering). Key artifact by
+- [x] **DOC-2** `Quote.renderManifest` snapshot-on-issue (as-issued rendering). Key artifact by
       `Quote.id` (version row), not (quoteId,version); `revise()` starts fresh.
 - [ ] **DOC-3 (P1)** Rebuild `print/page.tsx` as 8 paged blocks: per-section (Department) fan-out for
       scope/methodology/timeline; **pre-VAT per-dept subtotals → one combined discount+VAT+grand-total

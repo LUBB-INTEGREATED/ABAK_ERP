@@ -1198,6 +1198,61 @@ export class QuotesService {
     });
   }
 
+  /**
+   * DOC-2: snapshot the resolved document composition (default template + the
+   * active CompanyProfile incl. bank/about/contact + assets) so a sent quote
+   * renders AS-ISSUED even after the template/profile later change. Stored on
+   * Quote.renderManifest at send time; the renderer reads it when present.
+   */
+  private async buildRenderManifest(): Promise<Prisma.InputJsonValue> {
+    const template = await this.prisma.quoteTemplate.findFirst({
+      where: { isDefault: true, isActive: true },
+      include: {
+        sections: { orderBy: { position: 'asc' }, include: { asset: true } },
+      },
+    });
+    const profile = await this.prisma.companyProfile.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      schema: 1,
+      issuedAt: new Date().toISOString(),
+      templateId: template?.id ?? null,
+      sections: (template?.sections ?? []).map((s) => ({
+        sectionType: s.sectionType,
+        bindingType: s.bindingType,
+        position: s.position,
+        enabled: s.enabled,
+        config: (s.config ?? null) as Prisma.InputJsonValue,
+        assetUrl: s.asset?.url ?? null,
+      })),
+      company: profile
+        ? {
+            legalName: profile.legalName,
+            legalNameAr: profile.legalNameAr,
+            aboutText: profile.aboutText,
+            aboutTextAr: profile.aboutTextAr,
+            services: (profile.services ?? null) as Prisma.InputJsonValue,
+            accreditations: (profile.accreditations ??
+              null) as Prisma.InputJsonValue,
+            phone: profile.phone,
+            email: profile.email,
+            website: profile.website,
+            address: profile.address,
+            addressAr: profile.addressAr,
+            logoUrl: profile.logoUrl,
+            bank: {
+              bankName: profile.bankName,
+              bankAccountName: profile.bankAccountName,
+              iban: profile.iban,
+              swift: profile.swift,
+            },
+          }
+        : null,
+    } as Prisma.InputJsonValue;
+  }
+
   async send(id: string, scopeCtx?: ScopeContext) {
     const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.APPROVED) {
@@ -1205,7 +1260,12 @@ export class QuotesService {
     }
     const updated = await this.prisma.quote.update({
       where: { id },
-      data: { status: QuoteStatus.SENT, sentAt: new Date() },
+      data: {
+        status: QuoteStatus.SENT,
+        sentAt: new Date(),
+        // DOC-2: capture the as-issued document snapshot once, on send.
+        renderManifest: await this.buildRenderManifest(),
+      },
       include: QUOTE_INCLUDE,
     });
 
