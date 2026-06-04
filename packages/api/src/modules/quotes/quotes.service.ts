@@ -497,31 +497,34 @@ export class QuotesService {
         );
       }
 
-      // §14 (DM-15e): the lead-reviewer compile gate. Every section must be
-      // submitted to the lead, and only the lead section's pricer may fire the
-      // submit. (Checked after the priced check so an unpriced section still
-      // surfaces the more specific "not yet priced" message. A single-section
-      // quote's one section is the lead — the normal path.)
-      const notSubmitted = quote.departmentSections.filter(
-        (s) => s.status !== QuoteSectionStatus.SUBMITTED_TO_LEAD,
-      );
-      if (notSubmitted.length) {
-        const names = notSubmitted.map(
-          (s) => s.department?.nameAr ?? s.department?.name ?? s.departmentId,
-        );
-        throw new BadRequestException(
-          `These sections haven't been submitted to the lead yet: ${names.join('، ')}`,
-        );
-      }
+      // §14 (DM-15e): the lead-reviewer compile gate. ONLY applies to a quote
+      // actually in the lead-reviewer model — i.e. one with a designated lead
+      // section. A manually-built quote auto-creates a DRAFT section per item
+      // department (syncItemSections) with no lead and no pricer; those must
+      // still submit through the normal priced+milestone checks, so we gate on
+      // the lead section's presence (RV3-1). Checked after the priced check so
+      // an unpriced section surfaces the more specific "not yet priced" message.
       const leadSection = quote.departmentSections.find((s) => s.isLead);
-      if (
-        leadSection?.pricerId &&
-        scopeCtx?.user &&
-        leadSection.pricerId !== scopeCtx.user.id
-      ) {
-        throw new ForbiddenException(
-          'Only the lead reviewer can submit the offer for approval.',
+      if (leadSection) {
+        const notSubmitted = quote.departmentSections.filter(
+          (s) => s.status !== QuoteSectionStatus.SUBMITTED_TO_LEAD,
         );
+        if (notSubmitted.length) {
+          const names = notSubmitted.map(
+            (s) => s.department?.nameAr ?? s.department?.name ?? s.departmentId,
+          );
+          throw new BadRequestException(
+            `These sections haven't been submitted to the lead yet: ${names.join('، ')}`,
+          );
+        }
+        // Fail closed: only the lead section's pricer may submit (RV3-2). A
+        // null lead pricer (anomalous in the RFQ model) blocks an actor-driven
+        // submit rather than waving it through.
+        if (scopeCtx?.user && leadSection.pricerId !== scopeCtx.user.id) {
+          throw new ForbiddenException(
+            'Only the lead reviewer can submit the offer for approval.',
+          );
+        }
       }
     }
 

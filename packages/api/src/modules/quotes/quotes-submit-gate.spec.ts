@@ -153,6 +153,63 @@ test('DM-15e: only the lead reviewer can submit (all sections submitted)', async
   );
 });
 
+test('RV3-1: a manual / auto-sectioned quote (DRAFT section, no lead) still submits', async () => {
+  // Mirrors syncItemSections on a manual quote: a section exists per item
+  // department but with isLead=false, pricerId=null, status DRAFT. The §14 gate
+  // must NOT fire (no lead reviewer) — it falls through to the normal checks.
+  await seedUser('approver', 'ADMIN');
+  const [catA] = await twoCategories();
+  const c = await prisma.client.create({
+    data: {
+      clientNumber: `CLI-${TAG}-${trash.clientIds.length}`,
+      contactName: 'Manual Quote',
+      phone: '0500000000',
+    },
+    select: { id: true },
+  });
+  trash.clientIds.push(c.id);
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber: `QUO-${TAG}-${trash.quoteIds.length}`,
+      clientId: c.id,
+      title: 'Manual',
+      status: QuoteStatus.DRAFT,
+      subtotal: 1000,
+      totalAmount: 1000,
+      paymentMilestones: {
+        create: [
+          { description: 'Full', percentage: 100, amount: 1000, position: 0 },
+        ],
+      },
+      // Auto-section shape: DRAFT, not lead, no pricer.
+      departmentSections: { create: [{ departmentId: catA }] },
+      items: {
+        create: [
+          {
+            departmentId: catA,
+            description: 'A',
+            quantity: 1,
+            unitPrice: 1000,
+            subtotal: 1000,
+            position: 0,
+          },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  trash.quoteIds.push(quote.id);
+
+  const submitted = await service.submit(quote.id, {} as SubmitQuoteDto, {
+    user: { id: await seedUser('manual-submitter') },
+  });
+  assert.equal(
+    submitted.status,
+    QuoteStatus.PENDING_APPROVAL,
+    'manual quote with a non-lead DRAFT section submits normally',
+  );
+});
+
 test('DM-15e: the lead submits once every section is SUBMITTED_TO_LEAD', async () => {
   // Guarantee an approver exists for tiers 1 & 2 (ADMIN satisfies both).
   await seedUser('approver', 'ADMIN');
