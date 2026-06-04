@@ -13,6 +13,7 @@ import {
   POStatus,
   Prisma,
   ProjectStatus,
+  QuoteRequirementType,
   QuoteSectionStatus,
   QuoteStatus,
   RfqAssignmentStatus,
@@ -771,6 +772,136 @@ export class QuotesService {
     }
 
     return updated;
+  }
+
+  // ----------------------------------------------------------------
+  // DM-15d — quote requirements / notes + lead dedup (§14, v1 flat list)
+  // ----------------------------------------------------------------
+
+  private async assertQuoteExists(quoteId: string) {
+    const quote = await this.prisma.quote.findFirst({
+      where: { id: quoteId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!quote) throw new NotFoundException('Quote not found');
+  }
+
+  /** A pricer adds a requirement (DOCUMENT) or note (NOTE). Perm quote:build. */
+  async addRequirement(
+    quoteId: string,
+    dto: { type?: QuoteRequirementType; text: string; position?: number },
+  ) {
+    await this.assertQuoteExists(quoteId);
+    if (!dto.text?.trim())
+      throw new BadRequestException('Requirement text is required');
+    const max = await this.prisma.quoteRequirement.aggregate({
+      where: { quoteId },
+      _max: { position: true },
+    });
+    return this.prisma.quoteRequirement.create({
+      data: {
+        quoteId,
+        type: dto.type ?? QuoteRequirementType.NOTE,
+        text: dto.text.trim(),
+        position: dto.position ?? (max._max.position ?? -1) + 1,
+      },
+    });
+  }
+
+  /** Edit a requirement's type / text / position. Perm quote:build. */
+  async updateRequirement(
+    quoteId: string,
+    requirementId: string,
+    dto: { type?: QuoteRequirementType; text?: string; position?: number },
+  ) {
+    const existing = await this.prisma.quoteRequirement.findFirst({
+      where: { id: requirementId, quoteId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Requirement not found');
+    const data: Prisma.QuoteRequirementUpdateInput = {};
+    if (dto.type !== undefined) data.type = dto.type;
+    if (dto.text !== undefined) {
+      if (!dto.text.trim())
+        throw new BadRequestException('Requirement text cannot be empty');
+      data.text = dto.text.trim();
+    }
+    if (dto.position !== undefined) data.position = dto.position;
+    return this.prisma.quoteRequirement.update({
+      where: { id: requirementId },
+      data,
+    });
+  }
+
+  /** Delete a requirement. Perm quote:build. */
+  async deleteRequirement(quoteId: string, requirementId: string) {
+    const existing = await this.prisma.quoteRequirement.findFirst({
+      where: { id: requirementId, quoteId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Requirement not found');
+    await this.prisma.quoteRequirement.delete({ where: { id: requirementId } });
+    return { message: 'Requirement deleted' };
+  }
+
+  /**
+   * The lead reviewer merges duplicate per-department requirement lines into one
+   * shared row: the kept row is flagged `isShared` and records the merged ids in
+   * `dedupedFromIds`; the merged rows are deleted. Lead-only (the lead section's
+   * pricer). v1 is a flat quote-level list (no per-section authorship — that
+   * would be a migration).
+   */
+  async dedupRequirements(
+    quoteId: string,
+    keepId: string,
+    mergeIds: string[],
+    scopeCtx?: ScopeContext,
+  ) {
+    if (scopeCtx?.user) {
+      const lead = await this.prisma.quoteDepartmentSection.findFirst({
+        where: { quoteId, isLead: true },
+        select: { pricerId: true },
+      });
+      if (lead?.pricerId && lead.pricerId !== scopeCtx.user.id) {
+        throw new ForbiddenException(
+          'Only the lead reviewer can dedup requirements',
+        );
+      }
+    }
+    const keep = await this.prisma.quoteRequirement.findFirst({
+      where: { id: keepId, quoteId },
+    });
+    if (!keep) throw new NotFoundException('Requirement to keep not found');
+
+    const toMergeIds = [...new Set(mergeIds)].filter((id) => id !== keepId);
+    if (toMergeIds.length === 0) {
+      throw new BadRequestException('No distinct requirements to merge');
+    }
+    const found = await this.prisma.quoteRequirement.findMany({
+      where: { id: { in: toMergeIds }, quoteId },
+      select: { id: true },
+    });
+    if (found.length !== toMergeIds.length) {
+      throw new BadRequestException(
+        'Some requirements to merge were not found on this quote',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.quoteRequirement.update({
+        where: { id: keepId },
+        data: {
+          isShared: true,
+          dedupedFromIds: {
+            set: [...new Set([...keep.dedupedFromIds, ...toMergeIds])],
+          },
+        },
+      });
+      await tx.quoteRequirement.deleteMany({
+        where: { id: { in: toMergeIds } },
+      });
+      return updated;
+    });
   }
 
   /**

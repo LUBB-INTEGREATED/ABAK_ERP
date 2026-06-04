@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { QuoteRequirementType } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
   AcceptRejectQuoteDto,
@@ -153,6 +154,59 @@ export class QuotesController {
     @CurrentScope('quote:build') scope: PermissionScope | undefined,
   ) {
     return this.quotes.requestSectionRevision(id, sectionId, dto?.note, {
+      user,
+      scope,
+    });
+  }
+
+  // Requirements / notes — §14 lead dedup (DM-15d) ----------------
+
+  @Post('quotes/:id/requirements')
+  @RequirePermission('quote:build')
+  @ApiOperation({ summary: 'Add a requirement (DOCUMENT) or note (NOTE).' })
+  addRequirement(
+    @Param('id') id: string,
+    @Body()
+    dto: { type?: QuoteRequirementType; text: string; position?: number },
+  ) {
+    return this.quotes.addRequirement(id, dto);
+  }
+
+  @Patch('quotes/:id/requirements/:requirementId')
+  @RequirePermission('quote:build')
+  @ApiOperation({ summary: 'Edit a requirement / note.' })
+  updateRequirement(
+    @Param('id') id: string,
+    @Param('requirementId') requirementId: string,
+    @Body()
+    dto: { type?: QuoteRequirementType; text?: string; position?: number },
+  ) {
+    return this.quotes.updateRequirement(id, requirementId, dto);
+  }
+
+  @Delete('quotes/:id/requirements/:requirementId')
+  @RequirePermission('quote:build')
+  @ApiOperation({ summary: 'Delete a requirement / note.' })
+  deleteRequirement(
+    @Param('id') id: string,
+    @Param('requirementId') requirementId: string,
+  ) {
+    return this.quotes.deleteRequirement(id, requirementId);
+  }
+
+  @Post('quotes/:id/requirements/dedup')
+  @RequirePermission('quote:build')
+  @ApiOperation({
+    summary:
+      'Lead reviewer merges duplicate requirements into one shared row (keepId + mergeIds).',
+  })
+  dedupRequirements(
+    @Param('id') id: string,
+    @Body() dto: { keepId: string; mergeIds: string[] },
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:build') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.dedupRequirements(id, dto.keepId, dto.mergeIds, {
       user,
       scope,
     });
