@@ -1724,6 +1724,85 @@
     "channelLabel": "How did this lead come in?",
     "channelHint": "Pick the channel — it tailors the fields below."
   },
+  "quotations": {
+    "shell": {
+      "title": "Quotations",
+      "subtitle": "From request to sent quote — pricing management.",
+      "refresh": "Refresh",
+      "newQuote": "New quote",
+      "kpiTotal": "Total quotes",
+      "kpiPending": "Pending approval",
+      "kpiAccepted": "Accepted",
+      "kpiAcceptedValue": "Accepted value",
+      "viewBoard": "Board",
+      "viewList": "List",
+      "search": "Search QUO / RFQ / client"
+    },
+    "list": {
+      "quoteNumber": "Quote #",
+      "client": "Client",
+      "titleCol": "Title",
+      "total": "Total",
+      "status": "Status",
+      "created": "Created",
+      "empty": "No quotes yet",
+      "emptyDesc": "Create a quote or accept an incoming request to start one.",
+      "newQuote": "New quote",
+      "noMatches": "No matches",
+      "noMatchesDesc": "No quotes match your search."
+    },
+    "board": {
+      "error": "We couldn't load the pipeline. Try again.",
+      "accept": "Accept & assign",
+      "decline": "Not us",
+      "awaitingTriage": "Awaiting triage",
+      "slaTitle": "Business hours since submitted",
+      "col": {
+        "incoming": "Incoming",
+        "pricing": "Pricing",
+        "approval": "Awaiting approval",
+        "sent": "Sent",
+        "closed": "Closed"
+      },
+      "empty": {
+        "incoming": "Inbox clear — new requests land here the moment Sales submits them.",
+        "pricing": "Nothing in pricing.",
+        "approval": "Nothing awaiting approval.",
+        "sent": "Nothing sent.",
+        "closed": "Nothing closed yet."
+      }
+    },
+    "accept": {
+      "title": "Accept request & assign pricers",
+      "consequence": "A new draft quote (QUO) will be created on confirm.",
+      "deptsHeading": "Departments involved (derived from the requested services)",
+      "noDepts": "This request has no routed departments.",
+      "pickPricer": "Choose a pricer…",
+      "lead": "Lead pricer",
+      "makeLead": "Make lead",
+      "leadRule": "Exactly one lead pricer is required. The first department you assign becomes the lead automatically.",
+      "cancel": "Cancel",
+      "confirm": "Accept & create draft",
+      "assignAllHint": "Assign a pricer to every department",
+      "toastSuccess": "Accepted — {quote} is ready for pricing.",
+      "toastFailed": "Couldn't accept the request. Try again."
+    },
+    "decline": {
+      "title": "Not us / decline",
+      "reasonLabel": "Reason",
+      "type": {
+        "WRONG_DEPT": "Wrong department — needs re-routing",
+        "NO_BID": "We won't bid (no-bid)"
+      },
+      "noteLabel": "Note for sales",
+      "noteLabelNoBid": "Note for sales (required)",
+      "notePlaceholder": "Briefly, why?",
+      "cancel": "Cancel",
+      "confirm": "Confirm decline",
+      "toastSuccess": "{rfq} declined and returned to sales.",
+      "toastFailed": "Couldn't decline the request. Try again."
+    }
+  },
   "quoteList": {
     "title": "Quotes",
     "subtitle": "Draft, approve, send, and accept client proposals.",

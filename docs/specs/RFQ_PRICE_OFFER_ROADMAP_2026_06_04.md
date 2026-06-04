@@ -212,18 +212,18 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 
 ## EPIC 3 — Quotations pipeline (department surface, inside `/quotes`)
 
-- [ ] **QP-1** `<QuotationsShell>`: board / list / my-queue modes; fold existing `/quotes` list + KPIs in.
-- [ ] **QP-2** Incoming column + `<IncomingRfqCard>` + SLA timer (red > 4 biz hrs).
-- [ ] **QP-3** `<AcceptAssignSheet>` (the seam): per-Department rows, one ⭐ Lead, confirm → DM-4.
+- [x] **QP-1** `<QuotationsShell>`: board / list / my-queue modes; fold existing `/quotes` list + KPIs in.
+- [x] **QP-2** Incoming column + `<IncomingRfqCard>` + SLA timer (red > 4 biz hrs).
+- [x] **QP-3** `<AcceptAssignSheet>` (the seam): per-Department rows, one ⭐ Lead, confirm → DM-4.
       Handle the accept-race (P2): if quoteId set between open & confirm, tell manager B.
-- [ ] **QP-4** `<DeclineRfqDialog>` (wrong-dept → suggest re-route; no-bid → reason) → DM-5.
+- [x] **QP-4** `<DeclineRfqDialog>` (wrong-dept → suggest re-route; no-bid → reason) → DM-5.
 - [ ] **QP-5** Pricing column + `<DraftQuoteCard>` + section progress ("2/3 sections submitted").
 - [ ] **QP-6** **Lead Reviewer compile view** (split spec §14): all sections side by side, dedup shared
       requirements/notes, request-revision a section, submit gate (all sections SUBMITTED_TO_LEAD).
 - [ ] **QP-7** Re-site the raise doc/site-visit panel into Pricing (now `PENDING`-correct after BUG-1).
 - [ ] **QP-8 (P2)** Pricing-column staleness signal (accepted-but-never-opened drafts).
 - [ ] **QP-9 (P2)** Un-accept UI → DM-14.
-- [ ] **QP-10** In-approval / Sent / Closed columns map to `QuoteStatus`.
+- [x] **QP-10** In-approval / Sent / Closed columns map to `QuoteStatus`.
 
 ---
 
