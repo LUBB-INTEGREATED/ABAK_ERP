@@ -1,9 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Star, Loader2, PencilRuler, Undo2, AlertTriangle } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useQuoteSections, useSubmitSection } from '@/lib/hooks/use-quotes';
 import { useUnacceptRfq } from '@/lib/hooks/use-rfqs';
 import { usePermissions } from '@/lib/hooks/use-permissions';
@@ -41,6 +51,7 @@ export function DraftQuoteCard({
   const submit = useSubmitSection(quote.id);
   const { can } = usePermissions();
   const unaccept = useUnacceptRfq(quote.rfq?.id ?? '');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const list = sections.data ?? [];
   const submitted = list.filter((s) => s.status === 'SUBMITTED_TO_LEAD').length;
@@ -67,6 +78,7 @@ export function DraftQuoteCard({
     try {
       await unaccept.mutateAsync();
       toast.success(t('unacceptToast'));
+      setConfirmOpen(false);
     } catch (err) {
       toast.error(errMessage(err, t('unacceptFailed')));
     }
@@ -173,19 +185,49 @@ export function DraftQuoteCard({
       </Link>
 
       {canUnaccept && (
-        <button
-          type="button"
-          onClick={onUnaccept}
-          disabled={unaccept.isPending}
-          className="mt-1.5 inline-flex min-h-[28px] w-full items-center justify-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-destructive disabled:opacity-50"
-        >
-          {unaccept.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={unaccept.isPending}
+            className="mt-1.5 inline-flex min-h-[28px] w-full items-center justify-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-destructive disabled:opacity-50"
+          >
             <Undo2 className="h-3 w-3" />
-          )}
-          {t('unaccept')}
-        </button>
+            {t('unaccept')}
+          </button>
+
+          {/* RV3b-7: un-accept is destructive (discards the draft + its pricer
+              assignments) — confirm before firing. */}
+          <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('unacceptConfirmTitle')}</DialogTitle>
+                <DialogDescription>
+                  {t('unacceptConfirmBody')}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={unaccept.isPending}
+                >
+                  {t('unacceptConfirmCancel')}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={onUnaccept}
+                  disabled={unaccept.isPending}
+                >
+                  {unaccept.isPending && (
+                    <Loader2 className="me-1 h-4 w-4 animate-spin" />
+                  )}
+                  {t('unacceptConfirmCta')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );

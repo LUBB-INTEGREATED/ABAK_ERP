@@ -1787,7 +1787,11 @@
       "staleTitle": "Accepted over {days} days ago with nothing submitted yet",
       "unaccept": "Return to triage",
       "unacceptToast": "Returned to triage — the request is back in Incoming.",
-      "unacceptFailed": "Couldn't return this to triage."
+      "unacceptFailed": "Couldn't return this to triage.",
+      "unacceptConfirmTitle": "Return this request to triage?",
+      "unacceptConfirmBody": "This discards the empty draft quote and its pricer assignments, and sends the request back to Incoming. This can't be undone.",
+      "unacceptConfirmCancel": "Cancel",
+      "unacceptConfirmCta": "Return to triage"
     },
     "compile": {
       "title": "Department sections",

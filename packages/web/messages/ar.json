@@ -1787,7 +1787,11 @@
       "staleTitle": "قُبِل منذ أكثر من {days} أيام دون إرسال أي قسم",
       "unaccept": "إعادة للفرز",
       "unacceptToast": "أُعيد للفرز — الطلب عاد إلى الوارد.",
-      "unacceptFailed": "تعذّرت إعادة هذا للفرز."
+      "unacceptFailed": "تعذّرت إعادة هذا للفرز.",
+      "unacceptConfirmTitle": "إعادة هذا الطلب للفرز؟",
+      "unacceptConfirmBody": "سيؤدي ذلك إلى حذف مسودّة عرض السعر الفارغة وتعيينات المُسعّرين، وإعادة الطلب إلى الوارد. لا يمكن التراجع عن هذا.",
+      "unacceptConfirmCancel": "إلغاء",
+      "unacceptConfirmCta": "إعادة للفرز"
     },
     "compile": {
       "title": "أقسام الإدارات",
