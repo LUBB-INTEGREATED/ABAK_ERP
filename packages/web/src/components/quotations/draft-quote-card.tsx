@@ -122,6 +122,18 @@ export function DraftQuoteCard({
 
       {sections.isLoading ? (
         <div className="mt-2 h-8 animate-pulse rounded bg-muted" />
+      ) : sections.isError ? (
+        // RV3b-8: don't silently collapse on a /sections error — show retry.
+        <div className="mt-2 flex items-center justify-between gap-2 rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-700">
+          <span>{t('sectionsError')}</span>
+          <button
+            type="button"
+            onClick={() => sections.refetch()}
+            className="font-medium underline"
+          >
+            {t('retry')}
+          </button>
+        </div>
       ) : list.length > 0 ? (
         <ul className="mt-2 space-y-1.5" dir={dir}>
           {list.map((s) => {

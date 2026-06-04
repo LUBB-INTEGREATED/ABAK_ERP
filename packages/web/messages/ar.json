@@ -1791,7 +1791,9 @@
       "unacceptConfirmTitle": "إعادة هذا الطلب للفرز؟",
       "unacceptConfirmBody": "سيؤدي ذلك إلى حذف مسودّة عرض السعر الفارغة وتعيينات المُسعّرين، وإعادة الطلب إلى الوارد. لا يمكن التراجع عن هذا.",
       "unacceptConfirmCancel": "إلغاء",
-      "unacceptConfirmCta": "إعادة للفرز"
+      "unacceptConfirmCta": "إعادة للفرز",
+      "sectionsError": "تعذّر تحميل الأقسام.",
+      "retry": "إعادة المحاولة"
     },
     "compile": {
       "title": "أقسام الإدارات",
@@ -1825,7 +1827,9 @@
       "addedToast": "تمت إضافة المتطلب.",
       "mergedToast": "تم دمج المتطلبات.",
       "submitToast": "تم الإرسال للاعتماد.",
-      "actionFailed": "فشل الإجراء. حاول مرة أخرى."
+      "actionFailed": "فشل الإجراء. حاول مرة أخرى.",
+      "sectionsError": "تعذّر تحميل أقسام الإدارات.",
+      "retry": "إعادة المحاولة"
     },
     "accept": {
       "title": "قبول الطلب وتعيين المُسعّرين",

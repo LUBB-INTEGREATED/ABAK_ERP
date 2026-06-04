@@ -1791,7 +1791,9 @@
       "unacceptConfirmTitle": "Return this request to triage?",
       "unacceptConfirmBody": "This discards the empty draft quote and its pricer assignments, and sends the request back to Incoming. This can't be undone.",
       "unacceptConfirmCancel": "Cancel",
-      "unacceptConfirmCta": "Return to triage"
+      "unacceptConfirmCta": "Return to triage",
+      "sectionsError": "Couldn't load the sections.",
+      "retry": "Retry"
     },
     "compile": {
       "title": "Department sections",
@@ -1825,7 +1827,9 @@
       "addedToast": "Requirement added.",
       "mergedToast": "Requirements merged.",
       "submitToast": "Submitted for approval.",
-      "actionFailed": "Action failed. Try again."
+      "actionFailed": "Action failed. Try again.",
+      "sectionsError": "Couldn't load the department sections.",
+      "retry": "Retry"
     },
     "accept": {
       "title": "Accept request & assign pricers",

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ErrorState } from '@/components/ui/state-blocks';
 import { cn } from '@/lib/utils';
 import {
   useQuoteSections,
@@ -64,6 +65,18 @@ export function CompileView({
 
   if (sectionsQ.isLoading) {
     return <div className="h-32 animate-pulse rounded-lg bg-muted" />;
+  }
+  // RV3b-8: surface a /sections fetch error with retry instead of silently
+  // collapsing the whole compile UI to an empty (looks-like-no-sections) state.
+  if (sectionsQ.isError) {
+    return (
+      <ErrorState
+        compact
+        description={t('sectionsError')}
+        retryLabel={t('retry')}
+        onRetry={() => sectionsQ.refetch()}
+      />
+    );
   }
 
   return (

@@ -287,7 +287,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
       (the rest of the app uses the translated `currency` key) → wrong on the Arabic doc. Use the translated key.
 - [x] **RV3b-7 (P2)** Un-accept is one-click destructive (deletes the draft + assignments, no confirm,
       `draft-quote-card.tsx:64`). Gate behind an AlertDialog naming the consequence.
-- [ ] **RV3b-8 (P2)** CompileView + DraftQuoteCard swallow a `/sections` fetch error (silent empty array →
+- [x] **RV3b-8 (P2)** CompileView + DraftQuoteCard swallow a `/sections` fetch error (silent empty array →
       whole compile UI vanishes). Add an `isError` branch with retry (mirror `ErrorState` in the board).
 
 ---
