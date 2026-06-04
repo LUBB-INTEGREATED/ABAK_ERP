@@ -22,7 +22,9 @@ export class ServicesService {
     return this.prisma.service.findMany({
       where: includeInactive ? {} : { isActive: true },
       orderBy: [{ category: { order: 'asc' } }, { name: 'asc' }],
-      include: { category: { select: { id: true, name: true } } },
+      include: {
+        category: { select: { id: true, name: true, nameAr: true } },
+      },
     });
   }
 
@@ -92,14 +94,25 @@ export class ServicesService {
 
   // Categories ---------------------------------------------------
 
-  findCategories(includeInactive = false) {
-    return this.prisma.serviceCategory.findMany({
+  async findCategories(includeInactive = false) {
+    const cats = await this.prisma.serviceCategory.findMany({
       where: includeInactive ? {} : { isActive: true },
       orderBy: { order: 'asc' },
       include: {
         services: { where: { isActive: true }, select: { id: true } },
+        // DM-15 fold: the owning real Department(s) for this category, so the
+        // Accept sheet can resolve ServiceCategory → Department → members
+        // (GET /departments/:id/members) without a second round-trip.
+        departmentLinks: { select: { departmentId: true } },
       },
     });
+    return cats.map(({ departmentLinks, ...c }) => ({
+      ...c,
+      // `departmentId` is the primary (first) owning department, null when the
+      // category isn't linked yet; `departmentIds` lists all links.
+      departmentId: departmentLinks[0]?.departmentId ?? null,
+      departmentIds: departmentLinks.map((l) => l.departmentId),
+    }));
   }
 
   createCategory(dto: CreateServiceCategoryDto) {

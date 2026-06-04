@@ -13,23 +13,30 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import { UserPicker } from '@/components/ui/user-picker';
 import { useRfq, useStartPricing } from '@/lib/hooks/use-rfqs';
 import {
   useCreateRfqAssignment,
   useDepartments,
 } from '@/lib/hooks/use-rfq-assignments';
+import { useDepartmentMembers } from '@/lib/hooks/use-departments';
 import type { RfqListItem } from '@/lib/types/rfq';
 import { cn } from '@/lib/utils';
 
-// QP-3 (RV-6) — the Accept+Assign seam. One row per department the RFQ was
-// routed to (requestedCategoryIds); the manager picks WHO prices each + exactly
-// one ⭐ Lead. Confirm writes the assignments then fires startPricing, which
-// mints the Draft Quote, flips rfq→PRICING, and routes the lead to the quote.
-// First row assigned auto-becomes lead; toggling a star clears the others
-// (the single-lead invariant the backend also enforces at rfq-assignments:131).
+// QP-3 (RV-6) + QP-3-fix (RV2-1) — the Accept+Assign seam. One row per
+// department the RFQ was routed to (requestedCategoryIds); the manager picks WHO
+// prices each + exactly one ⭐ Lead. Confirm writes the assignments then fires
+// startPricing, which mints the Draft Quote, flips rfq→PRICING, and routes the
+// lead to the quote. First row assigned auto-becomes lead; toggling a star
+// clears the others (the single-lead invariant the backend also enforces).
+//
+// RV2-1 fix: the pricer picker no longer hits GET /users (which a Department
+// Manager can't read). Each row folds its section's ServiceCategory → the owning
+// real Department (via the category's `departmentId`) and lists THAT department's
+// members through GET /departments/:id/members (perm rfq:assign_pricers).
 
 type RowState = { assignee: string; lead: boolean };
+
+type DeptRow = { id: string; name: string; departmentId: string | null };
 
 export function AcceptAssignSheet({
   rfq,
@@ -53,17 +60,16 @@ export function AcceptAssignSheet({
   const [busy, setBusy] = useState(false);
 
   const categoryIds = detail.data?.requestedCategoryIds ?? [];
-  const deptRows = useMemo(
+  const deptRows: DeptRow[] = useMemo(
     () =>
-      categoryIds.map((id) => ({
-        id,
-        name:
-          (locale === 'ar'
-            ? cats.find((c) => c.id === id)?.nameAr
-            : cats.find((c) => c.id === id)?.name) ??
-          cats.find((c) => c.id === id)?.name ??
+      categoryIds.map((id) => {
+        const cat = cats.find((c) => c.id === id);
+        return {
           id,
-      })),
+          name: (locale === 'ar' ? cat?.nameAr : cat?.name) ?? cat?.name ?? id,
+          departmentId: cat?.departmentId ?? null,
+        };
+      }),
     [categoryIds, cats, locale],
   );
 
@@ -108,8 +114,6 @@ export function AcceptAssignSheet({
       const { quoteId, quoteNumber } = await startPricing.mutateAsync();
       toast.success(t('toastSuccess', { quote: quoteNumber }));
       onClose();
-      // QP-5 (deferred): the pre-linked builder edit-mode (/quotes/[id]/build)
-      // isn't built yet, so the lead lands on the quote detail for now.
       router.push(`/quotes/${quoteId}`);
     } catch (err) {
       const message =
@@ -144,41 +148,16 @@ export function AcceptAssignSheet({
           ) : deptRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noDepts')}</p>
           ) : (
-            deptRows.map((d) => {
-              const r = rows[d.id];
-              return (
-                <div key={d.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-medium">{d.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => setLead(d.id)}
-                      disabled={busy}
-                      aria-pressed={r?.lead ?? false}
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs',
-                        r?.lead
-                          ? 'bg-amber-100 font-semibold text-amber-900'
-                          : 'text-muted-foreground hover:bg-muted/50',
-                      )}
-                    >
-                      {r?.lead ? (
-                        <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                      ) : (
-                        <StarOff className="h-3.5 w-3.5" />
-                      )}
-                      {r?.lead ? t('lead') : t('makeLead')}
-                    </button>
-                  </div>
-                  <UserPicker
-                    value={r?.assignee ?? ''}
-                    onChange={(u) => setAssignee(d.id, u)}
-                    disabled={busy}
-                    placeholder={t('pickPricer')}
-                  />
-                </div>
-              );
-            })
+            deptRows.map((d) => (
+              <DeptPricerRow
+                key={d.id}
+                row={d}
+                state={rows[d.id]}
+                busy={busy}
+                onAssignee={(u) => setAssignee(d.id, u)}
+                onLead={() => setLead(d.id)}
+              />
+            ))
           )}
 
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -209,5 +188,87 @@ export function AcceptAssignSheet({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function DeptPricerRow({
+  row,
+  state,
+  busy,
+  onAssignee,
+  onLead,
+}: {
+  row: DeptRow;
+  state: RowState | undefined;
+  busy: boolean;
+  onAssignee: (userId: string) => void;
+  onLead: () => void;
+}) {
+  const t = useTranslations('quotations.accept');
+  const members = useDepartmentMembers(row.departmentId);
+
+  const memberName = (m: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    isManager: boolean;
+  }) => {
+    const name = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email;
+    return m.isManager ? `${name} · ${t('managerTag')}` : name;
+  };
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-medium">{row.name}</span>
+        <button
+          type="button"
+          onClick={onLead}
+          disabled={busy}
+          aria-pressed={state?.lead ?? false}
+          className={cn(
+            'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs',
+            state?.lead
+              ? 'bg-amber-100 font-semibold text-amber-900'
+              : 'text-muted-foreground hover:bg-muted/50',
+          )}
+        >
+          {state?.lead ? (
+            <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+          ) : (
+            <StarOff className="h-3.5 w-3.5" />
+          )}
+          {state?.lead ? t('lead') : t('makeLead')}
+        </button>
+      </div>
+
+      {!row.departmentId ? (
+        <p className="text-xs italic text-muted-foreground">{t('noDept')}</p>
+      ) : members.isLoading ? (
+        <div className="h-10 animate-pulse rounded bg-muted" />
+      ) : members.isError ? (
+        <p className="text-xs text-rose-600">{t('membersError')}</p>
+      ) : (members.data?.length ?? 0) === 0 ? (
+        <p className="text-xs italic text-muted-foreground">{t('noMembers')}</p>
+      ) : (
+        <select
+          value={state?.assignee ?? ''}
+          onChange={(e) => onAssignee(e.target.value)}
+          disabled={busy}
+          dir="auto"
+          className="input-base min-h-[40px] w-full"
+          aria-label={t('pickPricer')}
+        >
+          <option value="" disabled>
+            {t('pickPricer')}
+          </option>
+          {members.data?.map((m) => (
+            <option key={m.id} value={m.id}>
+              {memberName(m)}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }

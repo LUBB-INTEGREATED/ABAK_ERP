@@ -102,6 +102,10 @@ export type Department = {
   id: string;
   name: string;
   nameAr: string | null;
+  // DM-15 fold: the owning real Department id (first link), for resolving the
+  // section's ServiceCategory → Department → members. Null when unlinked.
+  departmentId?: string | null;
+  departmentIds?: string[];
 };
 
 export function useDepartments() {
