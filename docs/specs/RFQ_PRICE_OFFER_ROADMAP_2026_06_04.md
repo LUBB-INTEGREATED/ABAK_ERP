@@ -122,6 +122,72 @@ Acceptance = the one check that proves it's done.
 
 ---
 
+## EPIC 1.5 — Review fixes (verified 2026-06-04)
+
+From the adversarial review of the EPIC 0+1 diff — **25 confirmed, 2 refuted**. Evidence +
+repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks EPIC 2/3.**
+
+### Group A — P1, fix before any UI
+
+- [ ] **RV-1 (P1)** `revise()` drops technical-scope fields (scopeOfWork/deliverables/exclusions/
+      assumptions/numberOfRevisions) → revision loses the scope the renderer prints. Add them to the
+      revise() create data. `quotes.service.ts:986-1031`. _(same class as DM-8; missed fields)_
+- [ ] **RV-2 (P1)** decline→reroute leaves **stale `RfqAssignment` rows** → the wrong dept's manager +
+      engineer keep scope/visibility on the re-routed RFQ (data leak). `deleteMany({where:{rfqId}})` on
+      WRONG_DEPT decline. `rfqs.service.ts:459-554`.
+- [ ] **RV-3 (P1)** Upload **OOM**: multer buffers the whole body into RAM before the size check → any
+      authed user can crash the process with a multi-GB POST. `FileInterceptor('file',{limits:{fileSize,files:1}})`.
+      `files.controller.ts:97-112`.
+- [ ] **RV-4 (P1)** Zero tests on `files/**` + `pdf/**` (path-traversal in `pathFor`, magic-number gate,
+      size cap, render auth, HTML-escape). Add storage + upload-e2e + render-smoke tests.
+
+### Group B — P2 correctness / security (same pass)
+
+- [ ] **RV-5 (P2)** `startPricing` TOCTOU: two concurrent calls both read `quoteId=null` outside the tx →
+      two quotes, last-writer-wins repoint **orphans** the first. `@unique` does NOT catch it (same row,
+      distinct values). `updateMany({where:{id,quoteId:null}})` + `count===0 → ConflictException`. `rfqs.service.ts:300-372`.
+- [ ] **RV-7 (P2)** `cancel()` can flip a **WON** deal's RFQ to CANCELLED (rfq.status stays PRICING after
+      WON) → display shows CANCELLED while quote/PO/commission are WON. Guard on linked quote state. `rfqs.service.ts:273-290`.
+- [ ] **RV-9 (P2)** Broker commission accrued with `baseAmount=0, amount=0` and nothing grows it → a
+      commission can be approved + PAID for SAR 0. Compute on accrual or wire to validated PO payments. `quotes.service.ts:800-806`.
+- [ ] **RV-13 (P2)** `revise()` concurrency: parent status checked outside the tx → duplicate version N+1
+      quotes, orphaned loser. Conditional `updateMany({where:{id,status:{in:REVISABLE}}})` flip. `quotes.service.ts:953-1112`.
+- [ ] **RV-16 (P2)** No write path sets `QuoteItem.sectionId` (item DTOs accept only `departmentId`) → all
+      items `sectionId=null`; revise()'s section remap operates on data the app can't produce. Add sectionId
+      to item DTO + set in create/update, OR derive from departmentId. `dto/index.ts:86`.
+- [ ] **RV-18 (P2)** `reroute` doesn't validate the new categories resolve to an active department → RFQ
+      returns to SUBMITTED but lands in **no inbox** (orphaned). Validate `DepartmentService` links first. `rfqs.service.ts:519-552`.
+- [ ] **RV-20 (P2)** Raw-file route authorizes by **UUID-as-bearer** only — no ACL/expiry → anyone with the
+      URL fetches client docs forever. Gate sensitive assets behind auth or signed URLs. `files.controller.ts:114-127`.
+- [ ] **RV-21 (P2)** tafqit: "two hundred" before a scale word not in idāfa → emits `مئتان ألف` instead of
+      `مئتا ألف` (200k–299k / 200M wrong). Drop the nun in construct state. `amount-in-words.ts:163`.
+- [ ] **RV-12 (P2)** DM-1 migration is semantically lossy (6 legacy states → PRICING, outcome discarded).
+      No-op on this empty DB; **for any populated env** add a one-off reconciliation migration advancing
+      `quote.status` from the preserved deprecated columns. `migrations/...dm1_thin_rfq_status`.
+- [ ] **RV-8 (P2)** _Covered by EPIC 2/3._ Web `rfqs/[id]` still wires REMOVED endpoints (assign-coordinator/
+      start-preparation/dispatch/outcome → 404) and has no start-pricing/decline/reroute/unaccept wiring.
+      This IS the EPIC 2/3 rebuild — listed here for traceability.
+
+### Group C — missing tests (harden the backbone)
+
+- [ ] **RV-6** startPricing + derive/decline/reroute/unaccept integration spec.
+- [ ] **RV-10** accept()/commission accrual + once-per-RFQ guard.
+- [ ] **RV-11** reject() (reasonCode/BR-11) + postpone() (BR-10 30-day).
+- [ ] **RV-14** extend DM-8 test to assert methodologyCard/ganttBlock/requirements carry.
+- [ ] **RV-15** DM-9 `totalAmount<=0` rejection branch.
+- [ ] **RV-17** DM-14 unaccept (destructive: delete draft + cascade).
+- [ ] **RV-19** DM-12 permission split (engineer raises / sales resolves; OWN-scope).
+- [ ] **RV-22** MON-1 formatter (`format.spec.ts`).
+- [ ] **RV-24** DM-5/6 decline + reroute.
+
+### Group D — P3 (follow-up)
+
+- [ ] **RV-23 (P3)** DM-3 no backfill for existing multi-dept quotes (sectionId null). Latent (renderer
+      still groups by departmentId); add a data migration before anything reads sectionId.
+- [ ] **RV-25 (P3)** tafqit currency/halala number-gender agreement (1→singular, halala feminine).
+
+---
+
 ## EPIC 2 — Sales "My Requests" surface
 
 - [ ] **SALES-1** List rebuild: urgency-sorted ("Needs you · N"), mobile stacked cards, `<DataState>`
