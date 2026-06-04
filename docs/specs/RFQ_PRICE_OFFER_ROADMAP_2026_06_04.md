@@ -129,7 +129,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 
 ### Group A — P1, fix before any UI
 
-- [ ] **RV-1 (P1)** `revise()` drops technical-scope fields (scopeOfWork/deliverables/exclusions/
+- [x] **RV-1 (P1)** `revise()` drops technical-scope fields (scopeOfWork/deliverables/exclusions/
       assumptions/numberOfRevisions) → revision loses the scope the renderer prints. Add them to the
       revise() create data. `quotes.service.ts:986-1031`. _(same class as DM-8; missed fields)_
 - [ ] **RV-2 (P1)** decline→reroute leaves **stale `RfqAssignment` rows** → the wrong dept's manager +

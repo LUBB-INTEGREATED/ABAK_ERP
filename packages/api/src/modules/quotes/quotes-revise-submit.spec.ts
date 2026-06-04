@@ -102,6 +102,12 @@ test('DM-8: revise() repoints rfq.quoteId to the new version and sections surviv
       status: QuoteStatus.APPROVED,
       subtotal: 1000,
       totalAmount: 1000,
+      // RV-1: technical scope that must survive a revision.
+      scopeOfWork: 'Structural design of the mezzanine',
+      deliverables: 'Stamped drawings + BOQ',
+      exclusions: 'Soil testing',
+      assumptions: 'Existing as-built is accurate',
+      numberOfRevisions: 2,
       departmentSections: { create: [{ departmentId }] },
     },
     select: { id: true, departmentSections: { select: { id: true } } },
@@ -156,6 +162,13 @@ test('DM-8: revise() repoints rfq.quoteId to the new version and sections surviv
     departmentId,
     'item.departmentId carried',
   );
+
+  // RV-1: the technical-scope fields must carry to the revision.
+  assert.equal(next.scopeOfWork, 'Structural design of the mezzanine');
+  assert.equal(next.deliverables, 'Stamped drawings + BOQ');
+  assert.equal(next.exclusions, 'Soil testing');
+  assert.equal(next.assumptions, 'Existing as-built is accurate');
+  assert.equal(next.numberOfRevisions, 2);
 });
 
 test('DM-9: submit() rejects a quote with an unpriced department section', async () => {

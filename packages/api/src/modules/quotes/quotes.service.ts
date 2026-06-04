@@ -997,6 +997,13 @@ export class QuotesService {
           termsAndConditions: parent.termsAndConditions,
           internalNotes: parent.internalNotes,
           clientNotes: parent.clientNotes,
+          // RV-1: carry the technical-scope fields onto the revision — a
+          // revision must not silently drop the scope the renderer prints.
+          scopeOfWork: parent.scopeOfWork,
+          deliverables: parent.deliverables,
+          exclusions: parent.exclusions,
+          assumptions: parent.assumptions,
+          numberOfRevisions: parent.numberOfRevisions,
           subtotal: parent.subtotal,
           discountType: parent.discountType,
           discountValue: parent.discountValue,
