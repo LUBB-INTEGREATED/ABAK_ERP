@@ -11,6 +11,8 @@ import {
   useAcceptQuote,
   useRejectQuote,
   usePostponeQuote,
+  useSetInDiscussion,
+  useSetInNegotiation,
 } from '@/lib/hooks/use-quotes';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { LOSS_REASONS, type LossReason } from '@/lib/types/quote';
@@ -49,6 +51,8 @@ export function QuoteActionCard({
   const accept = useAcceptQuote(quoteId);
   const reject = useRejectQuote(quoteId);
   const postpone = usePostponeQuote(quoteId);
+  const inDiscussion = useSetInDiscussion(quoteId);
+  const inNegotiation = useSetInNegotiation(quoteId);
 
   const [mode, setMode] = useState<Mode>(null);
   const [lossCode, setLossCode] = useState<LossReason>('PRICE');
@@ -61,7 +65,9 @@ export function QuoteActionCard({
     send.isPending ||
     accept.isPending ||
     reject.isPending ||
-    postpone.isPending;
+    postpone.isPending ||
+    inDiscussion.isPending ||
+    inNegotiation.isPending;
 
   async function run(fn: () => Promise<unknown>) {
     setError(null);
@@ -157,9 +163,42 @@ export function QuoteActionCard({
             </button>
           ))}
 
-        {/* SENT → record outcome */}
+        {/* SENT → log client engagement (SALES-6) then record outcome */}
         {canOutcome && (
           <div className="space-y-3">
+            <div className="space-y-2 border-b pb-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                {t('engagement')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    'min-h-[44px] rounded-full border px-3 py-1.5 text-sm',
+                    status === 'IN_DISCUSSION'
+                      ? 'border-abak-blue bg-abak-blue/10 font-semibold text-abak-blue'
+                      : 'hover:bg-muted/40',
+                  )}
+                  disabled={busy || status === 'IN_DISCUSSION'}
+                  onClick={() => run(() => inDiscussion.mutateAsync())}
+                >
+                  {t('inDiscussion')}
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'min-h-[44px] rounded-full border px-3 py-1.5 text-sm',
+                    status === 'IN_NEGOTIATION'
+                      ? 'border-abak-blue bg-abak-blue/10 font-semibold text-abak-blue'
+                      : 'hover:bg-muted/40',
+                  )}
+                  disabled={busy || status === 'IN_NEGOTIATION'}
+                  onClick={() => run(() => inNegotiation.mutateAsync())}
+                >
+                  {t('inNegotiation')}
+                </button>
+              </div>
+            </div>
             <p className="text-sm text-muted-foreground">
               {t('recordOutcome')}
             </p>
