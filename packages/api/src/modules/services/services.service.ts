@@ -102,8 +102,15 @@ export class ServicesService {
         services: { where: { isActive: true }, select: { id: true } },
         // DM-15 fold: the owning real Department(s) for this category, so the
         // Accept sheet can resolve ServiceCategory → Department → members
-        // (GET /departments/:id/members) without a second round-trip.
-        departmentLinks: { select: { departmentId: true } },
+        // (GET /departments/:id/members) without a second round-trip. RV3b-4:
+        // deterministic order (DepartmentService is a bare join — no order/
+        // createdAt column without a migration; departmentId asc is stable) so
+        // the primary fold doesn't flip between requests. The web picker falls
+        // back over `departmentIds` when the primary department 403s the caller.
+        departmentLinks: {
+          select: { departmentId: true },
+          orderBy: { departmentId: 'asc' },
+        },
       },
     });
     return cats.map(({ departmentLinks, ...c }) => ({

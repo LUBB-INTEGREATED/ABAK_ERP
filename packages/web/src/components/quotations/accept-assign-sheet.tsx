@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Star, StarOff, Loader2, Info } from 'lucide-react';
@@ -36,7 +36,10 @@ import { cn } from '@/lib/utils';
 
 type RowState = { assignee: string; lead: boolean };
 
-type DeptRow = { id: string; name: string; departmentId: string | null };
+// RV3b-4: a category can link to >1 Department. Carry ALL owning department ids
+// (deterministically ordered by the serializer) so the picker can fall back to
+// the next one when the manager doesn't manage the primary (listMembers 403s).
+type DeptRow = { id: string; name: string; departmentIds: string[] };
 
 export function AcceptAssignSheet({
   rfq,
@@ -64,10 +67,16 @@ export function AcceptAssignSheet({
     () =>
       categoryIds.map((id) => {
         const cat = cats.find((c) => c.id === id);
+        const departmentIds =
+          cat?.departmentIds && cat.departmentIds.length > 0
+            ? cat.departmentIds
+            : cat?.departmentId
+              ? [cat.departmentId]
+              : [];
         return {
           id,
           name: (locale === 'ar' ? cat?.nameAr : cat?.name) ?? cat?.name ?? id,
-          departmentId: cat?.departmentId ?? null,
+          departmentIds,
         };
       }),
     [categoryIds, cats, locale],
@@ -205,7 +214,16 @@ function DeptPricerRow({
   onLead: () => void;
 }) {
   const t = useTranslations('quotations.accept');
-  const members = useDepartmentMembers(row.departmentId);
+  // RV3b-4: walk the owning departments in order; if the caller can't list a
+  // department's members (403/error), fall back to the next one before giving up.
+  const [deptIdx, setDeptIdx] = useState(0);
+  const departmentId = row.departmentIds[deptIdx] ?? null;
+  const members = useDepartmentMembers(departmentId);
+  useEffect(() => {
+    if (members.isError && deptIdx < row.departmentIds.length - 1) {
+      setDeptIdx((i) => i + 1);
+    }
+  }, [members.isError, deptIdx, row.departmentIds.length]);
 
   const memberName = (m: {
     firstName: string | null;
@@ -242,7 +260,7 @@ function DeptPricerRow({
         </button>
       </div>
 
-      {!row.departmentId ? (
+      {!departmentId ? (
         <p className="text-xs italic text-muted-foreground">{t('noDept')}</p>
       ) : members.isLoading ? (
         <div className="h-10 animate-pulse rounded bg-muted" />

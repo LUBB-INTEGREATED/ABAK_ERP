@@ -276,7 +276,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
 
 ### Group B — P2
 
-- [ ] **RV3b-4 (P2)** SC→Dept fold is non-deterministic (`services.service.ts:106-114`, no orderBy) → the
+- [x] **RV3b-4 (P2)** SC→Dept fold is non-deterministic (`services.service.ts:106-114`, no orderBy) → the
       Accept picker can resolve to the wrong Department, `listMembers` 403s the manager, and the row is
       un-assignable (Confirm stays disabled). Add deterministic order (isPrimary/order/createdAt) + let the
       picker fall back over `departmentIds` (it's already returned, web ignores it).
