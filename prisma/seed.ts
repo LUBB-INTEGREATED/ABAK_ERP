@@ -15,6 +15,7 @@ import {
   FollowUpStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedPriceOfferDefaults } from './seed-price-offer';
 
 const prisma = new PrismaClient();
 
@@ -1390,6 +1391,10 @@ async function main() {
     ],
   });
   console.log('✅ Seeded 3 escalation rules');
+
+  // DOC-1: default 8-block price-offer template + org CompanyProfile.
+  await seedPriceOfferDefaults(prisma);
+  console.log('✅ Seeded default price-offer template + company profile');
 
   console.log('✨ Database seeding completed successfully!');
   console.log(`\n📋 Login credentials:`);

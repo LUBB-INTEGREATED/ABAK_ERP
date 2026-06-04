@@ -139,6 +139,7 @@ model ServiceCategory {
   quoteItems         QuoteItem[]
   departmentSections QuoteDepartmentSection[]
   departmentLinks    DepartmentService[]
+  quoteTemplates     QuoteTemplate[] // DOC-1: optional per-department template variant
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1029,6 +1030,167 @@ model QuoteRequirement {
 enum QuoteRequirementType {
   DOCUMENT
   NOTE
+}
+
+// ============================================
+// EPIC 4 — Price-offer document composition (DOC-1)
+// Key off ServiceCategory.id; snapshot-on-issue (Quote.renderManifest, DOC-2).
+// ============================================
+
+/// DOC-1: the 8-block (or N-block) document layout. Org-level default, with an
+/// optional per-department (ServiceCategory) variant. Snapshot-on-issue =
+/// immutable once published (clone to a new version to change).
+model QuoteTemplate {
+  id        String  @id @default(cuid())
+  name      String
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  /// Optional per-department variant (ServiceCategory grain, per the spec). Null
+  /// = the org default. P3 may drop variants for v1.
+  departmentId String?
+  department   ServiceCategory? @relation(fields: [departmentId], references: [id])
+
+  /// Snapshot-on-issue versioning: immutable once publishedAt is set; clone to
+  /// a new version (parentId chain) to edit.
+  version     Int             @default(1)
+  publishedAt DateTime?
+  parentId    String?
+  parent      QuoteTemplate?  @relation("QuoteTemplateVersions", fields: [parentId], references: [id])
+  versions    QuoteTemplate[] @relation("QuoteTemplateVersions")
+
+  sections QuoteTemplateSection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isDefault])
+  @@index([departmentId])
+  @@map("quote_templates")
+}
+
+enum QuoteSectionType {
+  COVER
+  ABOUT
+  SCOPE_PRICING
+  PAYMENT
+  METHODOLOGY
+  TIMELINE
+  REQUIREMENTS_NOTES
+  THANKYOU
+  IMAGE_PAGE
+  CUSTOM_RICHTEXT
+}
+
+enum QuoteSectionBinding {
+  DATA_BOUND // rendered from quote/section data
+  UPLOADED_IMAGE // a full-page QuoteAsset image
+  STATIC_CONTENT // org/template static copy
+}
+
+/// DOC-1: one block of a template. position + enabled drive ordering/visibility;
+/// config is per-section JSON (e.g. heading overrides, column toggles).
+model QuoteTemplateSection {
+  id         String        @id @default(cuid())
+  templateId String
+  template   QuoteTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  sectionType QuoteSectionType
+  bindingType QuoteSectionBinding @default(DATA_BOUND)
+  position    Int                 @default(0)
+  enabled     Boolean             @default(true)
+
+  /// For UPLOADED_IMAGE blocks (cover background, full-page images).
+  assetId String?
+  asset   QuoteAsset? @relation(fields: [assetId], references: [id])
+
+  config Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([templateId])
+  @@map("quote_template_sections")
+}
+
+enum QuoteAssetKind {
+  COVER_BACKGROUND
+  LOGO
+  FULL_PAGE_IMAGE
+  SIGNATURE
+}
+
+/// DOC-1: a full-page image / cover background / logo for a template block.
+/// `fileAssetId` points at the UP-1 FileAsset byte store (loose ref, no cascade).
+model QuoteAsset {
+  id          String         @id @default(cuid())
+  url         String
+  kind        QuoteAssetKind @default(FULL_PAGE_IMAGE)
+  label       String?
+  fileAssetId String?
+
+  templateSections QuoteTemplateSection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("quote_assets")
+}
+
+/// DOC-1: org-level content for the document (about, services, accreditations,
+/// contact, and the sensitive BANK details). Singleton in practice (one active).
+/// Bank writes are gated by `company_profile.manage` + logged in
+/// CompanyProfileHistory (blocker #7).
+model CompanyProfile {
+  id       String  @id @default(cuid())
+  isActive Boolean @default(true)
+
+  // About / who-we-are
+  legalName      String
+  legalNameAr    String?
+  aboutText      String?
+  aboutTextAr    String?
+  /// string[] or {name,nameAr}[] of services + accreditations (bilingual arrays).
+  services       Json?
+  accreditations Json?
+
+  // Contact
+  phone     String?
+  email     String?
+  website   String?
+  address   String?
+  addressAr String?
+  logoUrl   String?
+
+  // Bank (sensitive — company_profile.manage + history audit)
+  bankName        String?
+  bankAccountName String?
+  iban            String?
+  swift           String?
+
+  history CompanyProfileHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@map("company_profiles")
+}
+
+/// DOC-1 / blocker #7: append-only audit of CompanyProfile changes (esp. IBAN).
+model CompanyProfileHistory {
+  id        String         @id @default(cuid())
+  profileId String
+  profile   CompanyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  field       String
+  oldValue    String?
+  newValue    String?
+  changedById String?
+  changedAt   DateTime @default(now())
+
+  @@index([profileId])
+  @@map("company_profile_history")
 }
 
 /// Per-line methodology card (description + steps + deliverable). Optional;

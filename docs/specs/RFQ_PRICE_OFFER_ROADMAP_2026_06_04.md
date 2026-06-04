@@ -294,7 +294,7 @@ scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-us
 
 ## EPIC 4 — Price-offer document (the renderer)
 
-- [ ] **DOC-1** Models: `QuoteTemplate`, `QuoteTemplateSection` (sectionType + bindingType),
+- [x] **DOC-1** Models: `QuoteTemplate`, `QuoteTemplateSection` (sectionType + bindingType),
       `QuoteAsset`, `CompanyProfile` + `CompanyProfileHistory`. Seed the default 8-block template so
       existing quotes still render.
 - [ ] **DOC-2** `Quote.renderManifest` snapshot-on-issue (as-issued rendering). Key artifact by
