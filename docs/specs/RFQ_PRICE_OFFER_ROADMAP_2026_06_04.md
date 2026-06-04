@@ -264,8 +264,8 @@ per item in `EPIC3_REVIEW_FINDINGS_2026_06_04.md`. **Group A (P1) blocks EPIC 4.
 - [x] **RV3b-1 (P1, IDOR)** Requirement add/update/delete pass NO scope (`quotes.controller.ts:164-195`,
       `quotes.service.ts:866-923`) → any `quote:build` holder mutates §14 requirements of ANY draft quote
       by id (cross-tenant write). Thread `{user,scope}` like `dedupRequirements`; call `findOne(quoteId,
-    scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-user-403 spec.
-- [ ] **RV3b-2 (P1, scope-leak)** The QP-5 read-scope broadening leaked into WRITE: `update()`/`softDelete()`
+  scopeCtx)` (isPreparer||isPricer) before `assertQuoteEditable`. Add a foreign-user-403 spec.
+- [x] **RV3b-2 (P1, scope-leak)** The QP-5 read-scope broadening leaked into WRITE: `update()`/`softDelete()`
       use `findOne` as their only authz gate (`quotes.service.ts:324,1410`), so a co-pricer can edit/soft-delete
       the WHOLE quote. Decouple write authz from the broadened read gate — require preparer (or lead pricer)
       for update/softDelete; a co-pricer edits only their own section's items.

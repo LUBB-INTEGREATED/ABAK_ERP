@@ -321,8 +321,36 @@ export class QuotesService {
     return quote;
   }
 
+  /**
+   * RV3b-2: write authz for a WHOLE-quote mutation (update / soft-delete). The
+   * read gate (findOne) admits any section pricer (§14 compile view), but only
+   * the PREPARER or the LEAD-section pricer may rewrite or delete the entire
+   * shared draft — a co-pricer must not be able to clobber the lead's and other
+   * departments' priced work through the quote-level endpoints.
+   */
+  private assertCanMutateQuote(
+    quote: {
+      preparedById: string | null;
+      departmentSections: { isLead: boolean; pricerId: string | null }[];
+    },
+    scopeCtx?: ScopeContext,
+  ): void {
+    if (isUnrestricted(scopeCtx)) return;
+    const uid = scopeCtx!.user.id;
+    const isPreparer = quote.preparedById === uid;
+    const isLeadPricer = quote.departmentSections.some(
+      (s) => s.isLead && s.pricerId === uid,
+    );
+    if (!isPreparer && !isLeadPricer) {
+      throw new ForbiddenException(
+        'Only the quote preparer or the lead pricer can modify this quote',
+      );
+    }
+  }
+
   async update(id: string, dto: UpdateQuoteDto, scopeCtx?: ScopeContext) {
     const quote = await this.findOne(id, scopeCtx);
+    this.assertCanMutateQuote(quote, scopeCtx);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be edited');
     }
@@ -1421,6 +1449,7 @@ export class QuotesService {
 
   async softDelete(id: string, scopeCtx?: ScopeContext) {
     const quote = await this.findOne(id, scopeCtx);
+    this.assertCanMutateQuote(quote, scopeCtx);
     if (quote.status !== QuoteStatus.DRAFT) {
       throw new BadRequestException('Only DRAFT quotes can be deleted');
     }
