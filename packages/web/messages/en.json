@@ -798,7 +798,17 @@
         "sent": "Sent",
         "closed": "Closed",
         "passedBack": "Passed back to you — the pricing team couldn't take this as routed. Re-route it to the right department.",
+        "noBid": "The department reviewed this and won't bid. See their reason below.",
         "cancelled": "This request was cancelled."
+      },
+      "reroute": {
+        "title": "Came back to you",
+        "subtitle": "This was routed to the wrong department. Fix the departments and send it back.",
+        "declinedHeading": "Why it was declined",
+        "chooseDepts": "Which departments should price this?",
+        "resubmit": "Re-route & resubmit",
+        "noBidHeading": "The department won't bid on this.",
+        "error": "None of those departments can take this. Pick at least one with an active pricing team."
       },
       "summary": {
         "title": "What you asked for",

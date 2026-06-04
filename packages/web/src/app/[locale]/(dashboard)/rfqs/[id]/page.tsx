@@ -6,6 +6,7 @@ import { useRfq } from '@/lib/hooks/use-rfqs';
 import type { RfqDetail, RfqDisplayStatus } from '@/lib/types/rfq';
 import { RequestPhaseBadge } from '@/components/ui/entity-status-badges';
 import { OpenAsksCard } from '@/components/rfqs/open-asks-card';
+import { RerouteCard } from '@/components/rfqs/reroute-card';
 import { QuoteActionCard } from '@/components/rfqs/quote-action-card';
 import {
   DetailHeader,
@@ -55,7 +56,9 @@ function StatusTimeline({ rfq }: { rfq: RfqDetail }) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
         <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-        {t('timeline.passedBack')}
+        {d === 'DECLINED_NO_BID'
+          ? t('timeline.noBid')
+          : t('timeline.passedBack')}
       </div>
     );
   }
@@ -192,6 +195,9 @@ export default function RfqDetailPage({
             </DetailRail>
           }
         >
+          {/* ⓿ REROUTE — self-hides unless the request came back declined (SALES-5) */}
+          <RerouteCard rfq={rfq} />
+
           {/* ① OPEN ASKS — self-hides when nothing is owed (SALES-3) */}
           <OpenAsksCard rfqId={id} />
 
