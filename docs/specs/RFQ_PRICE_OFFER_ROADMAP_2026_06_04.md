@@ -135,7 +135,7 @@ repro per item in `EPIC1_REVIEW_FINDINGS_2026_06_04.md` (RV-n). **Group A blocks
 - [x] **RV-2 (P1)** decline→reroute leaves **stale `RfqAssignment` rows** → the wrong dept's manager +
       engineer keep scope/visibility on the re-routed RFQ (data leak). `deleteMany({where:{rfqId}})` on
       WRONG_DEPT decline. `rfqs.service.ts:459-554`.
-- [ ] **RV-3 (P1)** Upload **OOM**: multer buffers the whole body into RAM before the size check → any
+- [x] **RV-3 (P1)** Upload **OOM**: multer buffers the whole body into RAM before the size check → any
       authed user can crash the process with a multi-GB POST. `FileInterceptor('file',{limits:{fileSize,files:1}})`.
       `files.controller.ts:97-112`.
 - [ ] **RV-4 (P1)** Zero tests on `files/**` + `pdf/**` (path-traversal in `pathFor`, magic-number gate,

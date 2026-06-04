@@ -94,7 +94,14 @@ export class FilesController {
   // TODO(spec): gate behind a dedicated upload permission once DM-12 splits the
   // RFQ/company-profile permissions; for now this matches the auth-only
   // convention of the existing register() endpoint.
-  @UseInterceptors(FileInterceptor('file'))
+  // RV-3: hard multer limit so the stream aborts mid-upload (LIMIT_FILE_SIZE)
+  // instead of buffering an unbounded body into the heap. MaxFileSizeValidator
+  // below stays as defense-in-depth.
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
+    }),
+  )
   upload(
     @UploadedFile(
       new ParseFilePipe({
