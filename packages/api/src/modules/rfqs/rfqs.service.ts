@@ -163,6 +163,15 @@ export class RfqsService {
           // DM-2: the Quote status is the source of truth for the derived
           // sales-facing display status.
           quote: { select: { status: true } },
+          // SALES-1: open-ask count (PENDING doc + site-visit requests) — feeds
+          // the list's "You · N ask(s)" urgency band + the "Needs you" chip.
+          // Same status:'PENDING' source the SALES-3 responder + QP-7 panel use.
+          _count: {
+            select: {
+              docRequests: { where: { status: 'PENDING' } },
+              siteVisitRequests: { where: { status: 'PENDING' } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
@@ -171,9 +180,10 @@ export class RfqsService {
     ]);
 
     return {
-      data: data.map((rfq) => ({
+      data: data.map(({ _count, ...rfq }) => ({
         ...rfq,
         displayStatus: deriveRfqDisplayStatus(rfq),
+        openAskCount: _count.docRequests + _count.siteVisitRequests,
       })),
       pagination: {
         total,
