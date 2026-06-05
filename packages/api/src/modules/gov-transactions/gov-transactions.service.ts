@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { GovTxStatus, Prisma } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isUnrestricted, type ScopeContext } from '../auth/scope.util';
 import type {
   CreateGovTransactionDto,
   ListGovTransactionsDto,
@@ -57,6 +59,68 @@ function sameCalendarDay(a: Date, b: Date) {
 export class GovTransactionsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Row-level scope `where` for gov transactions, or null when unrestricted
+   * (ALL). Owner dimension is the assigned PRO / engineer plus the creator;
+   * gov:* are scopeable and the schema carries assignedProId / assignedEngineerId
+   * / createdBy. Single source of truth shared by list() and the object-level
+   * guard so detail-read matches list visibility exactly.
+   *
+   * - DEPARTMENT manager: any tx assigned to a department member (as PRO or
+   *   engineer) or created by one.
+   * - OWN / DEPARTMENT non-manager: tx assigned to them or created by them.
+   */
+  private async govScopeWhere(
+    scopeCtx?: ScopeContext,
+  ): Promise<Prisma.GovTransactionWhereInput | null> {
+    if (isUnrestricted(scopeCtx)) return null;
+    const managedDeptId =
+      scopeCtx!.scope === 'DEPARTMENT'
+        ? scopeCtx!.user.managedDepartment?.id
+        : undefined;
+    if (managedDeptId) {
+      const members = await this.prisma.user.findMany({
+        where: { departmentId: managedDeptId },
+        select: { id: true },
+      });
+      const memberIds = members.map((m) => m.id);
+      return {
+        OR: [
+          { assignedProId: { in: memberIds } },
+          { assignedEngineerId: { in: memberIds } },
+          { createdBy: { in: memberIds } },
+        ],
+      };
+    }
+    const uid = scopeCtx!.user.id;
+    return {
+      OR: [
+        { assignedProId: uid },
+        { assignedEngineerId: uid },
+        { createdBy: uid },
+      ],
+    };
+  }
+
+  /**
+   * Object-level guard: the tx must be inside the actor's scope, else 403.
+   * Pass the already-loaded tx existence-check upstream so a missing record
+   * still surfaces as 404 from findOne.
+   */
+  private async assertGovInScope(id: string, scopeCtx?: ScopeContext) {
+    const scopeWhere = await this.govScopeWhere(scopeCtx);
+    if (!scopeWhere) return;
+    const visible = await this.prisma.govTransaction.findFirst({
+      where: { id, ...scopeWhere },
+      select: { id: true },
+    });
+    if (!visible) {
+      throw new ForbiddenException(
+        'You do not have permission to access this resource',
+      );
+    }
+  }
+
   async create(dto: CreateGovTransactionDto, actorId: string) {
     // BR-15 enforced at schema (projectId is required).
     const project = await this.prisma.project.findUnique({
@@ -86,10 +150,15 @@ export class GovTransactionsService {
     });
   }
 
-  list(query: ListGovTransactionsDto) {
+  async list(query: ListGovTransactionsDto, scopeCtx?: ScopeContext) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
+    // Row-level scope: a non-ALL actor only sees tx they're assigned to or
+    // created (or their department's, for a manager). Wrapped under AND so it
+    // composes with the search OR without colliding.
+    const scopeWhere = await this.govScopeWhere(scopeCtx);
     const where: Prisma.GovTransactionWhereInput = {
+      ...(scopeWhere ? { AND: [scopeWhere] } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(query.projectId ? { projectId: query.projectId } : {}),
       ...(query.authorityCategory
@@ -154,17 +223,24 @@ export class GovTransactionsService {
       }));
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, scopeCtx?: ScopeContext) {
     const tx = await this.prisma.govTransaction.findUnique({
       where: { id },
       include: DETAIL_INCLUDE,
     });
     if (!tx) throw new NotFoundException();
+    // Object-level scope: re-check the list predicate so a non-ALL actor can't
+    // read a tx outside their scope by id (cross-owner IDOR).
+    await this.assertGovInScope(id, scopeCtx);
     return tx;
   }
 
-  async update(id: string, dto: UpdateGovTransactionDto) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: UpdateGovTransactionDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.govTransaction.update({
       where: { id },
       data: {
@@ -185,8 +261,12 @@ export class GovTransactionsService {
 
   // Lifecycle per doc PART 5: SUBMITTED → UNDER_REVIEW → (REVISION_REQUIRED
   // → SUBMITTED) → APPROVED. REJECTED/CANCELLED are terminal.
-  async transitionStatus(id: string, dto: TransitionGovTxStatusDto) {
-    const tx = await this.findOne(id);
+  async transitionStatus(
+    id: string,
+    dto: TransitionGovTxStatusDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    const tx = await this.findOne(id, scopeCtx);
     const next = dto.status;
     if (tx.status === next) return tx;
 
@@ -216,8 +296,13 @@ export class GovTransactionsService {
   }
 
   // BR-16 — no PRO visit without same-day logging.
-  async logVisit(id: string, dto: LogVisitDto, actorId: string) {
-    await this.findOne(id);
+  async logVisit(
+    id: string,
+    dto: LogVisitDto,
+    actorId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     const visitedAt = new Date(dto.visitedAt);
     if (!sameCalendarDay(visitedAt, new Date())) {
       throw new BadRequestException(
@@ -238,8 +323,8 @@ export class GovTransactionsService {
     });
   }
 
-  async logComment(id: string, dto: LogCommentDto) {
-    await this.findOne(id);
+  async logComment(id: string, dto: LogCommentDto, scopeCtx?: ScopeContext) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.govComment.create({
       data: {
         transactionId: id,
@@ -253,11 +338,15 @@ export class GovTransactionsService {
     commentId: string,
     dto: RespondCommentDto,
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
     const comment = await this.prisma.govComment.findUnique({
       where: { id: commentId },
     });
     if (!comment) throw new NotFoundException();
+    // Object-level scope on the parent tx so a non-ALL actor can't respond to a
+    // comment of a tx outside their scope.
+    await this.assertGovInScope(comment.transactionId, scopeCtx);
     if (comment.respondedAt) {
       throw new BadRequestException('Comment already has a response');
     }
@@ -271,8 +360,13 @@ export class GovTransactionsService {
     });
   }
 
-  async uploadDocument(id: string, dto: UploadDocumentDto, actorId: string) {
-    await this.findOne(id);
+  async uploadDocument(
+    id: string,
+    dto: UploadDocumentDto,
+    actorId: string,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.govDocument.create({
       data: {
         transactionId: id,
@@ -284,7 +378,12 @@ export class GovTransactionsService {
     });
   }
 
-  async weeklyStatusUpdate(id: string, _dto: WeeklyStatusUpdateDto) {
+  async weeklyStatusUpdate(
+    id: string,
+    _dto: WeeklyStatusUpdateDto,
+    scopeCtx?: ScopeContext,
+  ) {
+    await this.findOne(id, scopeCtx);
     return this.prisma.govTransaction.update({
       where: { id },
       data: { weeklyStatusLastAt: new Date() },
@@ -299,6 +398,7 @@ export class GovTransactionsService {
         this.prisma.govTransaction.groupBy({
           by: ['status'],
           _count: { _all: true },
+          orderBy: { status: 'asc' },
         }),
         this.prisma.govTransaction.count({
           where: {
@@ -328,7 +428,7 @@ export class GovTransactionsService {
       total,
       byStatus: byStatus.map((r) => ({
         status: r.status,
-        count: r._count._all,
+        count: (r._count as { _all: number })._all,
       })),
       unloggedWeekly,
       awaitingResponse,

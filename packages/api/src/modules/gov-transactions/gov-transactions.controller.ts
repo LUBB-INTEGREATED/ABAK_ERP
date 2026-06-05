@@ -9,6 +9,8 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentScope } from '../auth/decorators/current-scope.decorator';
+import type { PermissionScope, ScopeUser } from '../auth/scope.util';
 import {
   CreateGovTransactionDto,
   ListGovTransactionsDto,
@@ -53,21 +55,34 @@ export class GovTransactionsController {
 
   @Get()
   @ApiOperation({ summary: 'List gov transactions' })
-  list(@Query() query: ListGovTransactionsDto) {
-    return this.service.list(query);
+  list(
+    @Query() query: ListGovTransactionsDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.list(query, { user, scope });
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Gov transaction detail' })
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(id);
+  findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.findOne(id, { user, scope });
   }
 
   @Patch(':id')
   @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Update gov transaction' })
-  update(@Param('id') id: string, @Body() dto: UpdateGovTransactionDto) {
-    return this.service.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateGovTransactionDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
+  ) {
+    return this.service.update(id, dto, { user, scope });
   }
 
   @Patch(':id/status')
@@ -76,8 +91,10 @@ export class GovTransactionsController {
   transitionStatus(
     @Param('id') id: string,
     @Body() dto: TransitionGovTxStatusDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
   ) {
-    return this.service.transitionStatus(id, dto);
+    return this.service.transitionStatus(id, dto, { user, scope });
   }
 
   @Post(':id/visits')
@@ -87,15 +104,22 @@ export class GovTransactionsController {
     @Param('id') id: string,
     @Body() dto: LogVisitDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
   ) {
-    return this.service.logVisit(id, dto, actorId);
+    return this.service.logVisit(id, dto, actorId, { user, scope });
   }
 
   @Post(':id/comments')
   @RequirePermission('gov:manage')
   @ApiOperation({ summary: 'Log authority comment' })
-  logComment(@Param('id') id: string, @Body() dto: LogCommentDto) {
-    return this.service.logComment(id, dto);
+  logComment(
+    @Param('id') id: string,
+    @Body() dto: LogCommentDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
+  ) {
+    return this.service.logComment(id, dto, { user, scope });
   }
 
   @Patch('comments/:commentId/respond')
@@ -105,8 +129,13 @@ export class GovTransactionsController {
     @Param('commentId') commentId: string,
     @Body() dto: RespondCommentDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
   ) {
-    return this.service.respondToComment(commentId, dto, actorId);
+    return this.service.respondToComment(commentId, dto, actorId, {
+      user,
+      scope,
+    });
   }
 
   @Post(':id/documents')
@@ -116,8 +145,10 @@ export class GovTransactionsController {
     @Param('id') id: string,
     @Body() dto: UploadDocumentDto,
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
   ) {
-    return this.service.uploadDocument(id, dto, actorId);
+    return this.service.uploadDocument(id, dto, actorId, { user, scope });
   }
 
   @Post(':id/weekly-status-update')
@@ -126,7 +157,9 @@ export class GovTransactionsController {
   weeklyStatusUpdate(
     @Param('id') id: string,
     @Body() dto: WeeklyStatusUpdateDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:manage') scope: PermissionScope | undefined,
   ) {
-    return this.service.weeklyStatusUpdate(id, dto);
+    return this.service.weeklyStatusUpdate(id, dto, { user, scope });
   }
 }
