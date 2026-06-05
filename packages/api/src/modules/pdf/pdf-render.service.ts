@@ -25,13 +25,38 @@ export class PdfRenderService implements OnModuleDestroy {
   private readonly logger = new Logger(PdfRenderService.name);
   private browserPromise?: Promise<Browser>;
 
-  private browser(): Promise<Browser> {
-    if (!this.browserPromise) {
-      this.browserPromise = chromium.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
+  protected async browser(): Promise<Browser> {
+    // A-5: never leave a rejected or crashed browser cached. Before reusing a
+    // cached launch, await it and verify the browser is still connected; if the
+    // launch failed or the browser died, drop the cache and relaunch. Without
+    // this, a single launch failure cached a rejected promise forever and broke
+    // ALL PDF rendering until a process restart.
+    if (this.browserPromise) {
+      try {
+        const existing = await this.browserPromise;
+        if (existing.isConnected()) return existing;
+      } catch {
+        // fall through to relaunch
+      }
+      this.browserPromise = undefined;
     }
-    return this.browserPromise;
+
+    const launch = this.launchBrowser().catch((err) => {
+      // Clear the cache so the NEXT request retries instead of re-awaiting a
+      // permanently-rejected promise.
+      if (this.browserPromise === launch) this.browserPromise = undefined;
+      this.logger.error(`Chromium launch failed: ${String(err)}`);
+      throw err;
+    });
+    this.browserPromise = launch;
+    return launch;
+  }
+
+  /** Seam for tests; production launches a sandboxed headless Chromium. */
+  protected launchBrowser(): Promise<Browser> {
+    return chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
   }
 
   async htmlToPdf(html: string, opts: PdfRenderOptions = {}): Promise<Buffer> {
