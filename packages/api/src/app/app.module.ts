@@ -5,7 +5,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import appConfig from '../config/app.config';
 import authConfig from '../config/auth.config';
 import databaseConfig from '../config/database.config';
+import { validateEnv } from '../config/env.validation';
 import { LocaleMiddleware } from '../common/middleware/locale.middleware';
+import { AdminModule } from '../modules/admin/admin.module';
 import { AuditModule } from '../modules/audit/audit.module';
 import { AuthModule } from '../modules/auth/auth.module';
 import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
@@ -38,6 +40,9 @@ import { AppService } from './app.service';
       isGlobal: true,
       load: [appConfig, authConfig, databaseConfig],
       envFilePath: ['.env.local', '.env'],
+      // A-3/A-6: fail fast at boot on a missing/weak/fallback JWT_SECRET (and a
+      // missing DATABASE_URL). Hard in production, warns in dev.
+      validate: validateEnv,
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
@@ -46,6 +51,7 @@ import { AppService } from './app.service';
     NotificationsModule,
     AuthModule,
     UsersModule,
+    AdminModule,
     LeadsModule,
     ClientsModule,
     PipelineModule,
