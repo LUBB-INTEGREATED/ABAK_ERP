@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'user@example.com' })
@@ -27,10 +26,12 @@ export class RegisterDto {
   @IsString()
   phone?: string;
 
-  @ApiProperty({ enum: UserRole, required: false })
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
+  // A-1 (SECURITY): `role` was an attacker-controllable optional enum honored
+  // verbatim by register() on a @Public route — one anonymous POST yielded a
+  // SUPER_ADMIN session. The field is removed entirely: self-registration must
+  // never let the caller pick a role. register() always assigns the lowest
+  // privilege (SALES_REPRESENTATIVE). Privilege grants go through the
+  // authenticated, permission-gated admin user-management surface.
 }
 
 export class LoginDto {

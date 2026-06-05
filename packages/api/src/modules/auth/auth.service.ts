@@ -43,7 +43,11 @@ export class AuthService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-        role: dto.role ?? UserRole.SALES_REPRESENTATIVE,
+        // A-1 (SECURITY): NEVER honor a caller-supplied role. Public
+        // self-registration always creates the lowest-privilege role; any
+        // elevation must go through the authenticated admin user-management
+        // surface. The RegisterDto no longer carries a `role` field.
+        role: UserRole.SALES_REPRESENTATIVE,
       },
       select: {
         id: true,
