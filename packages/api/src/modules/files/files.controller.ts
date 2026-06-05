@@ -23,6 +23,7 @@ import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import type { ScopeUser } from '../auth/scope.util';
 import { FilesService, type UploadedFileLike } from './files.service';
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -138,16 +139,18 @@ export class FilesController {
   @Get(':id/download')
   @ApiOperation({
     summary:
-      'Download any file (authenticated). Serves private client/quote/rfq assets the public raw route refuses.',
+      'Download a file (authenticated, per-asset ACL). For a private ' +
+      'client/quote/rfq asset the caller must have scope on the owning record ' +
+      '(the same object-level check as that resource’s detail route).',
   })
-  // TODO(spec): add a per-resource ACL (owner/department) once the owning
-  // surfaces wire FileAsset.ownerResourceId; today this requires a valid JWT
-  // (global JwtAuthGuard) but not a per-asset permission. Signed short-lived
-  // URLs are the longer-term fix (RV-20).
-  async download(@Param('id') id: string): Promise<StreamableFile> {
-    const { asset, stream } = await this.service.openStored(id, {
-      allowSensitive: true,
-    });
+  // A-2 (IDOR FIX): re-run the owning-module object-level scope check before
+  // streaming. Previously this passed allowSensitive:true with NO ACL, so any
+  // authenticated user could download any client/quote/rfq asset by id.
+  async download(
+    @Param('id') id: string,
+    @CurrentUser() user: ScopeUser,
+  ): Promise<StreamableFile> {
+    const { asset, stream } = await this.service.openForDownload(id, user);
     return new StreamableFile(stream, {
       type: asset.mimeType,
       disposition: `inline; filename="${encodeURIComponent(asset.originalName)}"`,

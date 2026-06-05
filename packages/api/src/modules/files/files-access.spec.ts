@@ -3,6 +3,10 @@ import { after, test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { rm } from 'node:fs/promises';
 import type { ConfigService } from '@nestjs/config';
+import type { PermissionsService } from '../auth/permissions.service';
+import type { ClientsService } from '../clients/clients.service';
+import type { QuotesService } from '../quotes/quotes.service';
+import type { RfqsService } from '../rfqs/rfqs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FilesService, type UploadedFileLike } from './files.service';
 import { LocalDiskStorageProvider } from './storage/local-disk.storage';
@@ -21,7 +25,21 @@ const config = {
 } as unknown as ConfigService;
 const prisma = new PrismaService();
 const storage = new LocalDiskStorageProvider(config);
-const service = new FilesService(prisma, config, storage);
+// These deps power the A-2 download ACL; this spec only exercises the public
+// raw route (openStored), so they are unused here and may be stubbed.
+const permissions = {} as unknown as PermissionsService;
+const clients = {} as unknown as ClientsService;
+const quotes = {} as unknown as QuotesService;
+const rfqs = {} as unknown as RfqsService;
+const service = new FilesService(
+  prisma,
+  config,
+  storage,
+  permissions,
+  clients,
+  quotes,
+  rfqs,
+);
 
 const assetIds: string[] = [];
 
