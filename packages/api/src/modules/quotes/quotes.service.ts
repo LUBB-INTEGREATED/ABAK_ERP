@@ -2088,7 +2088,17 @@ export class QuotesService {
     quoteId: string,
     dto: { title?: string; description?: string; startDate?: string } = {},
     actorId: string,
+    scopeCtx?: ScopeContext,
   ) {
+    // A-12: enforce the same row-level scope every sibling quote mutation does.
+    // findOne 404s a missing quote AND applies the read-scope guard (preparer /
+    // section pricer); assertCanMutateQuote then restricts this money-minting
+    // write to the preparer or the lead pricer. Without this an OWN/DEPARTMENT
+    // actor could convert a quote outside their scope (IDOR) — minting a PO and
+    // a Project they have no right to. ALL/absent scope stays unrestricted.
+    const scoped = await this.findOne(quoteId, scopeCtx);
+    this.assertCanMutateQuote(scoped, scopeCtx);
+
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
       include: {

@@ -289,8 +289,12 @@ export class QuotesController {
     @Body()
     dto: { title?: string; description?: string; startDate?: string },
     @CurrentUser('id') actorId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:convert') scope: PermissionScope | undefined,
   ) {
-    return this.quotes.convertToProject(id, dto, actorId);
+    // A-12: thread the object-level scope guard like every sibling mutation so a
+    // non-ALL actor cannot convert a quote outside their scope (IDOR).
+    return this.quotes.convertToProject(id, dto, actorId, { user, scope });
   }
 
   @Patch('quotes/:id/reject')
