@@ -53,9 +53,78 @@ jobs:
       - uses: nrwl/nx-set-shas@v4
       - run: pnpm nx affected -t typecheck --parallel=3
 
+  test:
+    name: Tests (api + shared-utils)
+    needs: [typecheck]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: abak
+          POSTGRES_PASSWORD: abak
+          POSTGRES_DB: abak_test
+        ports:
+          - 5432:5432
+        # Wait until Postgres is ready before the steps run.
+        options: >-
+          --health-cmd "pg_isready -U abak -d abak_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # A-9: the api `test` target boots against a live, migrated Postgres and
+      # loads env via --env-file=.env, so DATABASE_URL must be available both as
+      # a shell env var (for prisma migrate/seed) and in the .env file written
+      # below (for the spec runner).
+      DATABASE_URL: postgresql://abak:abak@localhost:5432/abak_test?schema=public
+      # A-3/A-6: a strong, non-fallback secret so env validation passes and the
+      # auth specs can sign/verify tokens. CI-only throwaway value.
+      JWT_SECRET: ci-test-jwt-secret-not-for-production-0123456789abcdef
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      # The api test target reads env via --env-file=.env; write a CI .env.
+      - name: Write CI .env
+        run: |
+          cat > .env <<EOF
+          DATABASE_URL=${DATABASE_URL}
+          JWT_SECRET=${JWT_SECRET}
+          JWT_EXPIRES_IN=15m
+          JWT_REFRESH_EXPIRES_IN=7d
+          JWT_REFRESH_EXPIRES_IN_DAYS=7
+          BCRYPT_ROUNDS=4
+          NODE_ENV=test
+          EOF
+      # Apply all migrations from zero.
+      - run: pnpm prisma migrate deploy
+      # Seed reference fixtures the api specs depend on (ServiceCategory /
+      # Service / demo users). The demo seed is destructive but this Postgres is
+      # an ephemeral CI container (deleteMany on empty tables is a no-op), and
+      # its guard allows it because NODE_ENV=test (not production) and the
+      # prisma:seed:demo script sets ALLOW_DESTRUCTIVE_SEED=1.
+      - run: pnpm prisma:seed:demo
+      # Then the idempotent RBAC seed (permissions / roles / departments) so
+      # permission-gated specs have their grants.
+      - run: pnpm prisma db seed
+      - uses: nrwl/nx-set-shas@v4
+      - name: Run api + shared-utils tests
+        run: pnpm nx run-many -t test --projects=api,shared-utils
+
   build:
     name: Build
-    needs: [lint, typecheck]
+    needs: [lint, typecheck, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
