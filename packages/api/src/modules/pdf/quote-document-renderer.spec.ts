@@ -242,6 +242,45 @@ test('DOC-3: multi-department fan-out + all 8 blocks render', () => {
   assert.ok(countOf(html, 'class="page') >= 8, 'at least 8 page blocks');
 });
 
+test('RVd-1: a reconciling quote shows NO inconsistent-totals banner', () => {
+  const quote = multiDeptQuote();
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+  assert.equal(
+    countOf(html, 'class="totals-warning"'),
+    0,
+    'no DRAFT banner when subtotal − discount + VAT === total',
+  );
+  assert.ok(
+    !html.includes('totals inconsistent'),
+    'no inconsistency text on a clean quote',
+  );
+});
+
+test('RVd-1: renderer safety-net stamps a DRAFT banner when totals diverge', () => {
+  // The exact RVd-1 stale-state: a {taxRate:5}-only PATCH would write taxRate=5
+  // but (pre-fix) leave the 15%-derived taxAmount=4050/total=31050. The renderer
+  // must NOT silently print that — it must loudly flag the divergence.
+  const quote = multiDeptQuote();
+  (quote as { taxRate: number }).taxRate = 5; // printed "VAT (5%)"
+  // taxAmount (4050) + total (31050) still reflect the old 15% rate → stale.
+  // subtotal 30000 − discount 3000 + VAT 4050 = 31050 happens to reconcile with
+  // the STALE numbers, so force the genuine divergence the bug produces: the
+  // amounts no longer satisfy subtotal − discount + tax === total once the rate
+  // moved. Model the post-fix-absent state where only taxAmount stayed stale.
+  (quote as { taxAmount: number }).taxAmount = 1350; // correct 5% VAT
+  // total left at the stale 31050 → subtotal−discount+VAT (28350) ≠ 31050.
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+  assert.equal(
+    countOf(html, 'class="totals-warning"'),
+    1,
+    'DRAFT banner stamped exactly once when totals do not reconcile',
+  );
+  assert.ok(
+    html.includes('totals inconsistent'),
+    'visible inconsistency message present',
+  );
+});
+
 test('DOC-3: legacy quote (no sections, null sectionId) still renders', () => {
   const quote = multiDeptQuote();
   // Strip the §14 sections + sectionIds → pre-DM-3 shape.

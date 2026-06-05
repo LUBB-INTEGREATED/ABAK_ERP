@@ -286,9 +286,24 @@ function scopePricingBlocks(
 
   // Combined totals band — ONCE (blocker #2). subtotal − discount + VAT = total.
   const inWords = amountInWords(quote.totalAmount, { locale: 'ar' });
+  // RVd-1 renderer safety-net: never silently print a document whose own band
+  // does not reconcile. If subtotal − discount + VAT ≠ total (the stale-totals
+  // bug surfaces here), stamp a loud DRAFT banner so a divergent quote can never
+  // be mistaken for a clean, signable offer.
+  const reconciles =
+    Math.abs(
+      quote.subtotal -
+        quote.discountAmount +
+        quote.taxAmount -
+        quote.totalAmount,
+    ) <= 0.01;
+  const inconsistentBanner = reconciles
+    ? ''
+    : `<div class="totals-warning">مسودة — الإجماليات غير متطابقة (DRAFT — totals inconsistent)</div>`;
   const totalsPage = page(
     `${pageHeader(company, `<div class="quote-ref-box" dir="ltr">${esc(quote.quoteNumber)}</div>`)}
      <div class="body">
+       ${inconsistentBanner}
        <div class="section-title">الإجمالي</div>
        <table class="quote-table summary">
          <thead><tr><th>القسم</th><th class="n">الإجمالي (قبل الضريبة)</th></tr></thead>
@@ -549,6 +564,7 @@ body { font-family: -apple-system, "Segoe UI", "Tahoma", "Calibri", sans-serif; 
 td.n, th.n { text-align: end; font-variant-numeric: tabular-nums; }
 td.c, th.c { text-align: center; }
 .dept-subtotal { display: flex; justify-content: space-between; margin-top: 8px; padding: 8px 10px; background: #f4f7fb; border-radius: 6px; font-weight: 700; color: #1a3a5c; }
+.totals-warning { background: #b91c1c; color: #fff; font-weight: 800; text-align: center; padding: 10px; border-radius: 6px; margin-bottom: 10px; letter-spacing: 0.5px; }
 .totals { width: 320px; margin-inline-start: auto; margin-top: 14px; }
 .totals .row { display: flex; justify-content: space-between; padding: 5px 0; }
 .totals .grand { border-top: 2px solid #1a3a5c; margin-top: 6px; padding-top: 8px; font-weight: 800; color: #1a3a5c; font-size: 14px; }

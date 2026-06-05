@@ -358,6 +358,21 @@ export class QuotesService {
     const items = dto.items;
     const milestones = dto.milestones;
 
+    // RVd-1: any pricing-affecting field must trigger a full totals recompute,
+    // not only a resent items array. Previously discountType/discountValue/
+    // taxRate were written UNCONDITIONALLY while taxAmount/discountAmount/
+    // totalAmount were recomputed ONLY inside `if (items !== undefined)`, so a
+    // {taxRate:5}-only PATCH wrote the new rate but left stale 15%-based amounts
+    // — the client document then printed "VAT (5%)" against a 15%-derived
+    // taxAmount and subtotal − discount + VAT ≠ total. Recompute whenever ANY
+    // of taxRate/discountType/discountValue/items changes; when items is absent,
+    // load the current persisted items so the recompute uses the real lines.
+    const pricingChanged =
+      dto.taxRate !== undefined ||
+      dto.discountType !== undefined ||
+      dto.discountValue !== undefined ||
+      items !== undefined;
+
     return this.prisma.$transaction(async (tx) => {
       const data: Prisma.QuoteUpdateInput = {
         title: dto.title,
@@ -379,9 +394,19 @@ export class QuotesService {
         numberOfRevisions: dto.numberOfRevisions,
       };
 
-      if (items !== undefined) {
-        await tx.quoteItem.deleteMany({ where: { quoteId: id } });
-        const totals = this.calculateTotals(items, {
+      // RVd-1: recompute totals on ANY pricing change. The effective line items
+      // are the resent ones when present, else the currently persisted lines.
+      if (pricingChanged) {
+        const effectiveItems: QuoteItemInputDto[] =
+          items !== undefined
+            ? items
+            : quote.items.map((it) => ({
+                description: it.description,
+                quantity: it.quantity,
+                unitPrice: it.unitPrice,
+                discountPct: it.discountPct ?? 0,
+              }));
+        const totals = this.calculateTotals(effectiveItems, {
           discountType: dto.discountType ?? quote.discountType,
           discountValue: dto.discountValue ?? quote.discountValue,
           taxRate: dto.taxRate ?? quote.taxRate,
@@ -390,6 +415,10 @@ export class QuotesService {
         data.discountAmount = totals.discountAmount;
         data.taxAmount = totals.taxAmount;
         data.totalAmount = totals.totalAmount;
+      }
+
+      if (items !== undefined) {
+        await tx.quoteItem.deleteMany({ where: { quoteId: id } });
         data.items = {
           create: items.map((item, index) => ({
             serviceId: item.serviceId,
@@ -435,11 +464,12 @@ export class QuotesService {
       if (milestones !== undefined) {
         this.validateMilestones(milestones);
         await tx.paymentMilestone.deleteMany({ where: { quoteId: id } });
-        // Recompute total if items also updated; otherwise use existing total
-        const total =
-          items !== undefined
-            ? (data.totalAmount as number)
-            : quote.totalAmount;
+        // RVd-1: milestone amounts must follow the recomputed grand total. Use
+        // the freshly computed total whenever ANY pricing field changed (not
+        // only when items were resent); otherwise the existing stored total.
+        const total = pricingChanged
+          ? (data.totalAmount as number)
+          : quote.totalAmount;
         data.paymentMilestones = {
           create: milestones.map((m, index) => ({
             description: m.description,
