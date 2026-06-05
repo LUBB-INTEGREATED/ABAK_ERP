@@ -334,7 +334,16 @@ export class RfqAssignmentsService {
 
     const data: Prisma.RfqDocRequestUpdateInput = {};
     if (dto.response !== undefined) data.response = dto.response;
-    if (dto.attachmentUrl !== undefined) data.attachmentUrl = dto.attachmentUrl;
+    if (dto.attachmentUrl !== undefined) {
+      data.attachmentUrl = dto.attachmentUrl;
+      // SR2-2 (FILE LEAK FIX): the web upload posts the attachment with NO
+      // ownerResource, so the underlying FileAsset persists as a null-owner
+      // asset — which the files default-deny treats as private (off /raw,
+      // ALL-only on /download). Stamp it server-side as owned by THIS rfq so
+      // the download ACL applies the rfq object-level scope check instead of
+      // the admin-only fallback. Best-effort: a non-/files URL is left as-is.
+      await this.stampAttachmentOwner(dto.attachmentUrl, rfqId);
+    }
     if (dto.status !== undefined) {
       data.status = dto.status;
       if (dto.status === RfqRequestStatus.RESOLVED) {
@@ -345,6 +354,28 @@ export class RfqAssignmentsService {
     return this.prisma.rfqDocRequest.update({
       where: { id: requestId },
       data,
+    });
+  }
+
+  /**
+   * SR2-2: if `attachmentUrl` points at one of our `/files/:id/raw` assets,
+   * stamp that FileAsset as owned by the RFQ so it is recognised as sensitive.
+   * Done with raw Prisma (not FilesService) to avoid an Rfqs↔Files circular
+   * module dependency (FilesModule already imports RfqsModule).
+   */
+  private async stampAttachmentOwner(
+    attachmentUrl: string,
+    rfqId: string,
+  ): Promise<void> {
+    // Matches /<prefix>/files/<id>/raw (or /download); id is the opaque key.
+    const match = attachmentUrl.match(
+      /\/files\/([A-Za-z0-9_-]{1,128})\/(?:raw|download)(?:[?#].*)?$/,
+    );
+    const fileId = match?.[1];
+    if (!fileId) return;
+    await this.prisma.fileAsset.updateMany({
+      where: { id: fileId },
+      data: { ownerResource: 'rfq', ownerResourceId: rfqId, isPublic: false },
     });
   }
 

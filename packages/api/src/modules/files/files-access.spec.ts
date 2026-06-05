@@ -11,10 +11,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { FilesService, type UploadedFileLike } from './files.service';
 import { LocalDiskStorageProvider } from './storage/local-disk.storage';
 
-// RV-20: the public raw route must refuse confidential (client/quote/rfq)
-// assets; an authenticated path (allowSensitive) may still serve them.
+// SR2-2 (DEFAULT-DENY /raw). The @Public raw route must serve ONLY assets
+// explicitly flagged public (logo / public-asset). Everything else — a
+// client/quote/rfq doc, a payment/PO/gov doc, AND a null/unknown-owner upload
+// (which is what an RFQ doc-request web attach produces) — is refused on /raw.
+// This is the confidential-document-leak fix: an unguessable id is no longer a
+// permanent public bearer for ANY private asset.
 
-const ROOT = `/tmp/rv20-store-${process.pid}`;
+const ROOT = `/tmp/sr2-raw-store-${process.pid}`;
 const config = {
   get: (key: string) =>
     key === 'app.uploadDir'
@@ -25,8 +29,7 @@ const config = {
 } as unknown as ConfigService;
 const prisma = new PrismaService();
 const storage = new LocalDiskStorageProvider(config);
-// These deps power the A-2 download ACL; this spec only exercises the public
-// raw route (openStored), so they are unused here and may be stubbed.
+// The public raw route (openStored) never touches the ACL deps; stub them.
 const permissions = {} as unknown as PermissionsService;
 const clients = {} as unknown as ClientsService;
 const quotes = {} as unknown as QuotesService;
@@ -59,7 +62,7 @@ const file = (name: string): UploadedFileLike => ({
   buffer: Buffer.from('%PDF'),
 });
 
-test('RV-20: a client-owned asset is refused on the public route, served with allowSensitive', async () => {
+test('SR2-2: a client-owned asset is refused on the public /raw route', async () => {
   const asset = await service.upload(file('contract.pdf'), {
     ownerResource: 'client',
   });
@@ -67,21 +70,49 @@ test('RV-20: a client-owned asset is refused on the public route, served with al
 
   await assert.rejects(
     () => service.openStored(asset.id),
-    /private|authentication/i,
-    'public openStored refuses the client asset',
+    /not.?found|NotFound/i,
+    'public openStored refuses the (private) client asset',
   );
-
-  const ok = await service.openStored(asset.id, { allowSensitive: true });
-  assert.equal(ok.asset.id, asset.id, 'authed openStored serves it');
 });
 
-test('RV-20: a non-sensitive asset is still served on the public route', async () => {
-  const asset = await service.upload(file('logo.pdf'), {});
+test('SR2-2: a null/unknown-owner upload (RFQ web attach) is refused on /raw', async () => {
+  // No ownerResource — exactly what the RFQ doc-request web attach produces.
+  const asset = await service.upload(file('rfq-attachment.pdf'), {});
   assetIds.push(asset.id);
-  const ok = await service.openStored(asset.id);
-  assert.equal(
-    ok.asset.id,
-    asset.id,
-    'public openStored serves a non-sensitive asset',
+
+  await assert.rejects(
+    () => service.openStored(asset.id),
+    /not.?found|NotFound/i,
+    'a null-owner upload is NOT a public asset and is refused on /raw',
   );
+});
+
+test('SR2-2: a payment-owned asset is refused on /raw', async () => {
+  const asset = await service.upload(file('receipt.pdf'), {
+    ownerResource: 'payment',
+  });
+  assetIds.push(asset.id);
+
+  await assert.rejects(
+    () => service.openStored(asset.id),
+    /not.?found|NotFound/i,
+    'a payment asset is private and refused on /raw',
+  );
+});
+
+test('SR2-2: an explicitly public (logo) asset IS served on /raw', async () => {
+  const asset = await service.upload(
+    {
+      originalname: 'logo.png',
+      mimetype: 'image/png',
+      size: 4,
+      buffer: Buffer.from('PNG!'),
+    },
+    { ownerResource: 'logo' },
+  );
+  assetIds.push(asset.id);
+  assert.equal(asset.isPublic, true, 'a logo upload is flagged public');
+
+  const ok = await service.openStored(asset.id);
+  assert.equal(ok.asset.id, asset.id, 'public openStored serves the logo');
 });

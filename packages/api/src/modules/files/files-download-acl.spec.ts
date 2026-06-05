@@ -13,13 +13,13 @@ import { ClientsService } from '../clients/clients.service';
 import { FilesService, type UploadedFileLike } from './files.service';
 import { LocalDiskStorageProvider } from './storage/local-disk.storage';
 
-// A-2 (IDOR) regression. Runs against the live dev Postgres (DATABASE_URL via
-// --env-file). GET /files/:id/download previously served any sensitive
-// client/quote/rfq asset to any authenticated user with no per-asset ACL. The
-// fix re-runs the owning module's object-level scope check before streaming.
-// This asserts user B (OWN scope, NOT the client's account manager) is REFUSED
-// the download of user A's client-owned asset, while user A (the manager) and
-// an ALL-scope viewer succeed.
+// A-2 (IDOR) + SR2-3 (default-deny) regression. Runs against the live dev
+// Postgres (DATABASE_URL via --env-file). GET /files/:id/download must:
+//   - serve a client/quote/rfq asset ONLY to a caller with scope on the owning
+//     record (object-level check, same as that resource's detail route);
+//   - DENY a null/unknown-owner asset and a payment/PO/gov asset to anyone who
+//     is not ALL-scoped/admin — the old "authentication is sufficient"
+//     fall-through is gone.
 
 const ROOT = `/tmp/a2-acl-store-${process.pid}`;
 const config = {
@@ -52,6 +52,26 @@ const service = new FilesService(
   config,
   storage,
   permissions,
+  clients,
+  quotes,
+  rfqs,
+);
+
+// An ALL-scope (admin-ish) service: holds clients:view + finance:view + gov:view
+// all at ALL. Used to prove that an ALL caller can pull every owner type.
+const allPermissions = {
+  resolveForUser: async () =>
+    new Map([
+      ['clients:view', 'ALL'],
+      ['finance:view', 'ALL'],
+      ['gov:view', 'ALL'],
+    ]),
+} as unknown as PermissionsService;
+const allService = new FilesService(
+  prisma,
+  config,
+  storage,
+  allPermissions,
   clients,
   quotes,
   rfqs,
@@ -119,17 +139,20 @@ async function seedClientOwnedAsset(managerId: string): Promise<string> {
   return asset.id;
 }
 
+const pdf = (name: string): UploadedFileLike => ({
+  originalname: name,
+  mimetype: 'application/pdf',
+  size: 4,
+  buffer: Buffer.from('%PDF'),
+});
+
 test('A-2: user B (OWN scope, not the manager) cannot download user A’s client asset', async () => {
   const userA = await seedUser('owner');
   const userB = await seedUser('attacker');
   const assetId = await seedClientOwnedAsset(userA.id);
 
   // The owning account manager (OWN scope) downloads their own asset.
-  const ok = await service.openForDownload(assetId, {
-    ...userA,
-    // The download path resolves scope from PermissionsService, but findOne
-    // reads scope from the ctx; OWN is supplied for both.
-  });
+  const ok = await service.openForDownload(assetId, userA);
   assert.equal(ok.asset.id, assetId, 'the account manager can download it');
 
   // User B, OWN scope, is NOT the account manager → must be refused.
@@ -145,35 +168,103 @@ test('A-2: an ALL-scope viewer can download any client asset', async () => {
   const assetId = await seedClientOwnedAsset(manager.id);
 
   const allViewer = await seedUser('alladmin');
-  // Override the permission resolution to grant ALL for this assertion.
-  const allPermissions = {
-    resolveForUser: async () => new Map([['clients:view', 'ALL']]),
-  } as unknown as PermissionsService;
-  const allService = new FilesService(
-    prisma,
-    config,
-    storage,
-    allPermissions,
-    clients,
-    quotes,
-    rfqs,
-  );
-
   const ok = await allService.openForDownload(assetId, allViewer);
   assert.equal(ok.asset.id, assetId, 'ALL scope downloads any client asset');
 });
 
-test('A-2: a non-sensitive asset is downloadable by any authenticated user', async () => {
-  const user = await seedUser('anyone');
-  const file: UploadedFileLike = {
-    originalname: 'logo.png',
-    mimetype: 'image/png',
-    size: 4,
-    buffer: Buffer.from('PNG!'),
-  };
-  const asset = await service.upload(file, {}); // no ownerResource
+test('SR2-3: a null-owner asset is DENIED to a non-ALL user, served to an admin', async () => {
+  const user = await seedUser('null-owner-attacker');
+  const asset = await service.upload(pdf('mystery.pdf'), {}); // no ownerResource
   trash.assetIds.push(asset.id);
 
-  const ok = await service.openForDownload(asset.id, user);
-  assert.equal(ok.asset.id, asset.id, 'non-sensitive asset served to any user');
+  // Default-deny: a null-owner asset is no longer "authentication is sufficient".
+  await assert.rejects(
+    () => service.openForDownload(asset.id, user),
+    /permission|access/i,
+    'a non-ALL user is refused a null-owner asset',
+  );
+
+  // An admin (ANY ALL-scope grant) may pull an unclassified asset.
+  const admin = await seedUser('null-owner-admin');
+  const ok = await allService.openForDownload(asset.id, admin);
+  assert.equal(ok.asset.id, asset.id, 'an ALL-scope admin can pull it');
+});
+
+test('SR2-3: a payment/gov asset is DENIED to a non-ALL user, served to ALL', async () => {
+  const user = await seedUser('finance-attacker');
+  const payment = await service.upload(pdf('receipt.pdf'), {
+    ownerResource: 'payment',
+    ownerResourceId: 'pay-123',
+  });
+  trash.assetIds.push(payment.id);
+  const gov = await service.upload(pdf('licence.pdf'), {
+    ownerResource: 'gov',
+    ownerResourceId: 'gov-123',
+  });
+  trash.assetIds.push(gov.id);
+
+  // The non-ALL user only holds clients:view OWN → no finance/gov ALL → denied.
+  await assert.rejects(
+    () => service.openForDownload(payment.id, user),
+    /permission|access/i,
+    'a non-finance user is refused a payment asset',
+  );
+  await assert.rejects(
+    () => service.openForDownload(gov.id, user),
+    /permission|access/i,
+    'a non-gov user is refused a gov asset',
+  );
+
+  // ALL on finance:view / gov:view → served.
+  const admin = await seedUser('finance-admin');
+  const okPay = await allService.openForDownload(payment.id, admin);
+  assert.equal(
+    okPay.asset.id,
+    payment.id,
+    'finance:view ALL pulls the payment',
+  );
+  const okGov = await allService.openForDownload(gov.id, admin);
+  assert.equal(okGov.asset.id, gov.id, 'gov:view ALL pulls the gov asset');
+});
+
+test('SR2-1: listForOwner refuses cross-scope enumeration', async () => {
+  const userA = await seedUser('list-owner');
+  const userB = await seedUser('list-attacker');
+  const client = await prisma.client.create({
+    data: {
+      clientNumber: `${TAG}-L-${trash.clientIds.length}`,
+      contactName: `${TAG}-list`,
+      phone: `+9665${(Date.now() + 1).toString().slice(-8)}`,
+      accountManagerId: userA.id,
+    },
+    select: { id: true },
+  });
+  trash.clientIds.push(client.id);
+  const asset = await service.upload(pdf('doc.pdf'), {
+    ownerResource: 'client',
+    ownerResourceId: client.id,
+  });
+  trash.assetIds.push(asset.id);
+
+  // Owner (account manager, OWN scope) can list their client's files.
+  const ownList = await service.listForOwner('client', client.id, userA);
+  assert.ok(
+    ownList.some((a) => a.id === asset.id),
+    'the account manager can list the client’s files',
+  );
+
+  // User B (OWN scope, not the manager) cannot enumerate user A’s client files.
+  await assert.rejects(
+    () => service.listForOwner('client', client.id, userB),
+    /permission|access/i,
+    'a different OWN-scope user cannot enumerate the client’s files',
+  );
+});
+
+test('SR2-3: upload rejects an unknown ownerResource', async () => {
+  await assert.rejects(
+    () => service.upload(pdf('evil.pdf'), { ownerResource: 'totally-made-up' }),
+    /unknown ownerresource/i,
+    'an unknown ownerResource is refused before any bytes are stored',
+  );
 });

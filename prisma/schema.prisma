@@ -2161,6 +2161,11 @@ model FileAsset {
   uploadedById    String?
   ownerResource   String?
   ownerResourceId String?
+  // SR2-2 / SR2-3: default-deny. The @Public /raw route serves ONLY assets
+  // explicitly flagged public (e.g. the company logo). Everything else —
+  // including null/unknown-owner uploads (RFQ doc-request attachments) — is
+  // refused on /raw and gated behind the authenticated /download ACL.
+  isPublic        Boolean @default(false)
 
   createdAt DateTime @default(now())
 

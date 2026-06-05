@@ -165,11 +165,19 @@ export class FilesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List files for a given owner resource' })
+  @ApiOperation({
+    summary:
+      'List files for a given owner resource. SR2-1: scope-checked — the ' +
+      'caller must be able to access the owning record (or hold ALL scope), ' +
+      'so this can no longer be used to enumerate another scope’s files.',
+  })
+  // SR2-1: pass the caller so listForOwner can re-run the per-asset ACL against
+  // the queried owner before returning any rows (no blind enumeration).
   listForOwner(
     @Query('ownerResource') ownerResource: string,
     @Query('ownerResourceId') ownerResourceId: string,
+    @CurrentUser() user: ScopeUser,
   ) {
-    return this.service.listForOwner(ownerResource, ownerResourceId);
+    return this.service.listForOwner(ownerResource, ownerResourceId, user);
   }
 }
