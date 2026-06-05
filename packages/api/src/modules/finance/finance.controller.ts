@@ -8,11 +8,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { PaymentValidationStatus } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import {
   CreateInvoiceDto,
+  ListCommercialConfirmationsDto,
+  ListCommissionsDto,
   ListInvoicesDto,
   ListPaymentsDto,
   RecordPaymentDto,
@@ -37,10 +38,8 @@ export class FinanceController {
 
   @Get('commercial-confirmations')
   @ApiOperation({ summary: 'List commercial confirmations (Finance inbox)' })
-  listCommercialConfirmations(
-    @Query('status') status?: PaymentValidationStatus,
-  ) {
-    return this.service.listCommercialConfirmations(status);
+  listCommercialConfirmations(@Query() query: ListCommercialConfirmationsDto) {
+    return this.service.listCommercialConfirmations(query);
   }
 
   @Patch('commercial-confirmations/:id/validate')
@@ -97,11 +96,8 @@ export class FinanceController {
 
   @Get('commissions')
   @ApiOperation({ summary: 'List commissions (Finance view)' })
-  listCommissions(
-    @Query('status')
-    status?: 'ACCRUING' | 'APPROVED' | 'PAID' | 'CANCELLED',
-  ) {
-    return this.service.listCommissions(status);
+  listCommissions(@Query() query: ListCommissionsDto) {
+    return this.service.listCommissions(query);
   }
 
   @Patch('commissions/:id/approve')

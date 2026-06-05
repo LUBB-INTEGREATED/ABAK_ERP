@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  CommissionStatus,
   InvoiceStatus,
   PaymentMethod,
   PaymentValidationStatus,
@@ -13,6 +14,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Max,
   Min,
   MinLength,
 } from 'class-validator';
@@ -178,4 +180,50 @@ export class ValidateCommercialConfirmationDto {
   @IsString()
   @MinLength(5)
   note?: string;
+}
+
+export class ListCommercialConfirmationsDto {
+  @ApiPropertyOptional({ enum: PaymentValidationStatus })
+  @IsOptional()
+  @IsEnum(PaymentValidationStatus)
+  status?: PaymentValidationStatus;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
+}
+
+// ─── Commissions (M7-005 — Finance-only) ──────────────────────
+
+export class ListCommissionsDto {
+  @ApiPropertyOptional({ enum: CommissionStatus })
+  @IsOptional()
+  @IsEnum(CommissionStatus)
+  status?: CommissionStatus;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ default: 20, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }

@@ -41,6 +41,8 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type {
   CreateInvoiceDto,
+  ListCommercialConfirmationsDto,
+  ListCommissionsDto,
   ListInvoicesDto,
   ListPaymentsDto,
   RecordPaymentDto,
@@ -58,10 +60,22 @@ export class FinanceService {
 
   // ─── Commercial confirmations ─────────────────────────────────
 
-  listCommercialConfirmations(status?: PaymentValidationStatus) {
+  // A-18: bounded + paginated. page/pageSize are validated (@Max(100)) at the
+  // DTO; the status filter is index-backed (@@index([validationStatus])). Kept
+  // returning a bare (now bounded) array to preserve the existing client
+  // contract — an unfiltered call can no longer stream the whole growing table.
+  listCommercialConfirmations(query: ListCommercialConfirmationsDto = {}) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const where: Prisma.CommercialConfirmationWhereInput = query.status
+      ? { validationStatus: query.status }
+      : {};
+
     return this.prisma.commercialConfirmation.findMany({
-      where: status ? { validationStatus: status } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: {
         quote: {
           select: {
@@ -490,10 +504,23 @@ export class FinanceService {
 
   // ─── Commissions (M7-005 — Finance-only) ─────────────────────
 
-  listCommissions(status?: 'ACCRUING' | 'APPROVED' | 'PAID' | 'CANCELLED') {
+  // A-18: bounded + paginated. page/pageSize are validated (@Max(100)) at the
+  // DTO; the status filter is index-backed (@@index([status])). Kept returning a
+  // bare (now bounded) array for shape-consistency with the sibling
+  // commercial-confirmations list — an unfiltered call can no longer stream the
+  // whole growing table.
+  listCommissions(query: ListCommissionsDto = {}) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const where: Prisma.CommissionWhereInput = query.status
+      ? { status: query.status }
+      : {};
+
     return this.prisma.commission.findMany({
-      where: status ? { status } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: {
         rfq: {
           select: {
