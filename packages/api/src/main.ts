@@ -49,19 +49,32 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-    },
-  });
+  // A-16 / A-20: never expose the full API surface (every endpoint, DTO and
+  // auth scheme) publicly. Swagger mounts only outside production unless an
+  // explicit ENABLE_SWAGGER flag opts in. Defaults off in production.
+  const environment = config.get<string>('app.environment') ?? 'development';
+  const swaggerEnabled =
+    process.env.ENABLE_SWAGGER === 'true' || environment !== 'production';
+
+  if (swaggerEnabled) {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+        tagsSorter: 'alpha',
+        operationsSorter: 'alpha',
+      },
+    });
+  }
 
   await app.listen(port);
 
   logger.log(`🚀 API running at http://localhost:${port}/${globalPrefix}`);
-  logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
+  if (swaggerEnabled) {
+    logger.log(`📚 Swagger docs at http://localhost:${port}/api/docs`);
+  } else {
+    logger.log('📚 Swagger docs disabled (production)');
+  }
 }
 
 void bootstrap();
