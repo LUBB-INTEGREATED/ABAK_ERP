@@ -50,6 +50,26 @@ const money = (n: number) =>
 const num = (n: number) =>
   formatNumber(n, { numerals: 'latin', grouping: false });
 
+// RVd-3..7 (rounding cluster, display half): the renderer's single rounding
+// policy. round2 mirrors the service's write-time policy; allocateResidual takes
+// already-rounded child values and a 2dp parent total and pushes any sub-cent
+// difference onto the LAST child, so every printed column reconciles to the
+// printed parent EXACTLY — even for a legacy quote whose stored rows predate the
+// write-time rounding (e.g. two depts each stored 100.005 → printed 100.01 +
+// 100.00 = 200.01 === printed subtotal, not 100.01 + 100.01 = 200.02).
+const round2 = (n: number): number =>
+  Math.round((n + Number.EPSILON) * 100) / 100;
+
+function allocateResidual(children: number[], parent: number): number[] {
+  if (children.length === 0) return [];
+  const rounded = children.map(round2);
+  const allButLast = rounded
+    .slice(0, -1)
+    .reduce((sum, v) => round2(sum + v), 0);
+  rounded[rounded.length - 1] = round2(round2(parent) - allButLast);
+  return rounded;
+}
+
 export const esc = (s: string): string =>
   s.replace(
     /[&<>"']/g,
@@ -87,6 +107,8 @@ interface RenderSection {
   items: LoadedQuote['items'];
   /** pre-discount, pre-VAT line subtotal (blocker #2). */
   lineSubtotal: number;
+  /** RVd-12: LUMP_SUM | PER_VISIT | PER_UNIT — drives per-visit captions. */
+  pricingModel: string;
   legacy: boolean;
 }
 
@@ -115,6 +137,8 @@ function resolveSections(quote: LoadedQuote): {
         scopeText: s.scopeTextAr ?? s.scopeTextEn ?? null,
         items,
         lineSubtotal: items.reduce((sum, it) => sum + it.subtotal, 0),
+        pricingModel:
+          (s as { pricingModel?: string }).pricingModel ?? 'LUMP_SUM',
         legacy: false,
       };
     });
@@ -129,6 +153,7 @@ function resolveSections(quote: LoadedQuote): {
         scopeText: null,
         items: leftovers,
         lineSubtotal: leftovers.reduce((sum, it) => sum + it.subtotal, 0),
+        pricingModel: 'LUMP_SUM',
         legacy: true,
       });
     }
@@ -154,6 +179,7 @@ function resolveSections(quote: LoadedQuote): {
       scopeText: null,
       items,
       lineSubtotal: items.reduce((sum, it) => sum + it.subtotal, 0),
+      pricingModel: 'LUMP_SUM',
       legacy: true,
     }),
   );
@@ -250,14 +276,27 @@ function scopePricingBlocks(
   // Per-department scope + pricing pages (line subtotal ONLY — no VAT).
   const sectionPages = sections
     .map((s) => {
+      // RVd-12 (per-visit): label the qty/unit-price columns by pricing model so
+      // the client can see qty=10 means 10 VISITS on a PER_VISIT (Supervision)
+      // section, not 10 generic units.
+      const perVisit = s.pricingModel === 'PER_VISIT';
+      const qtyLabel = perVisit ? 'عدد الزيارات' : 'الكمية';
+      const unitPriceLabel = perVisit ? 'سعر الزيارة' : 'سعر الوحدة';
+      // RVd-7 (per-line reconciliation): round each cell to 2dp and push the
+      // sub-cent residual onto the LAST line, so the printed الإجمالي cells sum
+      // EXACTLY to the printed إجمالي القسم below them.
+      const printedSubtotals = allocateResidual(
+        s.items.map((it) => it.subtotal),
+        round2(s.lineSubtotal),
+      );
       const rows = s.items
         .map(
-          (it) => `<tr>
+          (it, i) => `<tr>
             <td>${esc(it.description)}</td>
             <td class="n">${num(it.quantity)}</td>
             <td class="c">${esc(it.unit ?? '—')}</td>
             <td class="n">${money(it.unitPrice)}</td>
-            <td class="n">${money(it.subtotal)}</td>
+            <td class="n">${money(printedSubtotals[i])}</td>
           </tr>`,
         )
         .join('');
@@ -266,18 +305,18 @@ function scopePricingBlocks(
          <div class="body">
            <div class="section-title">${esc(s.deptName)}${
              s.isLead ? ' <span class="lead-badge">القسم الرئيسي</span>' : ''
-           }</div>
+           }${perVisit ? ' <span class="lead-badge">حسب الزيارة</span>' : ''}</div>
            ${s.scopeText ? `<div class="scope-text">${esc(s.scopeText)}</div>` : ''}
            <table class="quote-table">
              <thead><tr>
-               <th>نطاق العمل</th><th class="n">الكمية</th><th class="c">الوحدة</th>
-               <th class="n">سعر الوحدة</th><th class="n">الإجمالي</th>
+               <th>نطاق العمل</th><th class="n">${qtyLabel}</th><th class="c">الوحدة</th>
+               <th class="n">${unitPriceLabel}</th><th class="n">الإجمالي</th>
              </tr></thead>
              <tbody>${rows || '<tr><td colspan="5" class="c">—</td></tr>'}</tbody>
            </table>
            <div class="dept-subtotal">
              <span>إجمالي القسم (قبل الضريبة)</span>
-             <span class="n">${money(s.lineSubtotal)}</span>
+             <span class="n">${money(round2(s.lineSubtotal))}</span>
            </div>
          </div>`,
       );
@@ -300,6 +339,14 @@ function scopePricingBlocks(
   const inconsistentBanner = reconciles
     ? ''
     : `<div class="totals-warning">مسودة — الإجماليات غير متطابقة (DRAFT — totals inconsistent)</div>`;
+  // RVd-4/RVd-6 (summary reconciliation): round each dept subtotal to 2dp and
+  // push the sub-cent residual onto the LAST department row, so the summary-table
+  // column the client adds up sums EXACTLY to the المجموع الفرعي printed beneath
+  // it (never 0.01 off on a signed offer).
+  const summarySubtotals = allocateResidual(
+    sections.map((s) => s.lineSubtotal),
+    quote.subtotal,
+  );
   const totalsPage = page(
     `${pageHeader(company, `<div class="quote-ref-box" dir="ltr">${esc(quote.quoteNumber)}</div>`)}
      <div class="body">
@@ -309,8 +356,8 @@ function scopePricingBlocks(
          <thead><tr><th>القسم</th><th class="n">الإجمالي (قبل الضريبة)</th></tr></thead>
          <tbody>${sections
            .map(
-             (s) =>
-               `<tr><td>${esc(s.deptName)}</td><td class="n">${money(s.lineSubtotal)}</td></tr>`,
+             (s, i) =>
+               `<tr><td>${esc(s.deptName)}</td><td class="n">${money(summarySubtotals[i])}</td></tr>`,
            )
            .join('')}</tbody>
        </table>
@@ -333,13 +380,29 @@ function scopePricingBlocks(
 
 function paymentBlock(quote: LoadedQuote, company: DocCompany | null): string {
   if (quote.paymentMilestones.length === 0) return '';
+  // RVd-3/RVd-8 (milestone reconciliation): render the STORED, server
+  // penny-reconciled PaymentMilestone.amount (the service allocates the residual
+  // to the last milestone on write) instead of re-deriving (pct/100)*total per
+  // row — which independently rounds each row and lands the column 0.01 off the
+  // grand total (e.g. 33.33/33.33/33.34 of 31050). As a safety net for any
+  // legacy row whose stored amount predates the write-time reconciliation, the
+  // renderer re-allocates the residual onto the last row so the printed المبلغ
+  // column sums EXACTLY to the printed grand total.
+  const printedAmounts = allocateResidual(
+    quote.paymentMilestones.map(
+      (m) =>
+        (m as { amount?: number }).amount ??
+        (m.percentage / 100) * quote.totalAmount,
+    ),
+    quote.totalAmount,
+  );
   const rows = quote.paymentMilestones
     .map(
       (m, i) => `<tr>
         <td class="c">${num(i + 1)}</td>
         <td>${esc(m.description)}</td>
         <td class="n">${num(m.percentage)}%</td>
-        <td class="n">${money((m.percentage / 100) * quote.totalAmount)}</td>
+        <td class="n">${money(printedAmounts[i])}</td>
       </tr>`,
     )
     .join('');
@@ -534,7 +597,17 @@ const STYLES = `
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @page { size: A4; margin: 0; }
 body { font-family: -apple-system, "Segoe UI", "Tahoma", "Calibri", sans-serif; color: #1a2a44; background: #fff; font-size: 12px; }
-.page { width: 210mm; min-height: 297mm; position: relative; overflow: hidden; background: #fff; page-break-after: always; padding: 16mm 16mm 22mm; }
+/* RVd-8 (pagination): a growable block (a long scope/pricing table or a long
+   requirements list) makes a single logical .page exceed 297mm; Chromium then
+   splits it across physical sheets. The OLD layout pinned the running footer
+   with position:absolute (bottom:8mm) and clipped with overflow:hidden, so on a
+   split page the footer printed mid-sheet and overlapped content. FIX: lay the
+   page out as a flex column with the footer flowing at the end (margin-top:auto
+   keeps it at the bottom on a non-overflowing page, and it flows after the
+   content — never overlapping — when the page splits). overflow:visible so a
+   split table is not clipped. Table headers repeat across sheets and rows are
+   never cut mid-row (see .quote-table thead / tr rules below). */
+.page { width: 210mm; min-height: 297mm; position: relative; overflow: visible; background: #fff; page-break-after: always; padding: 16mm 16mm 22mm; display: flex; flex-direction: column; }
 .page:last-child { page-break-after: auto; }
 .geo-bg { position: absolute; inset: 0; background:
   linear-gradient(135deg, rgba(26,42,68,0.03) 25%, transparent 25%) -10px 0,
@@ -557,6 +630,10 @@ body { font-family: -apple-system, "Segoe UI", "Tahoma", "Calibri", sans-serif; 
 .contact-bar { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #44546a; }
 .scope-text { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; line-height: 1.8; margin-bottom: 8px; }
 .quote-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+/* RVd-8: when a long table splits across sheets, repeat the header row on each
+   sheet and never cut a row mid-height. */
+.quote-table thead { display: table-header-group; }
+.quote-table tr { break-inside: avoid; page-break-inside: avoid; }
 .quote-table th { background: #1a3a5c; color: #fff; text-align: start; padding: 8px; font-size: 11px; }
 .quote-table td { padding: 8px; border-bottom: 1px solid #e2e8f0; }
 .quote-table tr:nth-child(even) td { background: #f8fafc; }
@@ -574,7 +651,11 @@ td.c, th.c { text-align: center; }
 .method-steps { margin: 4px 18px; line-height: 1.8; }
 .method-deliverable { color: #1a7a3a; margin-top: 4px; font-size: 11px; }
 .req-list { margin: 6px 18px; line-height: 2; }
-.foot { position: absolute; bottom: 8mm; left: 16mm; right: 16mm; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 4px; z-index: 2; }
+/* RVd-8: a FLOW footer (margin-top:auto pins it to the bottom of a
+   non-overflowing page; on a split/overflowing page it flows after the content
+   instead of overlapping it as the old position:absolute footer did). */
+.foot { margin-top: auto; padding-top: 4px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; z-index: 2; }
+.req-list li { break-inside: avoid; page-break-inside: avoid; }
 /* Cover */
 .cover { background: linear-gradient(135deg, #ffffff 0%, #f4f7fb 100%); padding: 0; }
 .cover-shapes::before, .cover-shapes::after { content: ''; position: absolute; transform: rotate(45deg); }

@@ -43,6 +43,41 @@ import type {
 // Level 3 (CEO) is an optional additional approver above this threshold.
 const LEVEL3_THRESHOLD_KEY = 'approval_quote_level3_threshold';
 
+// RVd-3..7 (rounding cluster): the SINGLE money-rounding policy for the whole
+// quote write path. Every monetary value that the client can sum on the printed
+// price offer is rounded to 2 decimals at WRITE time via round2, and every
+// per-line subtotal is derived from the one lineSubtotal() formula, so the
+// stored figures reconcile penny-exact: Σ(QuoteItem.subtotal) === Quote.subtotal,
+// and Σ(PaymentMilestone.amount) === Quote.totalAmount. Display-time rounding in
+// the renderer can then never make a column miss the printed total by 0.01.
+const round2 = (n: number): number =>
+  Math.round((n + Number.EPSILON) * 100) / 100;
+
+const lineSubtotal = (item: {
+  quantity: number;
+  unitPrice: number;
+  discountPct?: number | null;
+}): number =>
+  round2(item.quantity * item.unitPrice * (1 - (item.discountPct ?? 0) / 100));
+
+// RVd-3/RVd-8: penny-reconcile a percentage payment schedule against the grand
+// total. Each amount is rounded to 2dp; the LAST milestone absorbs the residual
+// (total − Σ(others)) so the column the client adds up sums to the grand total
+// exactly, never 0.01 off (e.g. 33.33/33.33/33.34 of 31050 → 10349.86 / 10349.86
+// / 10350.28 = 31050.00).
+function reconcileMilestoneAmounts(
+  milestones: { percentage: number }[],
+  total: number,
+): number[] {
+  if (milestones.length === 0) return [];
+  const amounts = milestones.map((m) => round2((m.percentage / 100) * total));
+  const allButLast = amounts
+    .slice(0, -1)
+    .reduce((sum, a) => round2(sum + a), 0);
+  amounts[amounts.length - 1] = round2(total - allButLast);
+  return amounts;
+}
+
 const QUOTE_INCLUDE = {
   client: {
     select: {
@@ -171,10 +206,9 @@ export class QuotesService {
             unit: item.unit,
             unitPrice: item.unitPrice,
             discountPct: item.discountPct ?? 0,
-            subtotal:
-              item.quantity *
-              item.unitPrice *
-              (1 - (item.discountPct ?? 0) / 100),
+            // RVd-3..7: store the 2dp line subtotal (one rounding policy) so
+            // Σ(QuoteItem.subtotal) === Quote.subtotal exactly.
+            subtotal: lineSubtotal(item),
             notes: item.notes,
             position: item.position ?? index,
             ...(item.methodology
@@ -203,14 +237,22 @@ export class QuotesService {
           })),
         },
         paymentMilestones: {
-          create: milestones.map((m, index) => ({
-            description: m.description,
-            percentage: m.percentage,
-            amount: totals.totalAmount * (m.percentage / 100),
-            daysFromStart: m.daysFromStart,
-            notes: m.notes,
-            position: index,
-          })),
+          // RVd-3/RVd-8: store penny-reconciled amounts (last absorbs residual)
+          // so Σ(PaymentMilestone.amount) === Quote.totalAmount exactly.
+          create: (() => {
+            const amounts = reconcileMilestoneAmounts(
+              milestones,
+              totals.totalAmount,
+            );
+            return milestones.map((m, index) => ({
+              description: m.description,
+              percentage: m.percentage,
+              amount: amounts[index],
+              daysFromStart: m.daysFromStart,
+              notes: m.notes,
+              position: index,
+            }));
+          })(),
         },
       },
       include: QUOTE_INCLUDE,
@@ -428,10 +470,9 @@ export class QuotesService {
             unit: item.unit,
             unitPrice: item.unitPrice,
             discountPct: item.discountPct ?? 0,
-            subtotal:
-              item.quantity *
-              item.unitPrice *
-              (1 - (item.discountPct ?? 0) / 100),
+            // RVd-3..7: store the 2dp line subtotal (one rounding policy) so
+            // Σ(QuoteItem.subtotal) === Quote.subtotal exactly.
+            subtotal: lineSubtotal(item),
             notes: item.notes,
             position: item.position ?? index,
             ...(item.methodology
@@ -470,11 +511,14 @@ export class QuotesService {
         const total = pricingChanged
           ? (data.totalAmount as number)
           : quote.totalAmount;
+        // RVd-3/RVd-8: penny-reconcile against the grand total (last absorbs the
+        // residual) so Σ(PaymentMilestone.amount) === Quote.totalAmount exactly.
+        const amounts = reconcileMilestoneAmounts(milestones, total);
         data.paymentMilestones = {
           create: milestones.map((m, index) => ({
             description: m.description,
             percentage: m.percentage,
-            amount: total * (m.percentage / 100),
+            amount: amounts[index],
             daysFromStart: m.daysFromStart,
             notes: m.notes,
             position: index,
@@ -1920,19 +1964,24 @@ export class QuotesService {
       taxRate: number;
     },
   ) {
-    const subtotal = items.reduce(
-      (sum, item) =>
-        sum +
-        item.quantity * item.unitPrice * (1 - (item.discountPct ?? 0) / 100),
-      0,
+    // RVd-3..7 (rounding cluster, write-time half): every money value the client
+    // can sum on the printed offer is rounded to 2dp HERE, at write time, so the
+    // stored figures reconcile exactly — no display-time independent rounding can
+    // make a column miss the printed total by 0.01. Critically `subtotal` is the
+    // SUM OF THE PER-LINE 2dp subtotals (the same value each QuoteItem.subtotal
+    // stores), NOT a re-rounded raw sum, so Σ(stored line subtotals) === stored
+    // subtotal to the cent.
+    const subtotal = round2(
+      items.reduce((sum, item) => sum + lineSubtotal(item), 0),
     );
-    const discountAmount =
+    const discountAmount = round2(
       options.discountType === DiscountType.PERCENTAGE
         ? subtotal * (options.discountValue / 100)
-        : options.discountValue;
-    const afterDiscount = Math.max(0, subtotal - discountAmount);
-    const taxAmount = afterDiscount * (options.taxRate / 100);
-    const totalAmount = afterDiscount + taxAmount;
+        : options.discountValue,
+    );
+    const afterDiscount = Math.max(0, round2(subtotal - discountAmount));
+    const taxAmount = round2(afterDiscount * (options.taxRate / 100));
+    const totalAmount = round2(afterDiscount + taxAmount);
     return { subtotal, discountAmount, taxAmount, totalAmount };
   }
 

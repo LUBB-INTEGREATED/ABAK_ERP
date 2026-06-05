@@ -182,6 +182,65 @@ function multiDeptQuote(): LoadedQuote {
 const countOf = (haystack: string, needle: string) =>
   haystack.split(needle).length - 1;
 
+// RVd-9/RVd-10: PARSE the money() strings the renderer actually emits so the
+// reconciliation properties are asserted against the printed document, not the
+// input literals. money() => formatCurrency(n,{locale:'ar',numerals:'latin'})
+// => "<grouped 2dp number> <SAR>" — and the SAR symbol differs by runtime
+// (Arabic "ر.س" under tsx, Latin "SAR" under the swc-node test runner). The
+// parser is therefore SYMBOL-AGNOSTIC: it strips everything except the leading
+// signed grouped decimal, so it works under BOTH runners.
+function parseMoney(token: string): number {
+  // Keep only the numeric part: leading optional minus, digits, commas, dot.
+  const m = /-?[\d,]+\.\d{2}/.exec(token);
+  assert.ok(m, `parseMoney failed on: ${JSON.stringify(token)}`);
+  const n = Number(m![0].replace(/,/g, ''));
+  assert.ok(Number.isFinite(n), `parseMoney NaN on: ${JSON.stringify(token)}`);
+  return n;
+}
+
+// Extract the inner HTML of the FIRST <table class="…matching…">…</table>.
+function tableHtml(html: string, classNeedle: string): string {
+  const re = new RegExp(
+    `<table class="[^"]*${classNeedle}[^"]*">([\\s\\S]*?)</table>`,
+  );
+  const m = re.exec(html);
+  assert.ok(m, `table matching "${classNeedle}" not found`);
+  return m![1];
+}
+
+// Every money value printed in <td class="n">…</td> cells of a table fragment.
+// A money cell is a "n" cell whose content is a 2dp decimal and is NOT a percent
+// cell (so qty cells like "10" and percentage cells like "33.33%" are excluded).
+const MONEY_CELL =
+  /<td class="n">((?:(?!%)[^<])*?-?[\d,]+\.\d{2}(?:(?!%)[^<])*?)<\/td>/g;
+function moneyCellsOf(fragment: string): number[] {
+  return [...fragment.matchAll(MONEY_CELL)].map((c) => parseMoney(c[1]));
+}
+
+// The LAST money cell of each <tr> — i.e. the rightmost "الإجمالي" column on a
+// dept pricing page (where each row also prints a unit-price money cell).
+function lastMoneyCellPerRow(fragment: string): number[] {
+  const rows = [...fragment.matchAll(/<tr>([\s\S]*?)<\/tr>/g)];
+  return rows
+    .map((r) => {
+      const cells = [...r[1].matchAll(MONEY_CELL)];
+      return cells.length ? parseMoney(cells[cells.length - 1][1]) : null;
+    })
+    .filter((v): v is number => v !== null);
+}
+
+// The total-band rows (المجموع الفرعي / VAT / grand) live in <div class="row">.
+function bandValue(html: string, label: string): number {
+  const re = new RegExp(
+    `<span>${label}[^<]*</span><span class="n">([^<]*?-?[\\d,]+\\.\\d{2}[^<]*?)</span>`,
+  );
+  const m = re.exec(html);
+  assert.ok(m, `band row "${label}" not found`);
+  return parseMoney(m![1]);
+}
+
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
 test('DOC-3: the combined totals band adds up and there is NO per-dept VAT', () => {
   const quote = multiDeptQuote();
   const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
@@ -296,4 +355,339 @@ test('DOC-3: legacy quote (no sections, null sectionId) still renders', () => {
     'still exactly one VAT line on the legacy fallback',
   );
   assert.ok(html.includes('Architectural design'), 'legacy items rendered');
+});
+
+// ------------------------------------------------------------------
+// RVd-9..10 — the reconciliation properties that actually failed before the fix:
+// PARSE the emitted money() strings and assert columns sum to the printed total.
+// ------------------------------------------------------------------
+
+// Two single-item depts whose STORED subtotals carry 3 decimals (33.335 each).
+// Pre-fix each printed cell rounds independently (33.34 + 33.34 = 66.68) while
+// the printed المجموع الفرعي prints 66.67 → off by 0.01. The renderer residual
+// allocation must make the printed dept column sum EXACTLY to the printed
+// subtotal. (Models a legacy row stored before the write-time rounding.)
+function threeDecimalQuote(): LoadedQuote {
+  const q = multiDeptQuote();
+  // Design dept: one item @ 33.335; Supervision dept: one item @ 33.335.
+  q.items = [
+    item({
+      description: 'Design line',
+      sectionId: 'secA',
+      departmentId: 'catA',
+      quantity: 1,
+      unitPrice: 33.335,
+      subtotal: 33.335,
+    }),
+    item({
+      description: 'Supervision line',
+      sectionId: 'secB',
+      departmentId: 'catB',
+      quantity: 1,
+      unitPrice: 33.335,
+      subtotal: 33.335,
+    }),
+  ] as LoadedQuote['items'];
+  // raw subtotal 66.67; no discount; 15% VAT = 10.0005 → 10.00; total 76.67.
+  (q as { subtotal: number }).subtotal = 66.67;
+  (q as { discountAmount: number }).discountAmount = 0;
+  (q as { taxAmount: number }).taxAmount = 10.0;
+  (q as { totalAmount: number }).totalAmount = 76.67;
+  (q as { paymentMilestones: unknown[] }).paymentMilestones = [];
+  return q;
+}
+
+test('RVd-9: printed dept subtotals sum EXACTLY to the printed المجموع الفرعي (3-decimal inputs)', () => {
+  const quote = threeDecimalQuote();
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+
+  // The summary table on the totals page: one money cell per department.
+  const summary = tableHtml(html, 'summary');
+  const printedDeptSubtotals = moneyCellsOf(summary);
+  assert.equal(printedDeptSubtotals.length, 2, 'one summary row per dept');
+
+  const printedSubtotalLine = bandValue(html, 'المجموع الفرعي');
+  const sumOfRows = round2(
+    printedDeptSubtotals.reduce((s, v) => round2(s + v), 0),
+  );
+  assert.equal(
+    sumOfRows,
+    printedSubtotalLine,
+    `Σ(printed dept subtotals)=${sumOfRows} must equal printed المجموع الفرعي=${printedSubtotalLine}`,
+  );
+  // And the printed subtotal is the 2dp figure (66.67), proving the residual was
+  // absorbed (33.34 + 33.33 = 66.67), not naively rounded (33.34 + 33.34).
+  assert.equal(printedSubtotalLine, 66.67, 'printed subtotal is 66.67');
+});
+
+test('RVd-9: per-line الإجمالي cells sum EXACTLY to the printed إجمالي القسم', () => {
+  // One dept, three items each storing 11.115 → raw dept total 33.345 → 33.34
+  // (2dp). Pre-fix the three printed cells (11.12 each = 33.36) overshoot the
+  // printed dept subtotal. Residual allocation must reconcile.
+  const quote = multiDeptQuote();
+  quote.items = [
+    item({
+      description: 'L1',
+      sectionId: 'secA',
+      departmentId: 'catA',
+      quantity: 1,
+      unitPrice: 11.115,
+      subtotal: 11.115,
+    }),
+    item({
+      description: 'L2',
+      sectionId: 'secA',
+      departmentId: 'catA',
+      quantity: 1,
+      unitPrice: 11.115,
+      subtotal: 11.115,
+    }),
+    item({
+      description: 'L3',
+      sectionId: 'secA',
+      departmentId: 'catA',
+      quantity: 1,
+      unitPrice: 11.115,
+      subtotal: 11.115,
+    }),
+  ] as LoadedQuote['items'];
+  (quote as { departmentSections: unknown[] }).departmentSections = [
+    {
+      id: 'secA',
+      departmentId: 'catA',
+      isLead: true,
+      status: 'SUBMITTED_TO_LEAD',
+      pricerId: null,
+      scopeTextAr: null,
+      scopeTextEn: null,
+      pricingModel: 'LUMP_SUM',
+      department: { id: 'catA', name: 'Design', nameAr: 'التصميم', order: 1 },
+    },
+  ];
+  (quote as { subtotal: number }).subtotal = 33.34;
+  (quote as { discountAmount: number }).discountAmount = 0;
+  (quote as { taxAmount: number }).taxAmount = 5.0;
+  (quote as { totalAmount: number }).totalAmount = 38.34;
+  (quote as { paymentMilestones: unknown[] }).paymentMilestones = [];
+
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+  // The dept page is the FIRST quote-table that is NOT the summary table; each
+  // row prints a unit-price money cell AND a subtotal cell — we want the last
+  // (الإجمالي) per row.
+  const deptTable = tableHtml(html, 'quote-table');
+  const lineCells = lastMoneyCellPerRow(deptTable);
+  assert.equal(lineCells.length, 3, 'three line cells');
+  const sumLines = round2(lineCells.reduce((s, v) => round2(s + v), 0));
+
+  // The printed إجمالي القسم value (symbol-agnostic capture).
+  const deptSubMatch =
+    /قبل الضريبة\)<\/span>\s*<span class="n">([^<]+)<\/span>/.exec(html);
+  assert.ok(deptSubMatch, 'dept subtotal line present');
+  const printedDeptSub = parseMoney(deptSubMatch![1]);
+  assert.equal(
+    sumLines,
+    printedDeptSub,
+    `Σ(printed line cells)=${sumLines} must equal printed إجمالي القسم=${printedDeptSub}`,
+  );
+});
+
+test('RVd-10: milestone amounts sum EXACTLY to the printed grand total (33.33/33.33/33.34)', () => {
+  const quote = multiDeptQuote();
+  // 33.33/33.33/33.34 of 31050. The NAIVE per-row split (pct/100*31050 each
+  // independently rounded) is [10348.97, 10348.97, 10352.07] = 31050.01 — 0.01
+  // OVER the grand total. The service stores the penny-reconciled amounts (last
+  // milestone absorbs the residual): [10348.97, 10348.97, 10352.06] = 31050.00.
+  // The renderer prints these STORED amounts, so the column reconciles exactly.
+  (quote as { paymentMilestones: unknown[] }).paymentMilestones = [
+    {
+      id: 'pm1',
+      description: 'On signing',
+      percentage: 33.33,
+      amount: 10348.97,
+      daysFromStart: null,
+      notes: null,
+      position: 0,
+    },
+    {
+      id: 'pm2',
+      description: 'Midway',
+      percentage: 33.33,
+      amount: 10348.97,
+      daysFromStart: null,
+      notes: null,
+      position: 1,
+    },
+    {
+      id: 'pm3',
+      description: 'On delivery',
+      percentage: 33.34,
+      amount: 10352.06,
+      daysFromStart: null,
+      notes: null,
+      position: 2,
+    },
+  ];
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+
+  // The payment table is the one preceded by "جدول الدفعات".
+  const paymentSection = html.slice(html.indexOf('جدول الدفعات'));
+  const paymentTable = tableHtml(paymentSection, 'quote-table');
+  const amounts = moneyCellsOf(paymentTable);
+  assert.equal(amounts.length, 3, 'three milestone amount cells');
+  const sumAmounts = round2(amounts.reduce((s, v) => round2(s + v), 0));
+  assert.equal(
+    sumAmounts,
+    quote.totalAmount,
+    `Σ(printed milestone amounts)=${sumAmounts} must equal grand total=${quote.totalAmount}`,
+  );
+});
+
+test('RVd-10: milestone residual is absorbed even when stored amounts are stale (legacy rows)', () => {
+  // Legacy: stored amounts are the naive pct*total (each independently rounded,
+  // column 0.01 short). The renderer must STILL reconcile the printed column to
+  // the grand total via its residual safety-net.
+  const quote = multiDeptQuote();
+  // Naive per-row amounts (each independently rounded) sum to 31050.01 — 0.01
+  // OVER the grand total. The renderer's residual safety-net must still print a
+  // column that sums to 31050.00 exactly.
+  (quote as { paymentMilestones: unknown[] }).paymentMilestones = [
+    {
+      id: 'pm1',
+      description: 'A',
+      percentage: 33.33,
+      amount: 10348.97,
+      daysFromStart: null,
+      notes: null,
+      position: 0,
+    },
+    {
+      id: 'pm2',
+      description: 'B',
+      percentage: 33.33,
+      amount: 10348.97,
+      daysFromStart: null,
+      notes: null,
+      position: 1,
+    },
+    {
+      id: 'pm3',
+      description: 'C',
+      percentage: 33.34,
+      amount: 10352.07,
+      daysFromStart: null,
+      notes: null,
+      position: 2,
+    },
+  ];
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+  const paymentSection = html.slice(html.indexOf('جدول الدفعات'));
+  const amounts = moneyCellsOf(tableHtml(paymentSection, 'quote-table'));
+  const sumAmounts = round2(amounts.reduce((s, v) => round2(s + v), 0));
+  assert.equal(
+    sumAmounts,
+    quote.totalAmount,
+    'renderer residual safety-net reconciles even a stale legacy milestone column',
+  );
+});
+
+// ------------------------------------------------------------------
+// RVd-12 — PER_VISIT caption: a per-visit dept gets visit-specific column labels.
+// ------------------------------------------------------------------
+test('RVd-12: a PER_VISIT section labels qty/unit-price columns as visits', () => {
+  const quote = multiDeptQuote();
+  // Mark the Supervision section PER_VISIT.
+  (quote.departmentSections[1] as { pricingModel: string }).pricingModel =
+    'PER_VISIT';
+  const html = renderQuoteDocument(quote, EIGHT_BLOCKS);
+  assert.ok(html.includes('عدد الزيارات'), 'visit-count column header present');
+  assert.ok(
+    html.includes('سعر الزيارة'),
+    'per-visit price column header present',
+  );
+  // The lump-sum Design dept keeps the generic labels.
+  assert.ok(
+    html.includes('سعر الوحدة'),
+    'lump-sum dept keeps generic unit price',
+  );
+});
+
+// ------------------------------------------------------------------
+// RVd-11 — render-level XSS: EVERY user-controlled field is escaped on BOTH the
+// live path AND the as-issued renderManifest path.
+// ------------------------------------------------------------------
+const XSS = '<img src=x onerror=alert(1)>';
+
+function xssQuote(): LoadedQuote {
+  const q = multiDeptQuote();
+  (q as { title: string }).title = XSS;
+  // client + company names
+  (q.client as { companyName: string }).companyName = XSS;
+  // section scope text (ar) + methodology + milestone description + requirement
+  (q.departmentSections[0] as { scopeTextAr: string }).scopeTextAr = XSS;
+  q.items[0].description = XSS;
+  (q.items[0].methodologyCard as { description: string }).description = XSS;
+  (q.items[0].methodologyCard as { steps: string[] }).steps = [XSS];
+  (q.items[0].methodologyCard as { deliverable: string }).deliverable = XSS;
+  (q.items[0] as { notes: string | null }).notes = XSS;
+  q.paymentMilestones[0].description = XSS;
+  q.requirements[0].text = XSS;
+  return q;
+}
+
+function xssCompany() {
+  return {
+    legalName: XSS,
+    aboutText: XSS,
+    services: [{ name: XSS, nameAr: XSS }],
+    accreditations: [XSS],
+    phone: XSS,
+    email: XSS,
+    website: XSS,
+    address: XSS,
+    logoUrl: XSS,
+    bank: {
+      bankName: XSS,
+      bankAccountName: XSS,
+      iban: XSS,
+      swift: XSS,
+    },
+  };
+}
+
+test('RVd-11: every user field is escaped on the LIVE render path (no raw <img)', () => {
+  const quote = xssQuote();
+  const ctx: DocContext = {
+    asIssued: false,
+    company: xssCompany(),
+    blocks: EIGHT_BLOCKS.blocks,
+  };
+  const html = renderQuoteDocument(quote, ctx);
+  assert.ok(
+    !html.includes('<img src=x onerror'),
+    'no raw <img onerror payload survives — every field is esc()-escaped',
+  );
+  // The escaped form must be present (proves the marker round-tripped, escaped).
+  assert.ok(
+    html.includes('&lt;img src=x onerror=alert(1)&gt;'),
+    'the marker appears in its escaped form',
+  );
+});
+
+test('RVd-11: every user field is escaped on the as-issued MANIFEST render path', () => {
+  const quote = xssQuote();
+  // asIssued path: company comes from the snapshot, blocks from the manifest.
+  const ctx: DocContext = {
+    asIssued: true,
+    company: xssCompany(),
+    blocks: EIGHT_BLOCKS.blocks,
+  };
+  const html = renderQuoteDocument(quote, ctx);
+  assert.ok(
+    !html.includes('<img src=x onerror'),
+    'no raw <img onerror payload survives on the manifest path either',
+  );
+  assert.ok(
+    html.includes('&lt;img src=x onerror=alert(1)&gt;'),
+    'escaped marker present on the manifest path',
+  );
 });
