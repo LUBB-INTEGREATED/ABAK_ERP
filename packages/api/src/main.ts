@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { swaggerConfig } from './config/swagger.config';
@@ -40,7 +41,12 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  // A-19: Nest reverses the global-filter list and picks the first match, so
+  // the LAST-registered filter is evaluated first. Registering the specific
+  // HttpExceptionFilter last makes it win for HttpExceptions, while the
+  // catch-all AllExceptionsFilter only fires for non-HttpExceptions (Prisma
+  // errors, unexpected throws) — same envelope, no leaked stack to the client.
+  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
