@@ -611,9 +611,17 @@ export class ClientsService {
     });
   }
 
-  async updateFollowUp(id: string, dto: UpdateFollowUpDto) {
+  async updateFollowUp(
+    id: string,
+    dto: UpdateFollowUpDto,
+    scopeCtx?: ScopeContext,
+  ) {
     const existing = await this.prisma.followUp.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Follow-up ${id} not found`);
+
+    // Object-level scope: a non-ALL actor may only touch a follow-up of a
+    // client they manage. findOne runs assertOwnership and 403s otherwise.
+    await this.findOne(existing.clientId, scopeCtx);
 
     // BPD closure outcome handling
     if (dto.closureOutcome === 'CLIENT_NOT_REACHABLE') {
@@ -789,11 +797,14 @@ export class ClientsService {
     });
   }
 
-  async deleteNote(noteId: string) {
+  async deleteNote(noteId: string, scopeCtx?: ScopeContext) {
     const note = await this.prisma.clientNote.findUnique({
       where: { id: noteId },
     });
     if (!note) throw new NotFoundException(`Note ${noteId} not found`);
+    // Object-level scope: a non-ALL actor may only delete a note of a client
+    // they manage. findOne runs assertOwnership and 403s otherwise.
+    await this.findOne(note.clientId, scopeCtx);
     return this.prisma.clientNote.delete({ where: { id: noteId } });
   }
 

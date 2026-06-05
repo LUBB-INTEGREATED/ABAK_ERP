@@ -231,8 +231,10 @@ export class ClientsController {
   updateFollowUp(
     @Param('followUpId') followUpId: string,
     @Body() dto: UpdateFollowUpDto,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
   ) {
-    return this.clients.updateFollowUp(followUpId, dto);
+    return this.clients.updateFollowUp(followUpId, dto, { user, scope });
   }
 
   // Notes ----------------------------------------------------------
@@ -263,7 +265,11 @@ export class ClientsController {
   @Delete('notes/:noteId')
   @RequirePermission('comms:log')
   @ApiOperation({ summary: 'Delete a note' })
-  deleteNote(@Param('noteId') noteId: string) {
-    return this.clients.deleteNote(noteId);
+  deleteNote(
+    @Param('noteId') noteId: string,
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('comms:log') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.deleteNote(noteId, { user, scope });
   }
 }
