@@ -62,7 +62,36 @@ test('production with a strong secret and DATABASE_URL passes', () => {
   );
 });
 
-test('dev still boots with the fallback (warns, does not throw)', () => {
+test('SR2-3: dev with the committed fallback now FAILS boot (every env)', () => {
+  // Previously dev booted with the fallback (warn only). The fallback is the
+  // publicly-known key, so it must never sign tokens — fatal in dev too.
+  assert.throws(
+    () =>
+      validateEnv({
+        NODE_ENV: 'development',
+        DATABASE_URL: db,
+        JWT_SECRET: INSECURE_JWT_FALLBACK,
+      }),
+    /publicly-known dev fallback/,
+  );
+});
+
+test('SR2-3: a non-production env (typo / staging) with the fallback fails', () => {
+  // A deploy that forgets NODE_ENV=production must NOT be silently lenient.
+  assert.throws(
+    () =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: db,
+        JWT_SECRET: INSECURE_JWT_FALLBACK,
+      }),
+    /publicly-known dev fallback/,
+  );
+});
+
+test('SR2-3: dev boots with a real (non-fallback) secret', () => {
+  // Dev keeps working — developers just set a real secret. A short non-fallback
+  // dev secret only warns (the soft length rule relaxes in development).
   const orig = console.warn;
   let warned = '';
   console.warn = (...args: unknown[]) => {
@@ -73,13 +102,35 @@ test('dev still boots with the fallback (warns, does not throw)', () => {
       validateEnv({
         NODE_ENV: 'development',
         DATABASE_URL: db,
-        JWT_SECRET: INSECURE_JWT_FALLBACK,
+        JWT_SECRET: 'local-dev-secret-not-the-fallback',
       }),
     );
   } finally {
     console.warn = orig;
   }
-  assert.match(warned, /dev fallback/);
+  // 'local-dev-secret-not-the-fallback' is 33 chars → no length warning; the
+  // assertion below just confirms dev with a real secret boots cleanly.
+  assert.equal(warned, '', 'a real dev secret boots without warnings');
+});
+
+test('SR2-3: dev with a short non-fallback secret warns but still boots', () => {
+  const orig = console.warn;
+  let warned = '';
+  console.warn = (...args: unknown[]) => {
+    warned += args.join(' ');
+  };
+  try {
+    assert.doesNotThrow(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        DATABASE_URL: db,
+        JWT_SECRET: 'short-dev',
+      }),
+    );
+  } finally {
+    console.warn = orig;
+  }
+  assert.match(warned, /at least/);
 });
 
 test('dev with no DATABASE_URL still fails (DB is required everywhere)', () => {
