@@ -1283,11 +1283,40 @@ export class QuotesService {
     } as Prisma.InputJsonValue;
   }
 
+  /**
+   * RVd-2 send-gate: a real offer must NOT ship with placeholder bank details.
+   * The org seed ships a sentinel CompanyProfile (bankName 'TODO …', iban
+   * 'SA0000…') so legacy quotes still render; send() therefore has to refuse to
+   * transmit a document whose bank box would print that placeholder IBAN/name to
+   * the client. Rejects when the active profile is missing, the IBAN is empty or
+   * an all-zero 'SA0…' placeholder, or the bank name still contains the TODO
+   * sentinel.
+   */
+  private async assertSendableBankDetails(): Promise<void> {
+    const profile = await this.prisma.companyProfile.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { iban: true, bankName: true },
+    });
+    const iban = (profile?.iban ?? '').trim();
+    const bankName = profile?.bankName ?? '';
+    const ibanIsPlaceholder = iban === '' || /^SA0+$/i.test(iban);
+    const bankNameIsPlaceholder = /todo/i.test(bankName);
+    if (!profile || ibanIsPlaceholder || bankNameIsPlaceholder) {
+      throw new BadRequestException(
+        'Bank details not configured — set CompanyProfile before sending',
+      );
+    }
+  }
+
   async send(id: string, scopeCtx?: ScopeContext) {
     const quote = await this.findOne(id, scopeCtx);
     if (quote.status !== QuoteStatus.APPROVED) {
       throw new BadRequestException('Only APPROVED quotes can be sent');
     }
+    // RVd-2: gate the send on a complete, non-placeholder CompanyProfile so no
+    // offer ships with the seeded fake IBAN / TODO bank name.
+    await this.assertSendableBankDetails();
     const updated = await this.prisma.quote.update({
       where: { id },
       data: {
