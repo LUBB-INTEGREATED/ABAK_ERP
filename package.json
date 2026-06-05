@@ -20,12 +20,14 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "prisma:seed:demo": "ALLOW_DESTRUCTIVE_SEED=1 ts-node --require tsconfig-paths/register --project tsconfig.seed.json prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset",
     "prepare": "husky"
   },
   "prisma": {
-    "seed": "ts-node --require tsconfig-paths/register --project tsconfig.seed.json prisma/seed.ts"
+    "//": "A-4/A-22: `prisma db seed` (incl. via `prisma migrate reset`) runs the NON-destructive idempotent RBAC seed (upserts permissions/roles/departments only — never deletes business data). The destructive demo seed (prisma/seed.ts) is reachable only via `npm run prisma:seed:demo`.",
+    "seed": "ts-node --require tsconfig-paths/register --project tsconfig.seed.json prisma/seed-rbac.ts"
   },
   "dependencies": {
     "next": "~16.1.6",

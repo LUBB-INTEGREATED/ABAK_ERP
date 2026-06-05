@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedPriceOfferDefaults } from './seed-price-offer';
+import { assertDestructiveSeedAllowed } from './seed-guard';
 
 const prisma = new PrismaClient();
 
@@ -23,6 +24,11 @@ const DEFAULT_PASSWORD = 'Password123!';
 
 async function main() {
   console.log('🌱 Seeding database...');
+  // A-4 / A-22 (DATA-LOSS GUARD): refuse the destructive wipe unless explicitly
+  // opted-in AND not in production. The configured `prisma db seed` hook now
+  // points at the non-destructive RBAC seed; this demo seed is reachable only
+  // via `npm run prisma:seed:demo`.
+  assertDestructiveSeedAllowed();
 
   await prisma.savedReport.deleteMany();
   await prisma.escalationInstance.deleteMany();
