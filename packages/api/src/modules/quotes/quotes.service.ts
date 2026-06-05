@@ -1465,19 +1465,38 @@ export class QuotesService {
           // enhancement can recompute amount from validated PO payments.
           const baseAmount = quote.totalAmount;
           const amount = Math.round(baseAmount * rate) / 100;
-          await tx.commission.create({
-            data: {
-              rfqId: linkedRfq.id,
-              beneficiaryType: 'BROKER',
-              beneficiaryName: linkedRfq.brokerName,
-              beneficiaryPhone: linkedRfq.brokerPhone,
-              baseAmount,
-              rate,
-              amount,
-              status: 'ACCRUING',
-              notes: `Auto-accrued on RFQ ${linkedRfq.rfqNumber} WON (quote ${quote.quoteNumber}): ${rate}% of ${baseAmount}.`,
-            },
-          });
+          try {
+            await tx.commission.create({
+              data: {
+                rfqId: linkedRfq.id,
+                beneficiaryType: 'BROKER',
+                beneficiaryName: linkedRfq.brokerName,
+                beneficiaryPhone: linkedRfq.brokerPhone,
+                baseAmount,
+                rate,
+                amount,
+                status: 'ACCRUING',
+                notes: `Auto-accrued on RFQ ${linkedRfq.rfqNumber} WON (quote ${quote.quoteNumber}): ${rate}% of ${baseAmount}.`,
+              },
+            });
+          } catch (err) {
+            // A-24 (real money bug): the findFirst guard above is a fast path,
+            // but two concurrent accept() calls at READ COMMITTED can both pass
+            // it and race to INSERT, double-accruing a broker payout. The
+            // partial unique index `commissions_rfqId_broker_unique`
+            // (rfqId WHERE beneficiaryType='BROKER') makes the loser's INSERT
+            // raise P2002; swallow it so the once-per-RFQ guard is honoured at
+            // the DB level — exactly one broker commission survives.
+            if (
+              err instanceof Prisma.PrismaClientKnownRequestError &&
+              err.code === 'P2002'
+            ) {
+              // A concurrent accept already accrued this RFQ's broker
+              // commission; treat as idempotent (the guard's intent).
+            } else {
+              throw err;
+            }
+          }
         }
       }
     });
