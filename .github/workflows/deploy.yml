@@ -15,3 +15,9 @@ jobs:
         run: |
           echo "Deploy workflow is a placeholder."
           echo "Wire up provider-specific steps (Vercel, Fly, Render, etc.) when infra is ready."
+          echo ""
+          echo "A-8: the PDF feature needs headless Chromium on the target. After"
+          echo "pnpm install and before starting the API, the deploy MUST run:"
+          echo "    npx playwright install --with-deps chromium"
+          echo "    apt-get install -y fonts-noto fonts-noto-cjk   # Arabic glyphs"
+          echo "See DEPLOY.md for the full provisioning + env + seed checklist."
