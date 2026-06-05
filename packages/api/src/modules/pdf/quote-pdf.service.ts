@@ -65,6 +65,24 @@ export class QuotePdfService {
   }
 
   private async resolveDocContext(quote: LoadedQuote): Promise<DocContext> {
+    // RVd-13 — SCOPE OF THE "AS-ISSUED" FREEZE (documented, by design):
+    // The renderManifest snapshots ONLY the document COMPOSITION that lives
+    // outside the quote row — the template block layout (which blocks, order,
+    // enabled) and the CompanyProfile content (legal name, about, services,
+    // accreditations, contact, bank, logo). It deliberately does NOT snapshot the
+    // priced data — quote.subtotal / discountAmount / taxRate / taxAmount /
+    // totalAmount, items, department scope text, payment milestones, requirements
+    // and amount-in-words are all read LIVE from the quote at render time.
+    //
+    // That is SAFE because those priced fields are immutable post-SEND: update()
+    // hard-gates on `status === DRAFT` (quotes.service.ts), and approve/send do
+    // not mutate them. So once a quote is SENT the live read and the value
+    // at-issue are guaranteed identical — re-snapshotting them would be redundant.
+    // The ONE thing the manifest freezes that genuinely CAN change later is the
+    // template + company composition, which is exactly what it stores. (If a
+    // future requirement allows post-send re-pricing, extend buildRenderManifest
+    // to also snapshot totals/items/scope/milestones.)
+    //
     // As-issued: render from the snapshot taken on send.
     const manifest = quote.renderManifest as ManifestShape | null;
     if (manifest && Array.isArray(manifest.sections)) {
