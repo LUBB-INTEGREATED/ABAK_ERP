@@ -86,3 +86,29 @@ reachable only via `npm run prisma:seed:demo` (which sets
 
 **Never run `prisma migrate reset` against the production database** — it drops
 and recreates the schema.
+
+## 4. Web server — Next.js standalone output (A-27)
+
+`packages/web/next.config.js` sets `output: 'standalone'`, so the web build
+emits a self-contained server that does **not** require the full workspace
+`node_modules` on the box. In this Nx monorepo the entrypoint and its pruned
+deps land under `packages/web/.next/standalone/`, with the server at:
+
+```
+packages/web/.next/standalone/packages/web/server.js
+```
+
+After `pnpm nx build web`, ship the standalone bundle and run it directly:
+
+```bash
+# Static assets and public files are NOT copied into standalone — bring them along.
+cp -r packages/web/.next/static packages/web/.next/standalone/packages/web/.next/static
+cp -r packages/web/public      packages/web/.next/standalone/packages/web/public
+
+# Start the self-contained server (no repo-root node_modules needed).
+PORT=3000 node packages/web/.next/standalone/packages/web/server.js
+```
+
+This replaces the old `next start packages/web`, which needed the entire pnpm
+workspace install present on the server. Update `scratch/ecosystem.config.js`
+(pm2) to point at the standalone `server.js` accordingly.

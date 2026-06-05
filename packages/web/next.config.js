@@ -18,6 +18,11 @@ const securityHeaders = [
  **/
 const nextConfig = {
   nx: {},
+  // A-27: emit a self-contained standalone server so the box only needs
+  // .next/standalone (+ .next/static and public) — not the full workspace
+  // node_modules. In this Nx monorepo the entrypoint is emitted at
+  // packages/web/.next/standalone/packages/web/server.js (see DEPLOY.md).
+  output: 'standalone',
   reactStrictMode: true,
   transpilePackages: ['shared-types', 'shared-utils', 'shared-ui'],
   turbopack: {
