@@ -84,7 +84,12 @@ const users = [
     jobTitle: 'مدير قسم',
     department: 'إدارة الخدمات البيئية',
     productPersona: 'Department Manager',
-    appRole: 'ADMIN',
+    // R2-4 / DATA-1: a Department Manager must NOT carry the legacy role=ADMIN.
+    // ADMIN passes isPmOrAdmin / isFinanceOrAdmin in projects authz and counts
+    // as an executive tier in pickApprover — a latent privilege escalation.
+    // TECHNICAL_MANAGER is the correct enum (matching hassan, the other dept
+    // manager). Real authz comes from the RoleAssignment + Department.managerId.
+    appRole: 'TECHNICAL_MANAGER',
     testFocus: 'Department triage, reports, admin workflows',
     gap: 'OK',
   },
@@ -218,6 +223,11 @@ const users = [
     jobTitle: 'رئيس مجلس الإدارة',
     department: 'الإدارة التنفيذية',
     productPersona: 'Sales/Business Manager or Main Manager',
+    // R2-4 OWNER DECISION (Chairman): kept ADMIN — this is a genuine executive
+    // persona, NOT a dept/sales manager, and the Executive RoleAssignment in
+    // seed-rbac.ts already grants the read-all + top-tier-approval set. The only
+    // open question is ADMIN vs SUPER_ADMIN for the Chairman/CEO, which is the
+    // owner's call (not guessed here).
     appRole: 'ADMIN',
     testFocus: 'Department triage, reports, admin workflows',
     gap: 'OK',
@@ -246,6 +256,9 @@ const users = [
     jobTitle: 'الرئيس التنفيذي',
     department: 'الإدارة التنفيذية',
     productPersona: 'Sales/Business Manager or Main Manager',
+    // R2-4 OWNER DECISION (CEO): kept ADMIN — genuine executive persona, not a
+    // dept/sales manager. Same rationale as the Chairman above; ADMIN vs
+    // SUPER_ADMIN for the executive tier is the owner's call.
     appRole: 'ADMIN',
     testFocus: 'Department triage, reports, admin workflows',
     gap: 'OK',
