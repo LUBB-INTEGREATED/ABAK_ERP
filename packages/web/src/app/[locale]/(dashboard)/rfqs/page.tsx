@@ -87,7 +87,9 @@ export default function RfqsListPage() {
   const locale = useLocale();
   const [segment, setSegment] = useState<Segment>('needsMe');
   const [search, setSearch] = useState('');
-  const { data, isLoading, isError, refetch } = useRfqsList({ pageSize: 100 });
+  const { data, isLoading, isError, error, refetch } = useRfqsList({
+    pageSize: 100,
+  });
 
   const rows = useMemo(() => data?.data ?? [], [data]);
 
@@ -172,6 +174,7 @@ export default function RfqsListPage() {
       <DataState
         isLoading={isLoading}
         isError={isError}
+        error={error}
         isEmpty={filtered.length === 0}
         hasFilters={hasFilters}
         onRetry={() => refetch()}

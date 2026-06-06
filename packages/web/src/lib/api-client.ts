@@ -1,5 +1,15 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 
+/**
+ * True when an error (typically a React Query `error`) is an HTTP 403 from the
+ * API — i.e. a permission/scope denial, not a load failure. UI surfaces use this
+ * to render the no-access component instead of "we couldn't load this" / "no
+ * records yet". 401 is excluded: the interceptor below already refreshes/redirects.
+ */
+export function isForbiddenError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 403;
+}
+
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3011/api/v1',
   headers: { 'Content-Type': 'application/json' },
@@ -82,7 +92,19 @@ apiClient.interceptors.response.use(
       }
     }
 
-    console.error('API Error:', error.response?.data || error.message);
+    // Expected, handled client errors are not bugs: 401 is dealt with above
+    // (refresh / redirect) and 403 is a legitimate permission/scope denial that
+    // the calling component surfaces in-context. Logging them via console.error
+    // turns routine auth/RBAC responses into a scary Next.js dev error overlay,
+    // so demote them to debug. Genuine failures (5xx, network/no-response) still
+    // log loudly.
+    if (status === 401 || status === 403) {
+      console.debug(
+        `API ${status} ${originalRequest?.method?.toUpperCase() ?? ''} ${originalRequest?.url ?? ''}`,
+      );
+    } else {
+      console.error('API Error:', error.response?.data || error.message);
+    }
     return Promise.reject(error);
   },
 );

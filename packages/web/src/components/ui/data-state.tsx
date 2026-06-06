@@ -8,6 +8,8 @@ import {
   type ErrorStateProps,
 } from './state-blocks';
 import { TableSkeleton } from './skeleton-layouts';
+import { NoAccess } from '@/components/auth/no-access';
+import { isForbiddenError } from '@/lib/api-client';
 
 /**
  * DataState — the canonical 4-state wrapper for any data surface.
@@ -47,6 +49,15 @@ export interface DataStateProps {
   isError?: boolean;
   isEmpty: boolean;
   /**
+   * When true (or when `error` is an axios 403), the data call was forbidden —
+   * render the no-access component ("ليس لديك صلاحية") instead of the error or a
+   * misleading "no records yet" empty state (FE-4). Pass the React Query `error`
+   * to let DataState auto-detect a 403 without the caller inspecting it.
+   */
+  forbidden?: boolean;
+  /** React Query error object — auto-detects a 403 → no-access (FE-4/FE-5). */
+  error?: unknown;
+  /**
    * True when the user has any active filter — picks the `emptyFiltered`
    * slot instead of `empty`. Default false (treat as first-run empty).
    */
@@ -69,6 +80,8 @@ export function DataState({
   isLoading,
   isError = false,
   isEmpty,
+  forbidden = false,
+  error,
   hasFilters = false,
   onRetry,
   loading,
@@ -79,6 +92,12 @@ export function DataState({
 }: DataStateProps) {
   if (isLoading) {
     return <>{loading ?? <TableSkeleton />}</>;
+  }
+  // A 403 is a permission denial, not a load failure — surface no-access before
+  // the generic error/empty states so the user is never told "no records yet"
+  // or "we couldn't load this" when the truth is "you don't have access".
+  if (forbidden || isForbiddenError(error)) {
+    return <NoAccess variant="inline" />;
   }
   if (isError) {
     return <ErrorState onRetry={onRetry} {...errorState} />;
