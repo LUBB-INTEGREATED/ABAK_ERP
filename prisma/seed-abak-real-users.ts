@@ -153,9 +153,12 @@ const users = [
     technicalRole: 'Administrator',
     jobTitle: 'مدير قسم',
     department: 'قسم التسويق والمبيعات',
-    productPersona: 'Department Manager',
-    appRole: 'ADMIN',
-    testFocus: 'Department triage, reports, admin workflows',
+    productPersona: 'Sales Manager',
+    // DATA-1: a Sales Manager must NOT carry the legacy role=ADMIN (latent
+    // privilege escalation for any code path that trusts role==='ADMIN').
+    // Authz comes from the RoleAssignment "Sales Manager" + permission set.
+    appRole: 'SALES_MANAGER',
+    testFocus: 'Sales oversight, mid-tier approvals, reports',
     gap: 'OK',
   },
   {
@@ -181,9 +184,14 @@ const users = [
     technicalRole: 'Administrator',
     jobTitle: 'مدير قسم المعماري ومدير مكتب إدارة المشاريع',
     department: 'إدارة جميع الاقسام الفنية',
-    productPersona: 'Department Manager',
-    appRole: 'ADMIN',
-    testFocus: 'Department triage, reports, admin workflows',
+    productPersona: 'Department Manager (PMO)',
+    // DATA-1: a Department Manager must NOT carry the legacy role=ADMIN. The
+    // enum has no DEPARTMENT_MANAGER value; TECHNICAL_MANAGER is the correct
+    // technical-leadership role. Real authz (dept triage, assign pricers,
+    // convert) comes from the RoleAssignment "Technical Director" +
+    // Department.managerId unlock — never the legacy enum.
+    appRole: 'TECHNICAL_MANAGER',
+    testFocus: 'Department triage, assign pricers, reports',
     gap: 'OK',
   },
   {
