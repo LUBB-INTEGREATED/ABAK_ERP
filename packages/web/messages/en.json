@@ -1919,7 +1919,14 @@
     "subheading": "Pick the channel the opportunity came through, then fill in the details.",
     "discard": "Discard",
     "channelLabel": "How did this lead come in?",
-    "channelHint": "Pick the channel — it tailors the fields below."
+    "channelHint": "Pick the channel — it tailors the fields below.",
+    "dupTitle": "Possible duplicate record",
+    "dupDescription": "We found one or more records with the same phone or email in the last 30 days. Check before creating a new one.",
+    "dupCreatedAt": "Created {date}",
+    "dupOpenExisting": "Open existing record",
+    "dupContinue": "Continue and create new",
+    "dupCancel": "Cancel",
+    "dupChecking": "Checking for duplicates…"
   },
   "quotations": {
     "shell": {

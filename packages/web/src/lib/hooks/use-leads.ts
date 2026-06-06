@@ -5,6 +5,7 @@ import apiClient from '@/lib/api-client';
 import type {
   Lead,
   LeadAssignee,
+  LeadChannel,
   LeadFilter,
   LeadStatus,
   Paginated,
@@ -77,7 +78,9 @@ export type ServiceOption = {
   id: string;
   code: string;
   name: string;
-  category: { id: string; name: string };
+  nameAr?: string | null;
+  nameEn?: string | null;
+  category: { id: string; name: string; nameAr?: string | null };
 };
 
 export function useServices() {
@@ -103,6 +106,34 @@ export function useCreateLead() {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
   });
+}
+
+// ============================================================
+// Duplicate detection (M1-016 / CRM-4 / BUG-P2-4).
+// Surfaces existing leads in the last 30 days that share the
+// phone/email so the new-lead form can warn before creating.
+// ============================================================
+
+export type DuplicateLead = {
+  id: string;
+  leadNumber: string;
+  contactName: string;
+  companyName: string | null;
+  channel: LeadChannel;
+  status: LeadStatus;
+  createdAt: string;
+};
+
+export async function findDuplicateLeads(params: {
+  phone?: string;
+  email?: string;
+}): Promise<DuplicateLead[]> {
+  if (!params.phone && !params.email) return [];
+  const { data } = await apiClient.get<ApiEnvelope<DuplicateLead[]>>(
+    '/leads/find-duplicates',
+    { params },
+  );
+  return data.data;
 }
 
 function invalidateLead(

@@ -1,14 +1,27 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  UserPlus,
+  DoorOpen,
+  Phone,
+  Repeat2,
+  Share2,
+  Globe,
+  MapPin,
+  Bot,
+  MoreHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,10 +34,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCreateLead, useServices, useUsers } from '@/lib/hooks/use-leads';
 import {
-  CHANNEL_LABELS,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+import {
+  findDuplicateLeads,
+  useCreateLead,
+  useServices,
+  useUsers,
+  type DuplicateLead,
+} from '@/lib/hooks/use-leads';
+import {
   LEAD_CHANNELS,
   LEAD_PRIORITIES,
   PRIORITY_LABELS,
@@ -32,7 +58,37 @@ import {
   type LeadPriority,
 } from '@/lib/types/lead';
 
+const CHANNEL_ICONS: Record<LeadChannel, LucideIcon> = {
+  REFERRAL: UserPlus,
+  WALK_IN: DoorOpen,
+  PHONE: Phone,
+  EXISTING_CLIENT_REPEAT: Repeat2,
+  SOCIAL_MEDIA: Share2,
+  WEBSITE: Globe,
+  GOOGLE_MAPS: MapPin,
+  AI_CHATBOT: Bot,
+  OTHER: MoreHorizontal,
+};
+
 const SAUDI_PHONE = /^(\+9665|05)\d{8}$/;
+
+// Saudi administrative regions — same list as the new-client form so the value
+// round-trips cleanly into Client.region on convert (CRM-3 / BUG-P1-8).
+const SAUDI_REGIONS = [
+  'الرياض',
+  'مكة المكرمة',
+  'المدينة المنورة',
+  'القصيم',
+  'المنطقة الشرقية',
+  'عسير',
+  'تبوك',
+  'حائل',
+  'الحدود الشمالية',
+  'جازان',
+  'نجران',
+  'الباحة',
+  'الجوف',
+];
 
 const baseSchema = z.object({
   contactName: z.string().min(2, 'Contact name is required').max(120),
@@ -87,6 +143,7 @@ const baseSchema = z.object({
   mapsReview: z.enum(['YES', 'NO', 'UNKNOWN']).optional(),
 
   // BPD channel-specific fields
+  region: z.string().optional().or(z.literal('')),
   city: z.string().optional().or(z.literal('')),
   district: z.string().optional().or(z.literal('')),
   referralSourceType: z.string().optional().or(z.literal('')),
@@ -134,6 +191,7 @@ const DEFAULT_VALUES: FormValues = {
   mapsLink: '',
   mapsReview: 'UNKNOWN',
   // BPD channel-specific fields
+  region: '',
   city: '',
   district: '',
   referralSourceType: '',
@@ -225,11 +283,22 @@ function toSubmitPayload(
     payload.budget = Number(values.budget);
   }
 
-  // City + district for all channels
+  // Region + city + district for all channels.
+  // The API persists `city`/`district` (they ride through to the Client on
+  // convert) but has no dedicated `region` column, so we fold region into the
+  // human-readable `projectLocation` ("الموقع") when the user didn't type one
+  // explicitly — guaranteeing the location is shown on the lead and carried
+  // forward. (CRM-3 / BUG-P1-8)
+  const region = optional('region');
   const city = optional('city');
   const district = optional('district');
   if (city) payload.city = city;
   if (district) payload.district = district;
+
+  if (!projectLocation) {
+    const composed = [region, city, district].filter(Boolean).join(' — ');
+    if (composed) payload.projectLocation = composed;
+  }
 
   switch (channel) {
     case 'REFERRAL': {
@@ -284,8 +353,16 @@ function toSubmitPayload(
 export default function NewLeadPage() {
   const router = useRouter();
   const tNew = useTranslations('leadNew');
+  const tChannels = useTranslations('leads.channels');
   const [channel, setChannel] = useState<LeadChannel>('WEBSITE');
   const [showDraftBanner, setShowDraftBanner] = useState(false);
+  // CRM-4 / BUG-P2-4 — duplicate-phone warning before create.
+  const [duplicates, setDuplicates] = useState<DuplicateLead[]>([]);
+  const [dupOpen, setDupOpen] = useState(false);
+  const [dupChecking, setDupChecking] = useState(false);
+  const pendingSubmit = useRef<{ values: FormValues; reopen?: boolean } | null>(
+    null,
+  );
   const form = useForm<FormValues>({
     resolver: zodResolver(baseSchema),
     defaultValues: DEFAULT_VALUES,
@@ -361,19 +438,8 @@ export default function NewLeadPage() {
 
   const serviceOptions = useMemo(() => services.data ?? [], [services.data]);
 
-  async function onSubmit(values: FormValues, reopen?: boolean) {
-    const channelReq = channelRequirements(channel);
-    if (channelReq) {
-      const satisfied = channelReq.requireEither.some((field) => {
-        const v = (values as Record<string, unknown>)[field];
-        return v != null && String(v).trim().length > 0;
-      });
-      if (!satisfied) {
-        toast.error(`${channelReq.label} is required for this channel`);
-        return;
-      }
-    }
-
+  // Actually create the lead (called after the duplicate gate is cleared).
+  async function doCreate(values: FormValues, reopen?: boolean) {
     try {
       const lead = await createLead.mutateAsync(
         toSubmitPayload(channel, values),
@@ -395,6 +461,49 @@ export default function NewLeadPage() {
           ?.response?.data?.message ?? 'Failed to create lead';
       toast.error(Array.isArray(message) ? message.join(', ') : message);
     }
+  }
+
+  async function onSubmit(values: FormValues, reopen?: boolean) {
+    const channelReq = channelRequirements(channel);
+    if (channelReq) {
+      const satisfied = channelReq.requireEither.some((field) => {
+        const v = (values as Record<string, unknown>)[field];
+        return v != null && String(v).trim().length > 0;
+      });
+      if (!satisfied) {
+        toast.error(`${channelReq.label} is required for this channel`);
+        return;
+      }
+    }
+
+    // CRM-4 / BUG-P2-4 — warn on a likely duplicate (same phone/email in the
+    // last 30 days) BEFORE creating, instead of silently auto-linking.
+    setDupChecking(true);
+    try {
+      const found = await findDuplicateLeads({
+        phone: values.phone.trim() || undefined,
+        email: values.email?.trim() || undefined,
+      });
+      if (found.length > 0) {
+        setDuplicates(found);
+        pendingSubmit.current = { values, reopen };
+        setDupOpen(true);
+        return; // wait for the user's choice in the modal
+      }
+    } catch {
+      // Duplicate check is non-blocking — if it fails, fall through to create.
+    } finally {
+      setDupChecking(false);
+    }
+
+    await doCreate(values, reopen);
+  }
+
+  function continueDespiteDuplicate() {
+    const pending = pendingSubmit.current;
+    setDupOpen(false);
+    pendingSubmit.current = null;
+    if (pending) void doCreate(pending.values, pending.reopen);
   }
 
   function clearForm() {
@@ -436,22 +545,48 @@ export default function NewLeadPage() {
         <p className="text-sm text-muted-foreground">{tNew('subheading')}</p>
       </div>
 
-      <Tabs
-        value={channel}
-        onValueChange={(value) => setChannel(value as LeadChannel)}
-      >
-        <TabsList className="w-full flex-wrap">
-          {LEAD_CHANNELS.map((ch) => (
-            <TabsTrigger key={ch} value={ch} className="flex-1">
-              {CHANNEL_LABELS[ch]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {LEAD_CHANNELS.map((ch) => (
-          <TabsContent key={ch} value={ch} />
-        ))}
-      </Tabs>
+      <div>
+        <Label className="text-base font-semibold text-foreground">
+          {tNew('channelLabel')}
+        </Label>
+        <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
+          {tNew('channelHint')}
+        </p>
+        <div
+          role="radiogroup"
+          aria-label={tNew('channelLabel')}
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-3"
+        >
+          {LEAD_CHANNELS.map((ch) => {
+            const Icon = CHANNEL_ICONS[ch];
+            const active = channel === ch;
+            return (
+              <button
+                type="button"
+                key={ch}
+                role="radio"
+                aria-checked={active}
+                onClick={() => setChannel(ch)}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg border p-3 text-start text-sm transition',
+                  active
+                    ? 'border-abak-blue bg-abak-blue/5 font-medium text-abak-blue ring-1 ring-abak-blue'
+                    : 'border-input text-foreground hover:border-abak-blue/50 hover:bg-muted/50',
+                )}
+              >
+                <Icon
+                  className={cn(
+                    'h-4 w-4 shrink-0',
+                    active ? 'text-abak-blue' : 'text-muted-foreground',
+                  )}
+                  strokeWidth={active ? 2.25 : 1.75}
+                />
+                <span>{tChannels(ch)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       <form
         className="space-y-6"
@@ -487,6 +622,24 @@ export default function NewLeadPage() {
               name="projectLocation"
               label="Project location"
             />
+            <div className="space-y-2">
+              <Label>المنطقة</Label>
+              <Select
+                value={form.watch('region') || ''}
+                onValueChange={(value) => form.setValue('region', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر المنطقة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SAUDI_REGIONS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <TextField
               form={form}
               name="city"
@@ -628,19 +781,83 @@ export default function NewLeadPage() {
           <Button
             type="button"
             variant="outline"
-            disabled={createLead.isPending}
+            disabled={createLead.isPending || dupChecking}
             onClick={form.handleSubmit((values) => onSubmit(values, true))}
           >
             Submit & create another
           </Button>
-          <Button type="submit" disabled={createLead.isPending}>
-            {createLead.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Button type="submit" disabled={createLead.isPending || dupChecking}>
+            {(createLead.isPending || dupChecking) && (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
             )}
-            Create lead
+            {dupChecking ? tNew('dupChecking') : 'Create lead'}
           </Button>
         </div>
       </form>
+
+      <Dialog open={dupOpen} onOpenChange={setDupOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+              {tNew('dupTitle')}
+            </DialogTitle>
+            <DialogDescription>{tNew('dupDescription')}</DialogDescription>
+          </DialogHeader>
+
+          <ul className="max-h-64 space-y-2 overflow-y-auto">
+            {duplicates.map((dup) => (
+              <li
+                key={dup.id}
+                className="flex items-center justify-between gap-3 rounded-md border p-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span className="font-mono text-xs text-abak-blue">
+                      {dup.leadNumber}
+                    </span>
+                    <span className="truncate">{dup.contactName}</span>
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {dup.companyName ? `${dup.companyName} · ` : ''}
+                    {tNew('dupCreatedAt', {
+                      date: new Date(dup.createdAt).toLocaleDateString(),
+                    })}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  type="button"
+                  onClick={() => {
+                    setDupOpen(false);
+                    router.push(`/leads/${dup.id}`);
+                  }}
+                >
+                  {tNew('dupOpenExisting')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDupOpen(false)}
+            >
+              {tNew('dupCancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={continueDespiteDuplicate}
+            >
+              {tNew('dupContinue')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -665,7 +882,7 @@ function TextField({
     <div className="space-y-2">
       <Label htmlFor={String(name)}>
         {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
+        {required && <span className="ms-0.5 text-destructive">*</span>}
       </Label>
       <Input
         id={String(name)}
@@ -698,7 +915,7 @@ function SelectField({
     <div className="space-y-2">
       <Label>
         {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
+        {required && <span className="ms-0.5 text-destructive">*</span>}
       </Label>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger>
