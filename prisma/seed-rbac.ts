@@ -287,6 +287,11 @@ function resolveGrants(roleName: string): { key: string; scope: Scope }[] {
           'finance:manage_invoice',
           'finance:closure_gate',
           'quote:view',
+          // DATA-5: Finance needs client + project READ for billing context
+          // (who am I invoicing, against which project / contract value). Writes
+          // stay gated — these are view-only grants; create/edit are not given.
+          'clients:view',
+          'project:view',
           'reports:view',
           'reports:export',
         ],
