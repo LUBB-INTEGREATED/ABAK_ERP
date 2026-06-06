@@ -84,8 +84,11 @@ export class LeadsController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Aggregate counts by status, channel, and SLA' })
-  stats() {
-    return this.leads.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('leads:view') scope: PermissionScope | undefined,
+  ) {
+    return this.leads.stats({ user, scope });
   }
 
   @Get('find-duplicates')

@@ -256,8 +256,13 @@ export class ClientsService {
     });
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
     const where: Prisma.ClientWhereInput = { deletedAt: null };
+    // DATA-3: scope the KPI cards exactly like the list (findAll).
+    const clientScope = ownerScopeFilter(scopeCtx, 'accountManagerId');
+    if (Object.keys(clientScope).length) {
+      where.AND = [clientScope as Prisma.ClientWhereInput];
+    }
     const [total, byClassification, byStatus, todayCount, avgLtv] =
       await Promise.all([
         this.prisma.client.count({ where }),

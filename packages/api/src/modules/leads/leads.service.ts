@@ -662,8 +662,14 @@ export class LeadsService {
     });
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
     const where: Prisma.LeadWhereInput = { deletedAt: null };
+    // DATA-3: scope the KPI cards exactly like the list (findAll) so a scoped
+    // actor's headline totals match their scoped list (no inflated globals).
+    const leadScope = ownerOrCreatorScopeFilter(scopeCtx, 'assignedToId');
+    if (Object.keys(leadScope).length) {
+      where.AND = [leadScope as Prisma.LeadWhereInput];
+    }
 
     const [total, byStatus, byChannel, bySla, todayCount] = await Promise.all([
       this.prisma.lead.count({ where }),

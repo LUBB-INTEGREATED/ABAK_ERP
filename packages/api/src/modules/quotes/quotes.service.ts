@@ -2004,8 +2004,14 @@ export class QuotesService {
     return candidates.length;
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
     const where: Prisma.QuoteWhereInput = { deletedAt: null };
+    // DATA-3: scope the KPI cards exactly like the list (findAll / quoteScopeOr)
+    // so a scoped actor's totals match their scoped list.
+    const quoteScope = this.quoteScopeOr(scopeCtx);
+    if (quoteScope) {
+      where.AND = [quoteScope];
+    }
     const [total, byStatus, acceptedAgg, pendingApproval] = await Promise.all([
       this.prisma.quote.count({ where }),
       this.prisma.quote.groupBy({

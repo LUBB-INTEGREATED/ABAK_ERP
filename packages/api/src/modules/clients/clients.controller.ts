@@ -70,8 +70,11 @@ export class ClientsController {
   @ApiOperation({
     summary: 'Aggregate client counts and lifetime-value average',
   })
-  stats() {
-    return this.clients.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('clients:view') scope: PermissionScope | undefined,
+  ) {
+    return this.clients.stats({ user, scope });
   }
 
   @Get(':id')

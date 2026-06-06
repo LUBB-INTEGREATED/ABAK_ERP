@@ -48,8 +48,11 @@ export class ProjectsController {
 
   @Get('projects/stats')
   @ApiOperation({ summary: 'Project counts + AT_RISK stats' })
-  stats() {
-    return this.service.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('project:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.stats({ user, scope });
   }
 
   @Get('projects/available-pos')

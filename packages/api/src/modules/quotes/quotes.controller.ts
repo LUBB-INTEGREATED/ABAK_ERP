@@ -54,8 +54,11 @@ export class QuotesController {
 
   @Get('quotes/stats')
   @ApiOperation({ summary: 'Quote totals and status breakdown' })
-  stats() {
-    return this.quotes.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('quote:view') scope: PermissionScope | undefined,
+  ) {
+    return this.quotes.stats({ user, scope });
   }
 
   @Get('quotes/:id')

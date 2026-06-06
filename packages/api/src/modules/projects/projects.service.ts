@@ -310,10 +310,10 @@ export class ProjectsService {
       where: { id },
       data: {
         status: next,
+        // CLOSED is handled by the closure checklist (guarded above), so by
+        // this point `next` can only be CANCELLED among terminal statuses.
         actualEndDate:
-          next === ProjectStatus.CLOSED || next === ProjectStatus.CANCELLED
-            ? new Date()
-            : null,
+          next === ProjectStatus.CANCELLED ? new Date() : null,
       },
       include: PROJECT_DETAIL_INCLUDE,
     });
@@ -824,20 +824,30 @@ export class ProjectsService {
     }));
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
+    // DATA-3: scope the KPI cards exactly like the list (projectScopeFilter).
+    const projectScope = projectScopeFilter(scopeCtx);
+    const where: Prisma.ProjectWhereInput =
+      Object.keys(projectScope).length
+        ? { AND: [projectScope as Prisma.ProjectWhereInput] }
+        : {};
     const [total, byStatus, atRisk] = await this.prisma.$transaction([
-      this.prisma.project.count(),
+      this.prisma.project.count({ where }),
       this.prisma.project.groupBy({
         by: ['status'],
+        where,
         _count: { _all: true },
+        orderBy: { status: 'asc' },
       }),
-      this.prisma.project.count({ where: { financialRiskFlagged: true } }),
+      this.prisma.project.count({
+        where: { AND: [where, { financialRiskFlagged: true }] },
+      }),
     ]);
     return {
       total,
       byStatus: byStatus.map((r) => ({
         status: r.status,
-        count: r._count._all,
+        count: (r._count as { _all: number })._all,
       })),
       atRisk,
     };
