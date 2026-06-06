@@ -24,6 +24,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditService } from '../audit/audit.service';
 import { isUnrestricted, type ScopeContext } from '../auth/scope.util';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import type {
@@ -150,6 +151,7 @@ export class QuotesService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly pricingPolicy: PricingPolicyService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(dto: CreateQuoteDto, actorId?: string) {
@@ -270,7 +272,10 @@ export class QuotesService {
   /**
    * Row-level quote scope for a non-ALL viewer: a quote is visible if they
    * prepared it OR they price one of its department sections (§14 — a pricer
-   * must see the quotes they work, not only ones they authored). ALL/absent
+   * must see the quotes they work, not only ones they authored) OR they are an
+   * assigned approval-chain member (CHAIN-2: an L1 approver who is neither
+   * preparer nor pricer must be able to open the quote they must approve —
+   * otherwise the approval chain deadlocks at "العرض غير موجود"). ALL/absent
    * scope is unrestricted. Returns null when no filter is needed.
    */
   private quoteScopeOr(scopeCtx?: ScopeContext): Prisma.QuoteWhereInput | null {
@@ -280,6 +285,7 @@ export class QuotesService {
       OR: [
         { preparedById: uid },
         { departmentSections: { some: { pricerId: uid } } },
+        { approvals: { some: { approverId: uid } } },
       ],
     };
   }
@@ -348,13 +354,17 @@ export class QuotesService {
     });
     if (!quote) throw new NotFoundException('Quote not found');
     // Object-level companion to quoteScopeOr: a non-ALL viewer may read a quote
-    // they prepared OR price a section of (§14). Mutations stay separately
-    // gated (perms + DRAFT + the §14 submit/lead checks).
+    // they prepared OR price a section of (§14) OR are an assigned approval-chain
+    // member (CHAIN-2 — the assigned approver must be able to open the quote
+    // they need to approve from the notification deep-link). Mutations stay
+    // separately gated (perms + DRAFT + the §14 submit/lead checks; the approve
+    // decision is gated to the assigned approver in decideApproval).
     if (!isUnrestricted(scopeCtx)) {
       const uid = scopeCtx!.user.id;
       const isPreparer = quote.preparedById === uid;
       const isPricer = quote.departmentSections.some((s) => s.pricerId === uid);
-      if (!isPreparer && !isPricer) {
+      const isApprover = quote.approvals.some((a) => a.approverId === uid);
+      if (!isPreparer && !isPricer && !isApprover) {
         throw new ForbiddenException(
           'You do not have permission to access this resource',
         );
@@ -761,6 +771,19 @@ export class QuotesService {
       });
     }
 
+    // DATA-6: audit the quote submit-for-approval on the business document.
+    await this.audit.log({
+      userId: scopeCtx?.user.id,
+      action: 'QUOTE_SUBMITTED_FOR_APPROVAL',
+      entity: 'Quote',
+      entityId: id,
+      newValues: {
+        quoteNumber: quote.quoteNumber,
+        tiers,
+        totalAmount: quote.totalAmount,
+      },
+    });
+
     return updated;
   }
 
@@ -1164,6 +1187,34 @@ export class QuotesService {
       throw new BadRequestException('This approval was already decided');
     }
 
+    // CHAIN-3: a rejection MUST carry a reason (BPD: all rejections documented).
+    // Without a non-empty comment the reject is refused (400) — no more silent,
+    // untraceable one-click rejections.
+    if (
+      dto.status === ApprovalStatus.REJECTED &&
+      (!dto.comments || dto.comments.trim().length === 0)
+    ) {
+      throw new BadRequestException(
+        'A reason is required to reject an approval.',
+      );
+    }
+
+    // CHAIN-4: enforce the approval SEQUENCE — an approver may only decide their
+    // tier once every LOWER tier on the quote has been APPROVED (no L2 before
+    // L1). Same-tier parallel approvers are allowed.
+    const lowerPending = await this.prisma.quoteApproval.count({
+      where: {
+        quoteId,
+        tier: { lt: approval.tier },
+        status: { not: ApprovalStatus.APPROVED },
+      },
+    });
+    if (lowerPending > 0) {
+      throw new BadRequestException(
+        'Lower approval tiers must be approved first.',
+      );
+    }
+
     let allApproved = false;
     const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.quoteApproval.update({
@@ -1219,7 +1270,13 @@ export class QuotesService {
     // Notify preparer of final outcome
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      select: { preparedById: true, quoteNumber: true },
+      select: {
+        preparedById: true,
+        quoteNumber: true,
+        // CHAIN-3: the RFQ coordinator (the sales rep who routed the RFQ) is
+        // notified on rejection alongside the preparer.
+        rfq: { select: { coordinatorId: true } },
+      },
     });
     if (quote?.preparedById) {
       if (dto.status === ApprovalStatus.REJECTED) {
@@ -1244,6 +1301,43 @@ export class QuotesService {
         });
       }
     }
+
+    // CHAIN-3: notify the RFQ coordinator on rejection (if distinct from the
+    // preparer) so the routing salesperson knows the offer bounced.
+    if (dto.status === ApprovalStatus.REJECTED && quote?.rfq?.coordinatorId) {
+      const coordinatorId = quote.rfq.coordinatorId;
+      if (coordinatorId !== quote.preparedById) {
+        void this.notifications.send({
+          recipientId: coordinatorId,
+          eventCode: 'quote.rejected',
+          subject: `تم رفض عرض السعر: ${quote.quoteNumber}`,
+          body: dto.comments
+            ? `السبب: ${dto.comments}`
+            : 'تم رفض العرض من قِبل المعتمِد',
+          deepLink: `/quotes/${quoteId}`,
+          payload: { quoteId, quoteNumber: quote.quoteNumber },
+        });
+      }
+    }
+
+    // DATA-6 + CHAIN-3: audit the approval decision (approve/reject) on the
+    // business document, with the reason recorded for rejections.
+    await this.audit.log({
+      userId: actorId ?? approval.approverId,
+      action:
+        dto.status === ApprovalStatus.REJECTED
+          ? 'QUOTE_APPROVAL_REJECTED'
+          : 'QUOTE_APPROVAL_APPROVED',
+      entity: 'Quote',
+      entityId: quoteId,
+      newValues: {
+        approvalId,
+        tier: approval.tier,
+        status: dto.status,
+        reason: dto.comments ?? null,
+        allApproved,
+      },
+    });
 
     return result;
   }

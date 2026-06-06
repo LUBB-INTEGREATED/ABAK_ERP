@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 import { RfqsService } from '../rfqs/rfqs.service';
 import { RfqAssignmentsService } from '../rfqs/rfq-assignments.service';
 
@@ -26,7 +27,8 @@ const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
 
-const quotes = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const quotes = new QuotesService(prisma, notifications, pricingPolicy, audit);
 const rfqs = new RfqsService(prisma, notifications);
 const assignments = new RfqAssignmentsService(prisma, rfqs);
 

@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 
 // RV-9 regression: a broker commission accrued on accept() must be non-zero
 // (base = contract value, amount = base * rate%) and once-per-RFQ.
@@ -18,7 +19,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const service = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `RV9-${Date.now()}`;
 const trash = {

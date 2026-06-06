@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 
 // DM-15d regression. Runs against the live dev Postgres (DATABASE_URL via
 // --env-file). Requirement CRUD + the lead-reviewer dedup (merge duplicate
@@ -20,7 +21,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const service = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `TEST-DM15D-${Date.now()}`;
 const trash = {

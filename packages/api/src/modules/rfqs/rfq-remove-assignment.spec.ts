@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from '../quotes/quotes.service';
+import { AuditService } from '../audit/audit.service';
 import { RfqAssignmentsService } from './rfq-assignments.service';
 import type { RfqsService } from './rfqs.service';
 
@@ -27,7 +28,8 @@ const rfqsStub = {
 } as unknown as RfqsService;
 
 const assignments = new RfqAssignmentsService(prisma, rfqsStub);
-const quotes = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const quotes = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `TEST-RV3B5-${Date.now()}`;
 const trash = {

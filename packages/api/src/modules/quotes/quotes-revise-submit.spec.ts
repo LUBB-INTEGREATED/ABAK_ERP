@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 import type { CreateQuoteDto, SubmitQuoteDto } from './dto';
 
 // DM-8 / DM-9 regression tests. Runs against the live dev Postgres (DATABASE_URL
@@ -20,7 +21,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const service = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `TEST-${Date.now()}`;
 const trash = {

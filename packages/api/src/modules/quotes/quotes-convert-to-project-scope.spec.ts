@@ -7,6 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 
 // A-12 (SECURITY/IDOR) regression. Runs against the live dev Postgres
 // (DATABASE_URL via --env-file). convertToProject auto-validates the commercial
@@ -29,7 +30,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const service = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `A12-${Date.now()}`;
 const trash = {

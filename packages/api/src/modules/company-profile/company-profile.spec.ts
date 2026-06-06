@@ -9,6 +9,7 @@ import { PermissionGuard } from '../auth/guards/permission.guard';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from '../quotes/quotes.service';
+import { AuditService } from '../audit/audit.service';
 import { CompanyProfileController } from './company-profile.controller';
 import { CompanyProfileService } from './company-profile.service';
 
@@ -32,7 +33,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const quotes = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const quotes = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `TEST-CPROF-${Date.now()}`;
 const trash = {

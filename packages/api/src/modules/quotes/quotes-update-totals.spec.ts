@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PricingPolicyService } from '../settings/pricing-policy.service';
 import { QuotesService } from './quotes.service';
+import { AuditService } from '../audit/audit.service';
 
 // RVd-1 regression. Runs against the live dev Postgres (DATABASE_URL via
 // --env-file). update() must recompute taxAmount/discountAmount/totalAmount on
@@ -23,7 +24,8 @@ const notifications = {
 const pricingPolicy = {
   resolveApprovalChain: async () => [],
 } as unknown as PricingPolicyService;
-const service = new QuotesService(prisma, notifications, pricingPolicy);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new QuotesService(prisma, notifications, pricingPolicy, audit);
 
 const TAG = `TEST-RVD1-${Date.now()}`;
 const trash = { quoteIds: [] as string[], clientIds: [] as string[] };
