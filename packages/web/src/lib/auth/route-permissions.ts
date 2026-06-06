@@ -25,28 +25,48 @@ export interface RouteRule {
 
 // Order does not matter — resolution always picks the longest matching prefix.
 export const ROUTE_PERMISSIONS: RouteRule[] = [
-  // ── Admin (read-gated; the pages themselves gate write actions) ──────────
-  { prefix: '/admin/employees', anyOf: ['users:view'] },
-  { prefix: '/admin/roles', anyOf: ['roles:view'] },
-  { prefix: '/admin/departments', anyOf: ['departments:view'] },
-  { prefix: '/admin/services', anyOf: ['services:view', 'services:manage'] },
+  // ── Admin (R2-13) ────────────────────────────────────────────────────────
+  // The admin cluster is gated on the *:manage perms — the SAME condition the
+  // sidebar uses to reveal it (sidebar-nav.tsx ADMIN_MANAGE_PERMS). Previously
+  // these gated on the :view perms, so a read-only VIEWER (which the seed grants
+  // the admin :view perms for legacy reasons) was hidden from the sidebar yet
+  // could still direct-URL into /admin/* and pull the org roster (PII). Route
+  // guard and sidebar now agree: only an actual administrator reaches /admin/*.
+  { prefix: '/admin/employees', anyOf: ['users:manage'] },
+  { prefix: '/admin/roles', anyOf: ['roles:manage'] },
+  { prefix: '/admin/departments', anyOf: ['departments:manage'] },
+  { prefix: '/admin/services', anyOf: ['services:manage'] },
   {
     prefix: '/admin/pricing-policy',
     anyOf: ['settings:manage_pricing_policy'],
   },
   { prefix: '/admin/holidays', anyOf: ['settings:manage_holidays'] },
-  { prefix: '/admin/settings', anyOf: ['settings:view', 'settings:manage'] },
-  { prefix: '/admin/audit', anyOf: ['audit:view'] },
-  // Bare `/admin` (any landing) — needs at least one admin read perm.
+  { prefix: '/admin/settings', anyOf: ['settings:manage'] },
+  // Audit is in the admin cluster: the sidebar reveals it only to an actual
+  // administrator (any *:manage perm) AND when they hold audit:view. The route
+  // guard agrees — a Viewer holds audit:view but no manage perm, so it 403s.
+  {
+    prefix: '/admin/audit',
+    anyOf: [
+      'users:manage',
+      'roles:manage',
+      'departments:manage',
+      'services:manage',
+      'settings:manage',
+      'settings:manage_pricing_policy',
+      'settings:manage_holidays',
+    ],
+  },
+  // Bare `/admin` (any landing) — needs at least one admin MANAGE perm, mirroring
+  // the sidebar's ADMIN_MANAGE_PERMS reveal condition.
   {
     prefix: '/admin',
     anyOf: [
-      'users:view',
-      'roles:view',
-      'departments:view',
-      'services:view',
-      'settings:view',
-      'audit:view',
+      'users:manage',
+      'roles:manage',
+      'departments:manage',
+      'services:manage',
+      'settings:manage',
       'settings:manage_pricing_policy',
       'settings:manage_holidays',
     ],
