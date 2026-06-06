@@ -5,6 +5,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ClientsService } from './clients.service';
+import { AuditService } from '../audit/audit.service';
 import type { UpdateFollowUpDto } from './dto';
 
 // A-13 / A-14 regression. Runs against the live dev Postgres (DATABASE_URL via
@@ -19,7 +20,8 @@ const notifications = {
   send: async () => undefined,
   sendToMany: async () => undefined,
 } as unknown as NotificationsService;
-const service = new ClientsService(prisma, notifications);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new ClientsService(prisma, notifications, audit);
 
 const TAG = `TEST-A1314-${Date.now()}`;
 const trash = {

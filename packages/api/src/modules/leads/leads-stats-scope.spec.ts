@@ -5,6 +5,7 @@ import type { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AssignmentService } from './assignment.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { AuditService } from '../audit/audit.service';
 import { LeadsService } from './leads.service';
 import type { ScopeContext } from '../auth/scope.util';
 
@@ -23,7 +24,14 @@ const notifications = {
   send: async () => undefined,
   sendToMany: async () => undefined,
 } as unknown as NotificationsService;
-const service = new LeadsService(prisma, config, assignment, notifications);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const service = new LeadsService(
+  prisma,
+  config,
+  assignment,
+  notifications,
+  audit,
+);
 
 const TAG = `TEST-DATA3-${Date.now()}`;
 const trash = { leadIds: [] as string[], userIds: [] as string[] };

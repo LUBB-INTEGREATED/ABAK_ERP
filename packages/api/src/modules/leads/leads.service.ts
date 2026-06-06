@@ -8,6 +8,7 @@ import { LeadStatus, PipelineStage, Prisma, SLAStatus } from '@prisma/client';
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditService } from '../audit/audit.service';
 import { AssignmentService } from './assignment.service';
 import {
   assertOwnerOrCreator,
@@ -52,6 +53,7 @@ export class LeadsService {
     private readonly config: ConfigService,
     private readonly assignment: AssignmentService,
     private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -651,7 +653,20 @@ export class LeadsService {
       data.lostReason = dto.reason;
     }
 
-    return this.prisma.lead.update({ where: { id }, data });
+    const updated = await this.prisma.lead.update({ where: { id }, data });
+
+    // DATA-6: audit the lead status transition (qualify / disqualify / tender
+    // outcomes) on the business document, with the reason for disqualifications.
+    await this.audit.log({
+      userId: scopeCtx?.user.id,
+      action: `LEAD_STATUS_${dto.status}`,
+      entity: 'Lead',
+      entityId: id,
+      oldValues: { status: lead.status },
+      newValues: { status: dto.status, reason: dto.reason ?? null },
+    });
+
+    return updated;
   }
 
   async softDelete(id: string, scopeCtx?: ScopeContext) {

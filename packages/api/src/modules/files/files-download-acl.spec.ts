@@ -10,6 +10,7 @@ import type { RfqsService } from '../rfqs/rfqs.service';
 import type { ScopeUser } from '../auth/scope.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClientsService } from '../clients/clients.service';
+import { AuditService } from '../audit/audit.service';
 import { FilesService, type UploadedFileLike } from './files.service';
 import { LocalDiskStorageProvider } from './storage/local-disk.storage';
 
@@ -37,7 +38,8 @@ const notifications = {
   send: async () => undefined,
   sendToMany: async () => undefined,
 } as unknown as NotificationsService;
-const clients = new ClientsService(prisma, notifications);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const clients = new ClientsService(prisma, notifications, audit);
 
 // Both real users hold clients:view at OWN scope: they pass the permission
 // gate, so the ownership check is what decides access.

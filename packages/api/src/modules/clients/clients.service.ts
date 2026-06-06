@@ -15,6 +15,7 @@ import {
 import { nextEntityNumber } from 'shared-utils';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditService } from '../audit/audit.service';
 import {
   assertOwnership,
   ownerScopeFilter,
@@ -42,6 +43,7 @@ export class ClientsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
   ) {}
 
   // Clients ------------------------------------------------------
@@ -58,7 +60,7 @@ export class ClientsService {
 
     const clientNumber = await this.generateClientNumber();
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const client = await tx.client.create({
         data: {
           clientNumber,
@@ -112,6 +114,20 @@ export class ClientsService {
 
       return client;
     });
+
+    // DATA-6: audit client creation + lead conversion on the business document.
+    await this.audit.log({
+      userId: actorId ?? null,
+      action: dto.fromLeadId ? 'LEAD_CONVERTED' : 'CLIENT_CREATED',
+      entity: 'Client',
+      entityId: created.id,
+      newValues: {
+        clientNumber: created.clientNumber,
+        fromLeadId: dto.fromLeadId ?? null,
+      },
+    });
+
+    return created;
   }
 
   async findAll(filter: ClientFilterDto, scopeCtx?: ScopeContext) {
