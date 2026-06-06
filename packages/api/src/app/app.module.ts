@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard';
 import { PermissionGuard } from '../modules/auth/guards/permission.guard';
 import { ClientsModule } from '../modules/clients/clients.module';
 import { CompanyProfileModule } from '../modules/company-profile/company-profile.module';
+import { DocumentsModule } from '../modules/documents/documents.module';
 import { EscalationModule } from '../modules/escalation/escalation.module';
 import { FilesModule } from '../modules/files/files.module';
 import { FinanceModule } from '../modules/finance/finance.module';
@@ -67,6 +68,7 @@ import { AppService } from './app.service';
     EscalationModule,
     FinanceModule,
     FilesModule,
+    DocumentsModule,
     GovTransactionsModule,
     ReportsModule,
   ],

@@ -2169,8 +2169,55 @@ model FileAsset {
 
   createdAt DateTime @default(now())
 
+  // WS-D: a FileAsset may back a Document record (entity-linked document).
+  documents Document[]
+
   @@index([ownerResource, ownerResourceId])
   @@map("file_assets")
+}
+
+// ============================================
+// WS-D · Document Control (Wave-0) — DOC-A
+// A central document model linking the existing FileAsset store to any business
+// entity (project / gov-tx / quote / client / lead / finance). Wave-0 is basic
+// document management: upload, categorise, list-by-entity, download — NO
+// version/Rev/stamp/diff (that is the deferred DOC-B wave). Access is gated by
+// the OWNING entity's scope (the documents service re-runs the owning module's
+// object-level scope check), so a user only sees docs for entities they can see.
+// ============================================
+
+enum DocumentEntityType {
+  PROJECT
+  GOV_TX
+  QUOTE
+  CLIENT
+  LEAD
+  FINANCE
+}
+
+enum DocumentCategory {
+  ARCHITECTURAL
+  STRUCTURAL
+  LICENSE
+  FINANCIAL
+  CONTRACT
+  OTHER
+}
+
+model Document {
+  id           String             @id @default(cuid())
+  fileAssetId  String
+  fileAsset    FileAsset          @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  entityType   DocumentEntityType
+  entityId     String
+  category     DocumentCategory   @default(OTHER)
+  title        String
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("documents")
 }
 
 // ============================================
