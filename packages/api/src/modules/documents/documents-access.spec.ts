@@ -9,6 +9,7 @@ import type { GovTransactionsService } from '../gov-transactions/gov-transaction
 import type { LeadsService } from '../leads/leads.service';
 import type { ProjectsService } from '../projects/projects.service';
 import type { QuotesService } from '../quotes/quotes.service';
+import type { RfqsService } from '../rfqs/rfqs.service';
 import type { ScopeUser } from '../auth/scope.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClientsService } from '../clients/clients.service';
@@ -51,7 +52,7 @@ const files = new FilesService(
   {} as unknown as PermissionsService,
   clients,
   {} as unknown as QuotesService,
-  {} as unknown as ProjectsService,
+  {} as unknown as RfqsService,
 );
 
 // Stubbed entity services we don't drive in these CLIENT-scoped tests.
