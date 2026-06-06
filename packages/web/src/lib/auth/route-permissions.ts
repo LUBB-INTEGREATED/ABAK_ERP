@@ -53,6 +53,9 @@ export const ROUTE_PERMISSIONS: RouteRule[] = [
   },
 
   // ── Sales / pipeline ────────────────────────────────────────────────────
+  // /leads/new must require create — a read-only viewer (leads:view only) must
+  // NOT reach a working create form (R2-6). Longest-prefix wins over /leads.
+  { prefix: '/leads/new', anyOf: ['leads:create'] },
   { prefix: '/leads', anyOf: ['leads:view'] },
   // /clients/new must require create — a read-only viewer (clients:view only)
   // must NOT reach a working create form. Longest-prefix wins over /clients.
@@ -60,6 +63,9 @@ export const ROUTE_PERMISSIONS: RouteRule[] = [
   { prefix: '/clients', anyOf: ['clients:view'] },
   { prefix: '/pipeline', anyOf: ['pipeline:view'] },
   { prefix: '/rfqs', anyOf: ['rfq:view'] },
+  // /quotes/new must require build — a view-only user (quote:view only, e.g.
+  // Viewer / Finance Officer) must NOT reach a working quote builder (R2-6).
+  { prefix: '/quotes/new', anyOf: ['quote:build'] },
   { prefix: '/quotes', anyOf: ['quote:view'] },
 
   // ── Delivery ────────────────────────────────────────────────────────────
