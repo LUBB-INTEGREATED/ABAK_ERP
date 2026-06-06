@@ -19,7 +19,9 @@
  */
 
 import * as React from 'react';
-import Link from 'next/link';
+// Locale-aware Link so the back ("العودة") button keeps the /ar|/en prefix and
+// navigates client-side instead of falling through to a server redirect (CRM-2).
+import { Link } from '@/i18n/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';

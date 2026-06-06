@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { useTranslations } from 'next-intl';
+import { ar as arLocale } from 'date-fns/locale';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   ChevronDown,
   ChevronUp,
@@ -40,7 +41,6 @@ import { TableSkeleton } from '@/components/ui/skeleton-layouts';
 import { useLeadsList, useLeadStats, useServices } from '@/lib/hooks/use-leads';
 import { useAuthStore } from '@/lib/auth';
 import {
-  CHANNEL_LABELS,
   LEAD_CHANNELS,
   LEAD_PRIORITIES,
   LEAD_STATUSES,
@@ -84,6 +84,7 @@ function startOfTodayIso() {
 
 export default function LeadsListPage() {
   const t = useTranslations('leads.list');
+  const tChannels = useTranslations('leads.channels');
   const currentUser = useAuthStore((state) => state.user);
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<LeadChannel | undefined>();
@@ -267,7 +268,7 @@ export default function LeadsListPage() {
               {t('search')}
             </label>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => {
@@ -275,7 +276,7 @@ export default function LeadsListPage() {
                   setPage(1);
                 }}
                 placeholder={t('searchPlaceholder')}
-                className="pl-9"
+                className="ps-9"
               />
             </div>
           </div>
@@ -289,7 +290,7 @@ export default function LeadsListPage() {
             }}
             options={LEAD_CHANNELS.map((ch) => ({
               value: ch,
-              label: CHANNEL_LABELS[ch],
+              label: tChannels(ch),
             }))}
           />
           <FilterSelect
@@ -324,18 +325,18 @@ export default function LeadsListPage() {
             aria-expanded={showAdvanced}
           >
             {showAdvanced ? (
-              <ChevronUp className="mr-2 h-4 w-4" />
+              <ChevronUp className="me-2 h-4 w-4" />
             ) : (
-              <ChevronDown className="mr-2 h-4 w-4" />
+              <ChevronDown className="me-2 h-4 w-4" />
             )}
             {t('advanced')}
             {advancedFiltersActive && !showAdvanced && (
-              <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-secondary" />
+              <span className="ms-1.5 inline-block h-1.5 w-1.5 rounded-full bg-secondary" />
             )}
           </Button>
 
           <Button variant="ghost" size="sm" onClick={resetFilters}>
-            <Sliders className="mr-2 h-4 w-4" />
+            <Sliders className="me-2 h-4 w-4" />
             {t('reset')}
           </Button>
 
@@ -438,13 +439,15 @@ export default function LeadsListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[140px]">Lead #</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Channel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>SLA</TableHead>
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead className="w-[140px]">
+                    {t('columns.leadNumber')}
+                  </TableHead>
+                  <TableHead>{t('columns.contact')}</TableHead>
+                  <TableHead>{t('columns.channel')}</TableHead>
+                  <TableHead>{t('columns.status')}</TableHead>
+                  <TableHead>{t('columns.sla')}</TableHead>
+                  <TableHead>{t('columns.assignee')}</TableHead>
+                  <TableHead>{t('columns.created')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -554,6 +557,8 @@ function QuickChip({
 }
 
 function LeadRow({ lead }: { lead: Lead }) {
+  const tChannels = useTranslations('leads.channels');
+  const locale = useLocale();
   const assigneeName = lead.assignedTo
     ? [lead.assignedTo.firstName, lead.assignedTo.lastName]
         .filter(Boolean)
@@ -576,7 +581,7 @@ function LeadRow({ lead }: { lead: Lead }) {
           {lead.companyName ?? lead.phone}
         </div>
       </TableCell>
-      <TableCell>{CHANNEL_LABELS[lead.channel]}</TableCell>
+      <TableCell>{tChannels(lead.channel)}</TableCell>
       <TableCell>
         <LeadStatusBadge status={lead.status} />
       </TableCell>
@@ -585,7 +590,10 @@ function LeadRow({ lead }: { lead: Lead }) {
       </TableCell>
       <TableCell className="text-sm">{assigneeName}</TableCell>
       <TableCell className="text-sm text-muted-foreground">
-        {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
+        {formatDistanceToNow(new Date(lead.createdAt), {
+          addSuffix: true,
+          locale: locale === 'ar' ? arLocale : undefined,
+        })}
       </TableCell>
     </TableRow>
   );
