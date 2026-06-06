@@ -67,6 +67,8 @@ export type Lead = {
   service: LeadService | null;
   serviceDetails: string | null;
   projectLocation: string | null;
+  city: string | null;
+  district: string | null;
   projectSize: string | null;
   budget: number | null;
   timeline: string | null;

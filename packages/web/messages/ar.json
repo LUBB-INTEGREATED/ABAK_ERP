@@ -2130,6 +2130,8 @@
     "lineItems": "بنود العرض",
     "linkedQuote": "العرض المرتبط",
     "location": "الموقع",
+    "city": "المدينة",
+    "district": "الحي",
     "lostReason": "سبب الخسارة",
     "mapsLink": "رابط الخريطة",
     "moreActions": "إجراءات أخرى",

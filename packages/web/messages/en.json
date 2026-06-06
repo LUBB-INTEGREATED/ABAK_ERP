@@ -2130,6 +2130,8 @@
     "lineItems": "Line items",
     "linkedQuote": "Linked quote",
     "location": "Location",
+    "city": "City",
+    "district": "District",
     "lostReason": "Lost reason",
     "mapsLink": "Maps link",
     "moreActions": "More actions",
