@@ -114,6 +114,33 @@ const PERMISSIONS = [
 const allKeys = () => PERMISSIONS.map((p) => p.key);
 const viewKeys = () =>
   PERMISSIONS.filter((p) => p.action === 'view').map((p) => p.key);
+
+/**
+ * R2-1: the admin/global `:view` keys a read-only Viewer must NOT hold. Granting
+ * these over the API lets a Viewer enumerate the whole org (users + PII, audit
+ * log, finance, settings, roles, departments, the service catalog) even though
+ * the sidebar hides them client-side. The backend permission still authorises
+ * the API — so the Viewer template must exclude them.
+ */
+const ADMIN_VIEW_KEYS = new Set<string>([
+  'users:view',
+  'audit:view',
+  'settings:view',
+  'roles:view',
+  'departments:view',
+  'services:view',
+  'finance:view',
+]);
+
+/**
+ * R2-1: the operational `:view` surfaces a read-only Viewer is allowed to see —
+ * every `*:view` EXCEPT the admin/global keys above. This is the day-to-day
+ * business read set (leads/clients/comms/pipeline/rfq/quote/project/reports/gov)
+ * and nothing administrative.
+ */
+const viewKeysOperational = () =>
+  viewKeys().filter((key) => !ADMIN_VIEW_KEYS.has(key));
+
 const g = (keys: string[], scope: Scope) => keys.map((key) => ({ key, scope }));
 
 // ---------------------------------------------------------------------------
@@ -298,7 +325,11 @@ function resolveGrants(roleName: string): { key: string; scope: Scope }[] {
         'ALL',
       );
     case 'Viewer':
-      return g(viewKeys(), 'ALL');
+      // R2-1: a read-only Viewer gets ONLY the operational :view surfaces, never
+      // the admin/global :view keys (users/audit/settings/roles/departments/
+      // services/finance). Otherwise a Viewer could enumerate the whole org +
+      // PII over the API even though the sidebar hides those modules.
+      return g(viewKeysOperational(), 'ALL');
     default:
       return [];
   }
