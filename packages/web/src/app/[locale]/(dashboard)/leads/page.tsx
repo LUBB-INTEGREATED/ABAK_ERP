@@ -40,6 +40,7 @@ import {
 import { TableSkeleton } from '@/components/ui/skeleton-layouts';
 import { useLeadsList, useLeadStats, useServices } from '@/lib/hooks/use-leads';
 import { useAuthStore } from '@/lib/auth';
+import { Can, useCan } from '@/components/auth/can';
 import {
   LEAD_CHANNELS,
   LEAD_PRIORITIES,
@@ -86,6 +87,8 @@ export default function LeadsListPage() {
   const t = useTranslations('leads.list');
   const tChannels = useTranslations('leads.channels');
   const currentUser = useAuthStore((state) => state.user);
+  const { can } = useCan();
+  const canCreate = can('leads:create');
   const [search, setSearch] = useState('');
   const [channel, setChannel] = useState<LeadChannel | undefined>();
   const [status, setStatus] = useState<LeadStatus | undefined>();
@@ -227,9 +230,11 @@ export default function LeadsListPage() {
               className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
           </Button>
-          <Button asChild size="sm">
-            <Link href="/leads/new">{t('newLead')}</Link>
-          </Button>
+          <Can permission="leads:create">
+            <Button asChild size="sm">
+              <Link href="/leads/new">{t('newLead')}</Link>
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -424,7 +429,11 @@ export default function LeadsListPage() {
           title: 'No leads yet',
           description:
             'Leads land here automatically from the 6 intake channels. You can also log one manually.',
-          action: { label: t('newLead'), href: '/leads/new' },
+          // Only offer the create CTA to users who can actually create a lead
+          // (R2-7) — a view-only user sees the empty state without the button.
+          action: canCreate
+            ? { label: t('newLead'), href: '/leads/new' }
+            : undefined,
         }}
         emptyFiltered={{
           icon: UsersRound,

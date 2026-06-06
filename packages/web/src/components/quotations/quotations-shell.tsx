@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { Can, useCan } from '@/components/auth/can';
 import { useQuotes, useQuoteStats } from '@/lib/hooks/use-quotes';
 import type { Quote } from '@/lib/types/quote';
 import { QuotePipelineBoard } from './quote-pipeline-board';
@@ -95,9 +96,11 @@ export function QuotationsShell() {
           >
             <RefreshCcw className="h-4 w-4" />
           </Button>
-          <Button asChild size="sm">
-            <Link href="/quotes/new">{t('newQuote')}</Link>
-          </Button>
+          <Can permission="quote:build">
+            <Button asChild size="sm">
+              <Link href="/quotes/new">{t('newQuote')}</Link>
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -212,6 +215,8 @@ function QuotesListView({
   const t = useTranslations('quotations.list');
   const locale = useLocale();
   const dateLocale = locale === 'ar' ? arLocale : undefined;
+  const { can } = useCan();
+  const canBuild = can('quote:build');
   const filter = useMemo(
     () => ({ search: search.trim() || undefined }),
     [search],
@@ -231,7 +236,11 @@ function QuotesListView({
         icon: FileText,
         title: t('empty'),
         description: t('emptyDesc'),
-        action: { label: t('newQuote'), href: '/quotes/new' },
+        // Only offer the build CTA to users who can actually build a quote
+        // (R2-7) — a view-only user sees the empty state without the button.
+        action: canBuild
+          ? { label: t('newQuote'), href: '/quotes/new' }
+          : undefined,
       }}
       emptyFiltered={{
         icon: FileText,
