@@ -12,6 +12,7 @@ import type { QuotesService } from '../quotes/quotes.service';
 import type { RfqsService } from '../rfqs/rfqs.service';
 import type { ScopeUser } from '../auth/scope.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { ClientsService } from '../clients/clients.service';
 import { FilesService, type UploadedFileLike } from '../files/files.service';
 import { LocalDiskStorageProvider } from '../files/storage/local-disk.storage';
@@ -44,7 +45,8 @@ const notifications = {
   send: async () => undefined,
   sendToMany: async () => undefined,
 } as unknown as NotificationsService;
-const clients = new ClientsService(prisma, notifications);
+const audit = { log: async () => undefined } as unknown as AuditService;
+const clients = new ClientsService(prisma, notifications, audit);
 const files = new FilesService(
   prisma,
   config,
