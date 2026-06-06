@@ -241,6 +241,7 @@
       "manager": "Manager",
       "noManager": "No manager",
       "managerHint": "The manager must be a member of this department.",
+      "clearManagerConfirm": "Saving will remove this department's manager. Are you sure?",
       "active": "Active"
     }
   },

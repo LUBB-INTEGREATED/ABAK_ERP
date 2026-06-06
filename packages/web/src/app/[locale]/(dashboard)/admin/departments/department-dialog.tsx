@@ -80,7 +80,42 @@ export function DepartmentDialog(props: Props) {
     (u) => dept && u.department?.id === dept.id,
   );
 
+  // DATA-2 / BUG-P1-6 — the current manager must always be an option so the
+  // <select> can preselect it, even if that user's department relation no longer
+  // matches this department (otherwise the control silently shows "no manager"
+  // and a careless save would wipe a real manager). Merge the current manager
+  // into the list, deduped.
+  const managerName = (u: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  }) => [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+
+  const managerOptions: { id: string; label: string }[] = [
+    ...eligibleManagers.map((u) => ({ id: u.id, label: managerName(u) })),
+  ];
+  if (
+    dept?.manager &&
+    dept.managerId &&
+    !managerOptions.some((o) => o.id === dept.managerId)
+  ) {
+    managerOptions.unshift({
+      id: dept.managerId,
+      label: managerName(dept.manager),
+    });
+  }
+
   async function submit() {
+    // DATA-2 — guard against accidentally wiping an existing manager.
+    if (
+      mode === 'edit' &&
+      dept?.managerId &&
+      !managerId &&
+      typeof window !== 'undefined' &&
+      !window.confirm(t('field.clearManagerConfirm'))
+    ) {
+      return;
+    }
     try {
       if (mode === 'create' || !dept) {
         await create.mutateAsync({
@@ -179,10 +214,9 @@ export function DepartmentDialog(props: Props) {
                 disabled={!canManage}
               >
                 <option value="">{t('field.noManager')}</option>
-                {eligibleManagers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {[u.firstName, u.lastName].filter(Boolean).join(' ') ||
-                      u.email}
+                {managerOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
                   </option>
                 ))}
               </select>
