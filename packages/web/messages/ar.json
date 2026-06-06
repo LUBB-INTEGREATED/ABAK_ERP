@@ -2160,5 +2160,39 @@
     "message": "ثبّت تطبيق أباك للوصول الأسرع",
     "install": "تثبيت",
     "dismiss": "تجاهل"
+  },
+  "documents": {
+    "heading": "الوثائق",
+    "upload": "رفع وثيقة",
+    "uploading": "جارٍ الرفع…",
+    "uploaded": "تم رفع الوثيقة",
+    "uploadError": "تعذّر رفع الوثيقة",
+    "download": "تنزيل",
+    "downloadError": "تعذّر تنزيل الوثيقة",
+    "delete": "حذف",
+    "deleted": "تم حذف الوثيقة",
+    "deleteError": "تعذّر حذف الوثيقة",
+    "cancel": "إلغاء",
+    "loading": "جارٍ تحميل الوثائق…",
+    "filter": "الفئة",
+    "allCategories": "كل الفئات",
+    "docTitle": "العنوان",
+    "docTitlePlaceholder": "مثال: المخطط المعماري — مراجعة ب",
+    "docCategory": "الفئة",
+    "dropzone": "اسحب الملف هنا أو انقر للتصفّح",
+    "dropzoneHint": "PDF · DWG · ZIP · صور (≤25 ميغابايت)",
+    "tooLarge": "حجم الملف كبير جداً (الحد الأقصى 25 ميغابايت)",
+    "emptyTitle": "لا توجد وثائق بعد",
+    "emptyHint": "المخططات والصكوك والرخص والعقود وإثباتات الدفع كلها هنا — احفظها في مكان واحد.",
+    "emptyFilteredTitle": "لا توجد وثائق في هذه الفئة",
+    "emptyFilteredHint": "جرّب فئة أخرى أو ارفع وثيقة جديدة.",
+    "category": {
+      "ARCHITECTURAL": "معماري",
+      "STRUCTURAL": "إنشائي",
+      "LICENSE": "رخصة",
+      "FINANCIAL": "مالية",
+      "CONTRACT": "عقد",
+      "OTHER": "أخرى"
+    }
   }
 }

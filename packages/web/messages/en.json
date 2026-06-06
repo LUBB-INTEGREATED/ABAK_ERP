@@ -2160,5 +2160,39 @@
     "message": "Install ABAK ERP for faster access",
     "install": "Install",
     "dismiss": "Dismiss"
+  },
+  "documents": {
+    "heading": "Documents",
+    "upload": "Upload document",
+    "uploading": "Uploading…",
+    "uploaded": "Document uploaded",
+    "uploadError": "Could not upload the document",
+    "download": "Download",
+    "downloadError": "Could not download the document",
+    "delete": "Delete",
+    "deleted": "Document deleted",
+    "deleteError": "Could not delete the document",
+    "cancel": "Cancel",
+    "loading": "Loading documents…",
+    "filter": "Category",
+    "allCategories": "All categories",
+    "docTitle": "Title",
+    "docTitlePlaceholder": "e.g. Architectural plan — Rev B",
+    "docCategory": "Category",
+    "dropzone": "Drag a file here or click to browse",
+    "dropzoneHint": "PDF · DWG · ZIP · images (≤25MB)",
+    "tooLarge": "File is too large (max 25MB)",
+    "emptyTitle": "No documents yet",
+    "emptyHint": "Plans, deeds, licences, contracts and payment proofs all live here — keep them in one place.",
+    "emptyFilteredTitle": "No documents in this category",
+    "emptyFilteredHint": "Try another category or upload a new document.",
+    "category": {
+      "ARCHITECTURAL": "Architectural",
+      "STRUCTURAL": "Structural",
+      "LICENSE": "Licence",
+      "FINANCIAL": "Financial",
+      "CONTRACT": "Contract",
+      "OTHER": "Other"
+    }
   }
 }
