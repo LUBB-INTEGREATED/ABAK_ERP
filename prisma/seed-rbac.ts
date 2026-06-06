@@ -33,7 +33,9 @@ type DeptType =
 // 1. Permission catalog (the fixed vocabulary)
 // ---------------------------------------------------------------------------
 const mk = (key: string, scopeable: boolean, description: string) => {
-  const [module, action] = key.split(':');
+  // Most keys use `module:action`; a few use `module.action` (e.g.
+  // company_profile.manage). Split on either so `action` is never undefined.
+  const [module, action] = key.split(/[:.]/);
   return { key, module, action, scopeable, description };
 };
 
@@ -524,6 +526,23 @@ const ASSIGNMENTS: { email: string; department: string; roles: string[] }[] = [
     roles: ['Finance Officer'],
   },
   { email: 'hr@abak.com.sa', department: 'Human Resources', roles: ['Viewer'] },
+  // Legacy demo logins (from prisma/seed.ts) — wired so every account works for testing.
+  { email: 'admin@abak.com', department: 'Executive', roles: ['Super Admin'] },
+  {
+    email: 'manager@abak.com',
+    department: 'Sales & Marketing',
+    roles: ['Sales Manager'],
+  },
+  {
+    email: 'rep1@abak.com',
+    department: 'Sales & Marketing',
+    roles: ['Sales Rep'],
+  },
+  {
+    email: 'rep2@abak.com',
+    department: 'Sales & Marketing',
+    roles: ['Sales Rep'],
+  },
 ];
 
 async function main() {
