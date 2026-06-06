@@ -19,6 +19,9 @@ import {
   Landmark,
   Percent,
   User,
+  UserCog,
+  KeyRound,
+  Building2,
   X,
   LogOut,
   BarChart2,
@@ -35,6 +38,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/auth';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { isRtlLocale } from '@/i18n/routing';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -43,7 +47,26 @@ type NavItem = {
   href: string;
   labelKey: string;
   icon: LucideIcon;
+  /** Permission that reveals this item (in addition to legacy admin roles). */
+  perm?: string;
 };
+
+// The admin *navigation cluster* is for administration, so a read-only oversight
+// account (e.g. VIEWER, which is seeded with the admin `:view` perms for
+// deep-link read access) must NOT see the full admin menu (RBAC-P1-3). We reveal
+// the admin section only when the user holds at least one genuine admin-
+// MANAGEMENT permission — i.e. they actually administer something. Read-only
+// users can still reach an admin page by URL; the route guard allows their
+// `:view`, but the menu stays clean. SUPER_ADMIN bypasses (sees everything).
+const ADMIN_MANAGE_PERMS = [
+  'users:manage',
+  'roles:manage',
+  'departments:manage',
+  'services:manage',
+  'settings:manage',
+  'settings:manage_pricing_policy',
+  'settings:manage_holidays',
+];
 
 type NavGroup = {
   labelKey?: string;
@@ -63,44 +86,132 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.groupSales',
     items: [
-      { href: '/leads', labelKey: 'nav.leads', icon: UsersRound },
-      { href: '/clients', labelKey: 'nav.clients', icon: Briefcase },
-      { href: '/pipeline', labelKey: 'nav.pipeline', icon: Blocks },
-      { href: '/rfqs', labelKey: 'nav.rfqs', icon: FileSearch },
-      { href: '/quotes', labelKey: 'nav.quotes', icon: FileText },
+      {
+        href: '/leads',
+        labelKey: 'nav.leads',
+        icon: UsersRound,
+        perm: 'leads:view',
+      },
+      {
+        href: '/clients',
+        labelKey: 'nav.clients',
+        icon: Briefcase,
+        perm: 'clients:view',
+      },
+      {
+        href: '/pipeline',
+        labelKey: 'nav.pipeline',
+        icon: Blocks,
+        perm: 'pipeline:view',
+      },
+      {
+        href: '/rfqs',
+        labelKey: 'nav.rfqs',
+        icon: FileSearch,
+        perm: 'rfq:view',
+      },
+      {
+        href: '/quotes',
+        labelKey: 'nav.quotes',
+        icon: FileText,
+        perm: 'quote:view',
+      },
     ],
   },
   {
     labelKey: 'nav.groupDelivery',
     items: [
-      { href: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
-      { href: '/finance', labelKey: 'nav.finance', icon: Wallet },
+      {
+        href: '/projects',
+        labelKey: 'nav.projects',
+        icon: FolderKanban,
+        perm: 'project:view',
+      },
+      {
+        href: '/finance',
+        labelKey: 'nav.finance',
+        icon: Wallet,
+        perm: 'finance:view',
+      },
       {
         href: '/gov-transactions',
         labelKey: 'nav.appliedApplications',
         icon: Landmark,
+        perm: 'gov:view',
       },
     ],
   },
   {
     labelKey: 'nav.groupInsight',
-    items: [{ href: '/reports', labelKey: 'nav.reports', icon: BarChart2 }],
+    items: [
+      {
+        href: '/reports',
+        labelKey: 'nav.reports',
+        icon: BarChart2,
+        perm: 'reports:view',
+      },
+    ],
   },
 ];
 
 const ADMIN_ITEMS: NavItem[] = [
-  { href: '/admin/services', labelKey: 'nav.services', icon: Settings },
-  { href: '/admin/settings', labelKey: 'nav.adminSettings', icon: Sliders },
+  {
+    href: '/admin/employees',
+    labelKey: 'nav.employees',
+    icon: UserCog,
+    perm: 'users:view',
+  },
+  {
+    href: '/admin/roles',
+    labelKey: 'nav.roles',
+    icon: KeyRound,
+    perm: 'roles:view',
+  },
+  {
+    href: '/admin/departments',
+    labelKey: 'nav.departments',
+    icon: Building2,
+    perm: 'departments:view',
+  },
+  {
+    href: '/admin/services',
+    labelKey: 'nav.services',
+    icon: Settings,
+    perm: 'services:view',
+  },
+  {
+    href: '/admin/settings',
+    labelKey: 'nav.adminSettings',
+    icon: Sliders,
+    perm: 'settings:view',
+  },
   {
     href: '/admin/pricing-policy',
     labelKey: 'nav.pricingPolicy',
     icon: Percent,
+    perm: 'settings:manage_pricing_policy',
   },
-  { href: '/admin/holidays', labelKey: 'nav.holidays', icon: CalendarCheck },
-  { href: '/admin/audit', labelKey: 'nav.audit', icon: ShieldCheck },
+  {
+    href: '/admin/holidays',
+    labelKey: 'nav.holidays',
+    icon: CalendarCheck,
+    perm: 'settings:manage_holidays',
+  },
+  {
+    href: '/admin/audit',
+    labelKey: 'nav.audit',
+    icon: ShieldCheck,
+    perm: 'audit:view',
+  },
 ];
 
-const ADMIN_ROLES = new Set(['SUPER_ADMIN', 'ADMIN']);
+// Only SUPER_ADMIN bypasses permission gating (break-glass superuser). Every
+// other role — INCLUDING the legacy ADMIN role — is gated by the permissions
+// actually granted to it, so the sidebar reflects real access. (A Sales Manager
+// seeded as role=ADMIN must not see Projects/Finance/Gov just from the role;
+// only their granted perms count. SUPER_ADMIN holds every perm anyway, so this
+// bypass is purely defensive.)
+const SUPERUSER_ROLES = new Set(['SUPER_ADMIN']);
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -112,6 +223,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const logout = useAuthStore((state) => state.logout);
   const router = useRouter();
   const t = useTranslations();
+  const { can, canAny } = usePermissions();
+
+  // A superuser sees everything; everyone else (incl. ADMIN role) sees an item
+  // only when they actually hold its permission. Items without a perm (e.g.
+  // dashboard) are always visible.
+  const isSuperuser = !!user && SUPERUSER_ROLES.has(user.role);
+  const canSee = (item: NavItem) => isSuperuser || !item.perm || can(item.perm);
+  const navGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter(canSee),
+  })).filter((group) => group.items.length > 0);
+  // Reveal the admin cluster only to actual administrators (any admin-manage
+  // perm). A read-only VIEWER — even though it holds the admin `:view` perms —
+  // gets a clean operational sidebar, not the full HR/Roles/Settings menu.
+  const isAdministrator = isSuperuser || canAny(ADMIN_MANAGE_PERMS);
+  const adminItems = isAdministrator
+    ? ADMIN_ITEMS.filter((item) => isSuperuser || (item.perm && can(item.perm)))
+    : [];
 
   const initials = user?.firstName
     ? `${user.firstName.charAt(0)}${user.lastName?.charAt(0) ?? ''}`.toUpperCase()
@@ -147,7 +276,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4"
         aria-label={t('common.navigation')}
       >
-        {NAV_GROUPS.map((group, idx) => (
+        {navGroups.map((group, idx) => (
           <div
             key={group.labelKey ?? `group-${idx}`}
             className={idx > 0 ? 'pt-4' : undefined}
@@ -193,12 +322,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </div>
         ))}
 
-        {user && ADMIN_ROLES.has(user.role) && (
+        {adminItems.length > 0 && (
           <div className="pt-4">
             <div className="px-3 pb-1 text-[11px] uppercase tracking-wide text-white/50">
               {t('nav.admin')}
             </div>
-            {ADMIN_ITEMS.map((item) => {
+            {adminItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
               return (
