@@ -406,6 +406,34 @@ const DEPARTMENTS: {
 ];
 
 // ---------------------------------------------------------------------------
+// 3b. CHAIN-1 — ServiceCategory → owning Department(s) links.
+// Without these, a new RFQ section never resolves to an inbox/pricer pool and
+// the quote-to-cash chain dies at "بانتظار قبول القسم". Keyed by category NAME
+// so the seed is robust to cuid churn; any active category not matched here is
+// fallback-linked (below) to the first active technical department so it always
+// resolves. Idempotent (composite-key upsert).
+//
+// The live catalog is the 3 BPD parent categories (Consultancy / Design /
+// Supervision & Management). A category may belong to several departments.
+// ---------------------------------------------------------------------------
+const CATEGORY_DEPARTMENT_LINKS: Record<string, string[]> = {
+  // Engineering consultancy, studies, environmental → Architecture leads,
+  // Environmental Services also bids.
+  Consultancy: ['Architecture', 'Environmental Services'],
+  // Architectural / structural / MEP / HVAC / interior design → Architecture.
+  Design: ['Architecture'],
+  // Construction supervision, PM, survey & documentation → Supervision & Civil
+  // (supervision/PM) + Surveying (survey & documentation).
+  'Supervision & Management': ['Supervision & Civil', 'Surveying'],
+  // BPD-canonical fine-grained names (in case a future catalog splits them):
+  Architecture: ['Architecture'],
+  Surveying: ['Surveying'],
+  Supervision: ['Supervision & Civil'],
+  'Safety & Industrial Security': ['Safety & Industrial Security'],
+  Environmental: ['Environmental Services'],
+};
+
+// ---------------------------------------------------------------------------
 // 4. The 25 users → department + role template(s)  (design §8)
 // ---------------------------------------------------------------------------
 const ASSIGNMENTS: { email: string; department: string; roles: string[] }[] = [
@@ -662,8 +690,56 @@ async function main() {
     });
   }
 
+  // 6. CHAIN-1 — ServiceCategory → Department links. Idempotent.
+  const activeCategories = await prisma.serviceCategory.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true },
+  });
+  const activeTechDepts = await prisma.department.findMany({
+    where: { isActive: true, type: 'TECHNICAL' },
+    orderBy: { order: 'asc' },
+    select: { id: true, name: true },
+  });
+  const fallbackDeptId = activeTechDepts[0]?.id; // Architecture (order 2)
+  let linksCreated = 0;
+  let categoriesResolved = 0;
+  for (const cat of activeCategories) {
+    // explicit mapping by name, else fallback to the first active tech dept so
+    // EVERY active category resolves to >=1 active department.
+    const targetNames = CATEGORY_DEPARTMENT_LINKS[cat.name]?.length
+      ? CATEGORY_DEPARTMENT_LINKS[cat.name]
+      : [];
+    const targetDeptIds = targetNames
+      .map((n) => deptByName[n])
+      .filter((id): id is string => Boolean(id));
+    const finalDeptIds =
+      targetDeptIds.length > 0
+        ? targetDeptIds
+        : fallbackDeptId
+          ? [fallbackDeptId]
+          : [];
+    if (finalDeptIds.length === 0) {
+      console.warn(`! no active department to link category "${cat.name}"`);
+      continue;
+    }
+    for (const departmentId of finalDeptIds) {
+      await prisma.departmentService.upsert({
+        where: {
+          departmentId_serviceCategoryId: {
+            departmentId,
+            serviceCategoryId: cat.id,
+          },
+        },
+        create: { departmentId, serviceCategoryId: cat.id },
+        update: {},
+      });
+      linksCreated++;
+    }
+    categoriesResolved++;
+  }
+
   console.log(
-    `RBAC seed complete — ${PERMISSIONS.length} permissions, ${ROLES.length} roles, ${DEPARTMENTS.length} departments, ${ASSIGNMENTS.length} user assignments.`,
+    `RBAC seed complete — ${PERMISSIONS.length} permissions, ${ROLES.length} roles, ${DEPARTMENTS.length} departments, ${ASSIGNMENTS.length} user assignments, ${linksCreated} department-service links (${categoriesResolved}/${activeCategories.length} active categories resolved).`,
   );
 }
 

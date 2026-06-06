@@ -73,3 +73,18 @@ export class UpdateDepartmentDto {
   @IsString()
   managerId?: string | null;
 }
+
+/**
+ * CHAIN-1: link a billable ServiceCategory to a department. A category may be
+ * linked to several departments; the RFQ intake folds ServiceCategory →
+ * Department via these links to find the inbox + pricer pool. Without a link a
+ * new RFQ section can never be accepted/assigned (the live P0 blocker).
+ */
+export class LinkDepartmentServiceDto {
+  @ApiProperty({
+    description: 'The ServiceCategory id to link to this department.',
+  })
+  @IsString()
+  @MinLength(1)
+  serviceCategoryId!: string;
+}

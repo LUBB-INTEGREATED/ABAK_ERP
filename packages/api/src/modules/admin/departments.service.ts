@@ -189,6 +189,90 @@ export class DepartmentsService {
     return Array.from(byId.values());
   }
 
+  // ---------------------------------------------------------------------------
+  // CHAIN-1: ServiceCategory <-> Department links (DepartmentService join).
+  // Manage from the admin UI (perm departments:manage). Without these links a
+  // new RFQ section never resolves to an inbox/pricer pool and the chain dies.
+  // ---------------------------------------------------------------------------
+
+  /** List the service categories linked to a department. */
+  async listServiceLinks(departmentId: string) {
+    const dept = await this.prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { id: true },
+    });
+    if (!dept) throw new NotFoundException('Department not found');
+    const links = await this.prisma.departmentService.findMany({
+      where: { departmentId },
+      include: {
+        serviceCategory: {
+          select: { id: true, name: true, nameAr: true, isActive: true },
+        },
+      },
+    });
+    return links.map((l) => l.serviceCategory);
+  }
+
+  /** Link a service category to a department (idempotent — already-linked is a no-op). */
+  async linkService(
+    departmentId: string,
+    serviceCategoryId: string,
+    actorId: string,
+  ) {
+    const [dept, cat] = await Promise.all([
+      this.prisma.department.findUnique({
+        where: { id: departmentId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.serviceCategory.findUnique({
+        where: { id: serviceCategoryId },
+        select: { id: true, name: true },
+      }),
+    ]);
+    if (!dept) throw new NotFoundException('Department not found');
+    if (!cat) throw new NotFoundException('Service category not found');
+
+    await this.prisma.departmentService.upsert({
+      where: {
+        departmentId_serviceCategoryId: { departmentId, serviceCategoryId },
+      },
+      create: { departmentId, serviceCategoryId },
+      update: {},
+    });
+    await this.audit.log({
+      userId: actorId,
+      action: 'LINK_SERVICE',
+      entity: 'Department',
+      entityId: departmentId,
+      newValues: { serviceCategoryId, serviceCategoryName: cat.name },
+    });
+    return this.listServiceLinks(departmentId);
+  }
+
+  /** Remove a service-category link from a department (idempotent). */
+  async unlinkService(
+    departmentId: string,
+    serviceCategoryId: string,
+    actorId: string,
+  ) {
+    const dept = await this.prisma.department.findUnique({
+      where: { id: departmentId },
+      select: { id: true },
+    });
+    if (!dept) throw new NotFoundException('Department not found');
+    await this.prisma.departmentService.deleteMany({
+      where: { departmentId, serviceCategoryId },
+    });
+    await this.audit.log({
+      userId: actorId,
+      action: 'UNLINK_SERVICE',
+      entity: 'Department',
+      entityId: departmentId,
+      oldValues: { serviceCategoryId },
+    });
+    return this.listServiceLinks(departmentId);
+  }
+
   /**
    * The manager must be one of this department's own members and must not
    * already manage a different department (schema enforces @unique managerId).
