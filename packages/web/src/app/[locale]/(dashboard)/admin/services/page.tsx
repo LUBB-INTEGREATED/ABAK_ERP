@@ -41,25 +41,26 @@ import {
   useUpdateService,
   type AdminService,
 } from '@/lib/hooks/use-services';
-import { useAuthStore } from '@/lib/auth';
+import { Can, useCan } from '@/components/auth/can';
+import { NoAccess } from '@/components/auth/no-access';
 
 export default function AdminServicesPage() {
-  const user = useAuthStore((state) => state.user);
   const services = useAdminServices(true);
   const categories = useCategoriesList(true);
+  const { can } = useCan();
   const [editing, setEditing] = useState<AdminService | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
 
-  if (user && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-    return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">
-          You need an admin role to manage the service catalog. Ask your
-          workspace admin for access.
-        </CardContent>
-      </Card>
-    );
+  // Permission-trust, not role-trust: viewing the catalog requires services:view
+  // (read-only oversight roles like VIEWER hold it); managing requires
+  // services:manage. Don't trust a brittle `user.role === 'ADMIN'` check, which
+  // both over- and under-grants (a Sales Manager seeded as role=ADMIN, or a
+  // Viewer who should read it). The route guard already blocks no-view users;
+  // this is defence-in-depth + drives the read-only presentation below.
+  const canManage = can('services:manage');
+  if (!can('services:view') && !canManage) {
+    return <NoAccess variant="inline" />;
   }
 
   return (
@@ -71,18 +72,20 @@ export default function AdminServicesPage() {
             Maintain the services your team quotes against.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCategoryOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" /> New category
-          </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> New service
-          </Button>
-        </div>
+        <Can permission="services:manage">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCategoryOpen(true)}
+            >
+              <Plus className="me-2 h-4 w-4" /> New category
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="me-2 h-4 w-4" /> New service
+            </Button>
+          </div>
+        </Can>
       </div>
 
       <Card>
@@ -96,7 +99,7 @@ export default function AdminServicesPage() {
                 <TableHead>Base price</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-end">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -111,8 +114,8 @@ export default function AdminServicesPage() {
                 services.data?.map((svc) => (
                   <TableRow
                     key={svc.id}
-                    className="cursor-pointer"
-                    onClick={() => setEditing(svc)}
+                    className={canManage ? 'cursor-pointer' : undefined}
+                    onClick={canManage ? () => setEditing(svc) : undefined}
                   >
                     <TableCell className="font-mono text-sm">
                       {svc.code}
@@ -136,17 +139,19 @@ export default function AdminServicesPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setEditing(svc);
-                        }}
-                      >
-                        Edit
-                      </Button>
+                    <TableCell className="text-end">
+                      <Can permission="services:manage">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setEditing(svc);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      </Can>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -342,7 +347,7 @@ function ServiceDialog({
               onClick={deactivate}
               disabled={pending}
             >
-              <PowerOff className="mr-2 h-4 w-4" />
+              <PowerOff className="me-2 h-4 w-4" />
               Deactivate
             </Button>
           )}
