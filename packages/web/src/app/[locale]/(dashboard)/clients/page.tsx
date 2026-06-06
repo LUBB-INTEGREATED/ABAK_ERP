@@ -39,6 +39,7 @@ import {
   type ClientStatus,
 } from '@/lib/types/client';
 import { useEnumLabel } from '@/lib/i18n/enum-labels';
+import { Can } from '@/components/auth/can';
 
 const PAGE_SIZE = 50;
 const ALL = '__all__';
@@ -130,9 +131,11 @@ export default function ClientsListPage() {
               className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
           </Button>
-          <Button asChild size="sm">
-            <Link href="/clients/new">{tC('newClient')}</Link>
-          </Button>
+          <Can permission="clients:create">
+            <Button asChild size="sm">
+              <Link href="/clients/new">{tC('newClient')}</Link>
+            </Button>
+          </Can>
         </div>
       </div>
 
