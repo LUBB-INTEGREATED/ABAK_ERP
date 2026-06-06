@@ -44,6 +44,17 @@
     "errorTitle": "تعذّر تحميل البيانات",
     "errorDescription": "تحقّق من الاتصال وحاول مرة أخرى. إن استمرّت المشكلة، أبلغنا بها."
   },
+  "noAccess": {
+    "pageTitle": "لا توجد صلاحية",
+    "title": "ليس لديك صلاحية للوصول إلى هذه الصفحة",
+    "description": "حسابك لا يملك صلاحية الوصول إلى هذه الصفحة. إن كنت تعتقد أن هذا خطأ، تواصل مع مسؤول النظام.",
+    "inlineTitle": "ليس لديك صلاحية",
+    "inlineDescription": "ليس لديك صلاحية للوصول إلى هذه البيانات. تواصل مع مسؤول النظام إن كنت بحاجة إليها.",
+    "recordTitle": "ليس لديك صلاحية للوصول إلى هذا السجل",
+    "recordDescription": "هذا السجل يخص فريقًا أو مالكًا آخر. تواصل مع مسؤول النظام إن كنت بحاجة إلى الوصول.",
+    "backHome": "العودة إلى لوحة التحكم",
+    "back": "رجوع"
+  },
   "nav": {
     "admin": "الإدارة",
     "employees": "الموظفون",
@@ -461,8 +472,12 @@
     "riskFlaggedAt": "تاريخ الإشارة للخطر",
     "tabs": {
       "overview": "نظرة عامة",
+      "tasks": "المهام",
       "phases": "المراحل",
       "gantt": "مخطط جانت",
+      "team": "الفريق",
+      "authority": "الجهات",
+      "activity": "النشاط",
       "closure": "الإغلاق"
     },
     "gantt": {
@@ -518,6 +533,187 @@
       "available": "متاح",
       "busy": "مشغول",
       "overloaded": "زائد الحمل"
+    }
+  },
+  "projectsList": {
+    "col": {
+      "number": "رقم المشروع",
+      "title": "المشروع",
+      "client": "العميل",
+      "pm": "مدير المشروع",
+      "status": "الحالة",
+      "progress": "الإنجاز",
+      "contractValue": "قيمة العقد",
+      "startDate": "تاريخ البدء",
+      "expectedEnd": "التاريخ المتوقع",
+      "health": "المؤشر"
+    },
+    "view": {
+      "label": "العرض",
+      "table": "جدول",
+      "cards": "بطاقات"
+    },
+    "bulk": {
+      "selected": "تم تحديد {count}",
+      "selectAll": "تحديد الكل",
+      "clear": "إلغاء التحديد",
+      "export": "تصدير المحدد",
+      "exported": "تم تصدير {count} مشروع.",
+      "empty": "حدّد مشاريع لتفعيل الإجراءات الجماعية."
+    }
+  },
+  "projectTasks": {
+    "title": "المهام",
+    "subtitle": "جميع المهام عبر كل المراحل في مكان واحد.",
+    "view": {
+      "list": "قائمة",
+      "board": "لوحة"
+    },
+    "addTask": "إضافة مهمة",
+    "groupByPhase": "تجميع حسب المرحلة",
+    "unassigned": "غير مُسند",
+    "empty": "لا توجد مهام حتى الآن.",
+    "emptyCta": "أضف أول مهمة من أي مرحلة للبدء.",
+    "filtered": {
+      "empty": "لا توجد مهام تطابق هذه المرشحات."
+    },
+    "phaseTasks": "{done} من {total} منجزة",
+    "kanban": {
+      "column": {
+        "NOT_STARTED": "قيد الانتظار",
+        "IN_PROGRESS": "قيد التنفيذ",
+        "BLOCKED": "معطّلة",
+        "REVIEW": "قيد المراجعة",
+        "DONE": "منجزة",
+        "CANCELLED": "ملغاة"
+      },
+      "emptyColumn": "لا شيء هنا",
+      "dropHint": "اسحب المهام إلى هنا",
+      "count": "{count} مهمة"
+    }
+  },
+  "projectTeam": {
+    "title": "الفريق",
+    "subtitle": "كل من يعمل على هذا المشروع وما يتولّاه.",
+    "col": {
+      "member": "العضو",
+      "role": "الدور في المشروع",
+      "department": "القسم",
+      "phases": "المراحل المسؤول عنها",
+      "openTasks": "المهام المفتوحة",
+      "load": "نسبة التحميل"
+    },
+    "role": {
+      "PM": "مدير المشروع",
+      "PHASE_OWNER": "مسؤول مرحلة",
+      "CONTRIBUTOR": "مساهم"
+    },
+    "pmBadge": "مدير المشروع",
+    "noPhases": "لا مراحل مسؤول عنها",
+    "empty": "لا يوجد أعضاء فريق بعد.",
+    "emptyCta": "يُضاف مدير المشروع تلقائيًا. يظهر المساهمون عند إسناد المراحل والمهام."
+  },
+  "projectActivity": {
+    "title": "النشاط",
+    "subtitle": "سجلّ متواصل لكل ما جرى في هذا المشروع.",
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "earlier": "سابقًا",
+    "byActor": "بواسطة {name}",
+    "empty": "لا يوجد نشاط حتى الآن.",
+    "emptyCta": "يظهر النشاط هنا أثناء عمل الفريق على المراحل والمهام والاعتمادات."
+  },
+  "projectAuthority": {
+    "summary": "نظرة عامة على الجهات",
+    "issued": "صادرة",
+    "inProgress": "قيد المعالجة",
+    "rejected": "مرفوضة"
+  },
+  "teamHub": {
+    "title": "الفريق",
+    "subtitle": "الأشخاص والأقسام وعبء العمل الحالي في مكان واحد.",
+    "tabs": {
+      "employees": "الموظفون",
+      "departments": "الأقسام",
+      "workload": "عبء العمل"
+    },
+    "searchPlaceholder": "الاسم، البريد، القسم…",
+    "filterDepartment": "القسم",
+    "allDepartments": "كل الأقسام",
+    "empty": "لا يوجد أشخاص يطابقون هذه المرشحات.",
+    "view": {
+      "grid": "بطاقات",
+      "table": "جدول"
+    },
+    "employees": {
+      "col": {
+        "name": "الاسم",
+        "department": "القسم",
+        "role": "الدور",
+        "status": "الحالة",
+        "load": "عبء العمل",
+        "activeTasks": "مهام نشطة"
+      },
+      "projects": "المشاريع",
+      "tasks": "المهام",
+      "openProfile": "فتح الملف",
+      "addEmployee": "إضافة موظف",
+      "empty": "لا يوجد موظفون لعرضهم."
+    },
+    "departments": {
+      "col": {
+        "name": "القسم",
+        "manager": "المدير",
+        "headcount": "عدد الأعضاء",
+        "load": "متوسط الحِمل",
+        "openTasks": "مهام مفتوحة"
+      },
+      "noManager": "بدون مدير",
+      "headcountValue": "{count} عضو",
+      "addDepartment": "قسم جديد",
+      "empty": "لا توجد أقسام بعد."
+    },
+    "workload": {
+      "title": "عبء العمل",
+      "subtitle": "الطاقة الاستيعابية ونسبة الإشغال لكل شخص عبر المشاريع النشطة.",
+      "col": {
+        "member": "العضو",
+        "activeTasks": "مهام نشطة",
+        "plannedHours": "ساعات مخططة",
+        "utilization": "نسبة الإشغال"
+      },
+      "overloadedTitle": "زائد الحمل",
+      "overloadedDesc": "أشخاص فوق الطاقة الاستيعابية.",
+      "availableTitle": "متاح",
+      "availableDesc": "أشخاص لديهم طاقة متاحة.",
+      "capacityHint": "بناءً على 40 ساعة مخططة أسبوعيًا.",
+      "empty": "لا توجد بيانات عبء عمل."
+    },
+    "utilization": {
+      "OVERLOADED": "زائد الحمل",
+      "BUSY": "مشغول",
+      "AVAILABLE": "متاح"
+    },
+    "status": {
+      "ACTIVE": "نشط",
+      "INACTIVE": "غير نشط",
+      "SUSPENDED": "موقوف"
+    },
+    "detail": {
+      "title": "الموظف",
+      "contactHeading": "بيانات الاتصال",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "department": "القسم",
+      "roles": "الأدوار",
+      "status": "الحالة",
+      "noRoles": "لا توجد أدوار",
+      "workloadHeading": "عبء العمل",
+      "activeTasks": "مهام نشطة",
+      "plannedHours": "ساعات مخططة",
+      "utilization": "نسبة الإشغال",
+      "manage": "إدارة",
+      "close": "إغلاق"
     }
   },
   "phase": {
@@ -1997,6 +2193,20 @@
     "followUpHint": "تذكير مباشر — يظهر في قائمة متابعاتك.",
     "logging": "جارٍ التسجيل…",
     "subjectError": "أضف موضوعًا موجزًا (حرفان على الأقل).",
+    "outcomeLabel": "نتيجة التواصل *",
+    "outcomePlaceholder": "اختر نتيجة هذا التواصل…",
+    "outcomeError": "اختر نتيجة التواصل (إلزامي).",
+    "outcomeInterested": "مهتم",
+    "outcomeNotInterested": "غير مهتم",
+    "outcomeNoAnswer": "لا يوجد رد",
+    "outcomeCallbackRequested": "طلب معاودة الاتصال",
+    "outcomeMeetingScheduled": "تم تحديد اجتماع",
+    "outcomeQuoteRequested": "طلب عرض سعر",
+    "outcomeInfoSent": "تم إرسال معلومات",
+    "outcomeFollowUpNeeded": "يحتاج متابعة",
+    "outcomeWon": "تم الفوز",
+    "outcomeLost": "خسارة",
+    "outcomeOther": "أخرى",
     "logged": "تم تسجيل التواصل",
     "logFailed": "تعذّر التسجيل",
     "channelCall": "مكالمة",

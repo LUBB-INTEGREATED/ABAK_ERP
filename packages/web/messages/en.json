@@ -44,6 +44,17 @@
     "errorTitle": "We couldn’t load this",
     "errorDescription": "Check your connection and try again. If it keeps failing, let us know."
   },
+  "noAccess": {
+    "pageTitle": "No access",
+    "title": "You don’t have permission to view this",
+    "description": "Your account doesn’t have access to this page. If you believe this is a mistake, contact your administrator.",
+    "inlineTitle": "You don’t have permission",
+    "inlineDescription": "You don’t have access to this data. Contact your administrator if you need it.",
+    "recordTitle": "You don’t have access to this record",
+    "recordDescription": "This record belongs to another team or owner. Contact your administrator if you need access.",
+    "backHome": "Back to dashboard",
+    "back": "Go back"
+  },
   "nav": {
     "admin": "Admin",
     "employees": "Employees",
@@ -461,8 +472,12 @@
     "riskFlaggedAt": "Risk flagged at",
     "tabs": {
       "overview": "Overview",
+      "tasks": "Tasks",
       "phases": "Phases",
       "gantt": "Gantt",
+      "team": "Team",
+      "authority": "Authority",
+      "activity": "Activity",
       "closure": "Closure"
     },
     "gantt": {
@@ -518,6 +533,187 @@
       "available": "Available",
       "busy": "Busy",
       "overloaded": "Overloaded"
+    }
+  },
+  "projectsList": {
+    "col": {
+      "number": "Project #",
+      "title": "Project",
+      "client": "Client",
+      "pm": "Project manager",
+      "status": "Status",
+      "progress": "Progress",
+      "contractValue": "Contract value",
+      "startDate": "Start",
+      "expectedEnd": "Due",
+      "health": "Health"
+    },
+    "view": {
+      "label": "View",
+      "table": "Table",
+      "cards": "Cards"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "selectAll": "Select all",
+      "clear": "Clear selection",
+      "export": "Export selected",
+      "exported": "Exported {count} projects.",
+      "empty": "Select projects to enable bulk actions."
+    }
+  },
+  "projectTasks": {
+    "title": "Tasks",
+    "subtitle": "Every task across all phases, in one place.",
+    "view": {
+      "list": "List",
+      "board": "Board"
+    },
+    "addTask": "Add task",
+    "groupByPhase": "Group by phase",
+    "unassigned": "Unassigned",
+    "empty": "No tasks yet.",
+    "emptyCta": "Add the first task from any phase to get started.",
+    "filtered": {
+      "empty": "No tasks match these filters."
+    },
+    "phaseTasks": "{done} of {total} done",
+    "kanban": {
+      "column": {
+        "NOT_STARTED": "To do",
+        "IN_PROGRESS": "In progress",
+        "BLOCKED": "Blocked",
+        "REVIEW": "In review",
+        "DONE": "Done",
+        "CANCELLED": "Cancelled"
+      },
+      "emptyColumn": "Nothing here",
+      "dropHint": "Drag tasks here",
+      "count": "{count} tasks"
+    }
+  },
+  "projectTeam": {
+    "title": "Team",
+    "subtitle": "Everyone working on this project and what they own.",
+    "col": {
+      "member": "Member",
+      "role": "Role on project",
+      "department": "Department",
+      "phases": "Owned phases",
+      "openTasks": "Open tasks",
+      "load": "Load"
+    },
+    "role": {
+      "PM": "Project manager",
+      "PHASE_OWNER": "Phase owner",
+      "CONTRIBUTOR": "Contributor"
+    },
+    "pmBadge": "PM",
+    "noPhases": "No owned phases",
+    "empty": "No team members yet.",
+    "emptyCta": "The project manager is added automatically. Contributors appear as you assign phases and tasks."
+  },
+  "projectActivity": {
+    "title": "Activity",
+    "subtitle": "A running log of everything that happened on this project.",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier",
+    "byActor": "by {name}",
+    "empty": "No activity yet.",
+    "emptyCta": "Activity appears here as the team works on phases, tasks, and approvals."
+  },
+  "projectAuthority": {
+    "summary": "Authority overview",
+    "issued": "Issued",
+    "inProgress": "In progress",
+    "rejected": "Rejected"
+  },
+  "teamHub": {
+    "title": "Team",
+    "subtitle": "People, departments, and current workload in one place.",
+    "tabs": {
+      "employees": "Employees",
+      "departments": "Departments",
+      "workload": "Workload"
+    },
+    "searchPlaceholder": "Name, email, department…",
+    "filterDepartment": "Department",
+    "allDepartments": "All departments",
+    "empty": "No people match these filters.",
+    "view": {
+      "grid": "Cards",
+      "table": "Table"
+    },
+    "employees": {
+      "col": {
+        "name": "Name",
+        "department": "Department",
+        "role": "Role",
+        "status": "Status",
+        "load": "Workload",
+        "activeTasks": "Active tasks"
+      },
+      "projects": "Projects",
+      "tasks": "Tasks",
+      "openProfile": "Open profile",
+      "addEmployee": "Add employee",
+      "empty": "No employees to show."
+    },
+    "departments": {
+      "col": {
+        "name": "Department",
+        "manager": "Manager",
+        "headcount": "Headcount",
+        "load": "Avg. load",
+        "openTasks": "Open tasks"
+      },
+      "noManager": "No manager",
+      "headcountValue": "{count} members",
+      "addDepartment": "New department",
+      "empty": "No departments yet."
+    },
+    "workload": {
+      "title": "Workload",
+      "subtitle": "Capacity and utilization per person across active projects.",
+      "col": {
+        "member": "Member",
+        "activeTasks": "Active tasks",
+        "plannedHours": "Planned hours",
+        "utilization": "Utilization"
+      },
+      "overloadedTitle": "Overloaded",
+      "overloadedDesc": "people are above capacity.",
+      "availableTitle": "Available",
+      "availableDesc": "people have spare capacity.",
+      "capacityHint": "Based on 40 planned hours per week.",
+      "empty": "No workload data available."
+    },
+    "utilization": {
+      "OVERLOADED": "Overloaded",
+      "BUSY": "Busy",
+      "AVAILABLE": "Available"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "SUSPENDED": "Suspended"
+    },
+    "detail": {
+      "title": "Employee",
+      "contactHeading": "Contact",
+      "email": "Email",
+      "phone": "Phone",
+      "department": "Department",
+      "roles": "Roles",
+      "status": "Status",
+      "noRoles": "No roles",
+      "workloadHeading": "Workload",
+      "activeTasks": "Active tasks",
+      "plannedHours": "Planned hours",
+      "utilization": "Utilization",
+      "manage": "Manage",
+      "close": "Close"
     }
   },
   "phase": {
@@ -1997,6 +2193,20 @@
     "followUpHint": "Inline reminder — appears on your follow-up queue.",
     "logging": "Logging…",
     "subjectError": "Add a brief subject (at least 2 characters).",
+    "outcomeLabel": "Outcome *",
+    "outcomePlaceholder": "Select the outcome of this contact…",
+    "outcomeError": "Select an outcome (required).",
+    "outcomeInterested": "Interested",
+    "outcomeNotInterested": "Not interested",
+    "outcomeNoAnswer": "No answer",
+    "outcomeCallbackRequested": "Callback requested",
+    "outcomeMeetingScheduled": "Meeting scheduled",
+    "outcomeQuoteRequested": "Quote requested",
+    "outcomeInfoSent": "Information sent",
+    "outcomeFollowUpNeeded": "Follow-up needed",
+    "outcomeWon": "Won",
+    "outcomeLost": "Lost",
+    "outcomeOther": "Other",
     "logged": "Communication logged",
     "logFailed": "Failed to log",
     "channelCall": "Call",

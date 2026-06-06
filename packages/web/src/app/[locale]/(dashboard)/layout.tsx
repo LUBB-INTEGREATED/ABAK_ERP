@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import AuthGuard from '@/components/auth-guard';
+import { RouteGuard } from '@/components/auth/route-guard';
 import { DesktopSidebar, MobileSidebar } from '@/components/sidebar-nav';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { NotificationBell } from '@/components/notification-bell';
@@ -41,7 +42,9 @@ function DashboardChrome({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6">
+          <RouteGuard>{children}</RouteGuard>
+        </main>
       </div>
     </div>
   );
