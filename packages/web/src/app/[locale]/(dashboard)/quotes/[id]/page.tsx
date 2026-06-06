@@ -76,6 +76,8 @@ import {
 import { CompileView } from '@/components/quotations/compile-view';
 import { RfqRequestsPanel } from '@/components/rfqs/rfq-requests-panel';
 import { useAuthStore } from '@/lib/auth';
+import { isForbiddenError } from '@/lib/api-client';
+import { NoAccess } from '@/components/auth/no-access';
 import {
   LOSS_REASONS,
   type LossReason,
@@ -113,6 +115,11 @@ export default function QuoteDetailPage() {
   const [rejectReasonCode, setRejectReasonCode] = useState<LossReason>('OTHER');
 
   if (isLoading) return <DetailSkeleton />;
+  // A 403 here = scope denial (not on this quote's preparer/pricer/approver
+  // chain) — show a friendly no-access page, not the raw axios 403 string (FE-5).
+  if (isForbiddenError(error)) {
+    return <NoAccess variant="record" />;
+  }
   if (isError || !quote) {
     return (
       <DetailError

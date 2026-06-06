@@ -52,11 +52,10 @@ import type {
   TaskStatus,
 } from '@/lib/types/project';
 import {
-  PHASE_TONE,
-  PROJECT_TONE,
-  StatusPill,
-  TASK_TONE,
-} from '@/components/projects/status-dot';
+  PhaseStatusBadge,
+  ProjectStatusBadge,
+  TaskStatusBadge,
+} from '@/components/ui/entity-status-badges';
 import { DateChip } from '@/components/projects/date-chip';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -68,7 +67,13 @@ import {
 } from '@/components/projects/phase-dialogs';
 import { ProjectGantt } from '@/components/projects/gantt';
 import { LicencesTab } from '@/components/projects/licences-tab';
+import { DocumentPanel } from '@/components/documents/document-panel';
+import { ProjectTasksTab } from '@/components/projects/tasks-tab';
+import { ProjectTeamTab } from '@/components/projects/team-tab';
+import { ProjectActivityTab } from '@/components/projects/activity-tab';
 import { cn } from '@/lib/utils';
+import { isForbiddenError } from '@/lib/api-client';
+import { NoAccess } from '@/components/auth/no-access';
 
 const GATES: ClosureGate[] = [
   'ALL_PHASES_COMPLETED',
@@ -104,7 +109,7 @@ export default function ProjectDetailPage({
 }) {
   const { id } = use(params);
   const t = useTranslations();
-  const { data: project, isLoading } = useProject(id);
+  const { data: project, isLoading, error } = useProject(id);
 
   const [addPhaseOpen, setAddPhaseOpen] = useState(false);
 
@@ -113,6 +118,10 @@ export default function ProjectDetailPage({
     return project.phases.flatMap((p) => p.tasks);
   }, [project]);
 
+  // Record-level scope denial → friendly no-access (FE-5), not an endless skeleton.
+  if (isForbiddenError(error)) {
+    return <NoAccess variant="record" />;
+  }
   if (isLoading || !project) {
     return (
       <div className="space-y-4">
@@ -149,15 +158,25 @@ export default function ProjectDetailPage({
       <ProjectHero project={project} />
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">
             {t('project.tabs.overview')}
+          </TabsTrigger>
+          <TabsTrigger value="tasks">
+            {t('project.tabs.tasks')} · {allTasks.length}
           </TabsTrigger>
           <TabsTrigger value="phases">
             {t('project.tabs.phases')} · {project.phases.length}
           </TabsTrigger>
           <TabsTrigger value="gantt">{t('project.tabs.gantt')}</TabsTrigger>
-          <TabsTrigger value="licences">Licences</TabsTrigger>
+          <TabsTrigger value="team">{t('project.tabs.team')}</TabsTrigger>
+          <TabsTrigger value="licences">
+            {t('project.tabs.authority')}
+          </TabsTrigger>
+          <TabsTrigger value="documents">{t('documents.heading')}</TabsTrigger>
+          <TabsTrigger value="activity">
+            {t('project.tabs.activity')}
+          </TabsTrigger>
           <TabsTrigger value="closure">
             {t('project.tabs.closure')}
             {project.closureChecklist?.closedAt && (
@@ -169,6 +188,15 @@ export default function ProjectDetailPage({
         {/* Overview */}
         <TabsContent value="overview">
           <OverviewPanel project={project} />
+        </TabsContent>
+
+        {/* Tasks (list + Kanban board) */}
+        <TabsContent value="tasks">
+          <ProjectTasksTab
+            project={project}
+            projectId={id}
+            isReadOnly={isReadOnly}
+          />
         </TabsContent>
 
         {/* Phases */}
@@ -223,7 +251,12 @@ export default function ProjectDetailPage({
           <ProjectGantt project={project} />
         </TabsContent>
 
-        {/* Licences — added 2026-05-21 per process correction */}
+        {/* Team */}
+        <TabsContent value="team">
+          <ProjectTeamTab project={project} />
+        </TabsContent>
+
+        {/* Authority (government licences / portal tracking) */}
         <TabsContent value="licences">
           <LicencesTab
             projectId={id}
@@ -236,6 +269,16 @@ export default function ProjectDetailPage({
               licenceOverrideAt: p.licenceOverrideAt,
             }))}
           />
+        </TabsContent>
+
+        {/* Documents (WS-D / DOC-A — real upload + list, scope-checked) */}
+        <TabsContent value="documents">
+          <DocumentPanel entityType="PROJECT" entityId={id} />
+        </TabsContent>
+
+        {/* Activity (stub — no event-stream backend yet) */}
+        <TabsContent value="activity">
+          <ProjectActivityTab />
         </TabsContent>
 
         {/* Closure */}
@@ -274,12 +317,9 @@ function ProjectHero({ project }: { project: ProjectDetail }) {
               <span className="font-mono text-xs text-muted-foreground">
                 {project.projectNumber}
               </span>
-              <StatusPill
-                tone={PROJECT_TONE[project.status]}
-                label={t(`project.status.${project.status}`)}
-              />
+              <ProjectStatusBadge status={project.status} />
               {project.financialRiskFlagged && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
+                <span className="inline-flex items-center gap-1 rounded-full bg-error/10 px-2 py-0.5 text-xs font-medium text-error">
                   <AlertTriangle className="h-3 w-3" />
                   {t('project.kpi.atRisk')}
                 </span>
@@ -553,10 +593,7 @@ function PhaseCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <StatusPill
-              tone={PHASE_TONE[phase.status]}
-              label={t(`phase.status.${phase.status}`)}
-            />
+            <PhaseStatusBadge status={phase.status} />
             <DateChip
               plannedEnd={phase.plannedEnd}
               status={phase.status}
@@ -767,29 +804,12 @@ function TaskRow({
   }
 
   return (
-    <li className="group rounded-md border bg-white p-2">
+    <li className="group rounded-md border bg-card p-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            'h-2 w-2 rounded-full',
-            task.status === 'DONE'
-              ? 'bg-emerald-500'
-              : task.status === 'BLOCKED'
-                ? 'bg-rose-500'
-                : task.status === 'REVIEW'
-                  ? 'bg-amber-500'
-                  : task.status === 'IN_PROGRESS'
-                    ? 'bg-sky-500'
-                    : 'bg-slate-300',
-          )}
-        />
         <span className="flex-1 truncate text-sm font-medium">
           {task.title}
         </span>
-        <StatusPill
-          tone={TASK_TONE[task.status]}
-          label={t(`task.status.${task.status}`)}
-        />
+        <TaskStatusBadge status={task.status} dot />
         <span className="rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
           {t(`task.priority.${task.priority}`)}
         </span>

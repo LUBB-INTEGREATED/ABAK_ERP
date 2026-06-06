@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
-  FileText,
   Landmark,
   MapPin,
   Plus,
@@ -31,9 +30,10 @@ import {
   useLogGovComment,
   useLogGovVisit,
   useRespondToGovComment,
-  useUploadGovDocument,
   useWeeklyStatusUpdate,
 } from '@/lib/hooks/use-gov';
+import { DocumentPanel } from '@/components/documents/document-panel';
+import { useEntityDocuments } from '@/lib/hooks/use-documents';
 import type { GovComment } from '@/lib/types/gov';
 import { StatusPill } from '@/components/projects/status-dot';
 import { GOV_TONE } from '@/components/projects/gov-status-tone';
@@ -63,10 +63,11 @@ export default function GovDetailPage({
   const t = useTranslations();
   const { data: tx, isLoading } = useGovTransaction(id);
   const weekly = useWeeklyStatusUpdate(id);
+  // WS-D: live document count drives the (previously dead) المستندات counter.
+  const docs = useEntityDocuments('GOV_TX', id);
 
   const [visitOpen, setVisitOpen] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
-  const [docOpen, setDocOpen] = useState(false);
 
   if (isLoading || !tx) {
     return (
@@ -202,7 +203,7 @@ export default function GovDetailPage({
             {t('gov.tabs.comments')} · {tx.comments.length}
           </TabsTrigger>
           <TabsTrigger value="documents">
-            {t('gov.tabs.documents')} · {tx.documents.length}
+            {t('gov.tabs.documents')} · {docs.data?.length ?? 0}
           </TabsTrigger>
         </TabsList>
 
@@ -291,48 +292,9 @@ export default function GovDetailPage({
           </Card>
         </TabsContent>
 
-        {/* Documents */}
+        {/* Documents (WS-D / DOC-A — real file upload + list, scope-checked) */}
         <TabsContent value="documents">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">
-                {t('gov.document.heading')}
-              </CardTitle>
-              <Button size="sm" onClick={() => setDocOpen(true)}>
-                <Plus className="me-1 h-3.5 w-3.5" />
-                {t('gov.document.newDocument')}
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {tx.documents.length === 0 ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  {t('gov.document.empty')}
-                </div>
-              ) : (
-                tx.documents.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between rounded-md border bg-white p-2 text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <a
-                        href={d.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-abak-blue hover:underline"
-                      >
-                        {d.title}
-                      </a>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {d.uploadedAt.slice(0, 10)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          <DocumentPanel entityType="GOV_TX" entityId={id} />
         </TabsContent>
       </Tabs>
 
@@ -344,11 +306,6 @@ export default function GovDetailPage({
       <LogCommentDialog
         open={commentOpen}
         onOpenChange={setCommentOpen}
-        transactionId={id}
-      />
-      <UploadDocDialog
-        open={docOpen}
-        onOpenChange={setDocOpen}
         transactionId={id}
       />
     </div>
@@ -598,77 +555,6 @@ function LogCommentDialog({
               if (ok) {
                 onOpenChange(false);
                 setCommentText('');
-              }
-            }}
-          >
-            {t('common.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function UploadDocDialog({
-  open,
-  onOpenChange,
-  transactionId,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  transactionId: string;
-}) {
-  const t = useTranslations();
-  const upload = useUploadGovDocument(transactionId);
-  const [title, setTitle] = useState('');
-  const [fileUrl, setFileUrl] = useState('');
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('gov.document.newDocument')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="d-title">{t('gov.document.docTitle')}</Label>
-            <Input
-              id="d-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="d-url">{t('gov.document.fileUrl')}</Label>
-            <Input
-              id="d-url"
-              value={fileUrl}
-              onChange={(e) => setFileUrl(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            disabled={
-              title.trim().length < 2 ||
-              fileUrl.trim().length < 3 ||
-              upload.isPending
-            }
-            onClick={async () => {
-              const ok = await runWithToast(t, () =>
-                upload.mutateAsync({
-                  title: title.trim(),
-                  fileUrl: fileUrl.trim(),
-                }),
-              );
-              if (ok) {
-                onOpenChange(false);
-                setTitle('');
-                setFileUrl('');
               }
             }}
           >
