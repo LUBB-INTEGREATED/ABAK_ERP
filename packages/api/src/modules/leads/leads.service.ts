@@ -140,6 +140,12 @@ export class LeadsService {
               email: lead.email,
               phone: lead.phone,
               city: lead.city,
+              // The Lead has no structured `region` column — the lead's
+              // selected region (+ district) live in `projectLocation`, so
+              // carry that text into the Client's `addressLine1` so the
+              // location is never lost on convert. Client.region/district stay
+              // null until the client is edited. (CRM-3 / BUG-P1-8)
+              addressLine1: lead.projectLocation,
               accountManagerId: ownerId,
               createdBy: actorId,
             },

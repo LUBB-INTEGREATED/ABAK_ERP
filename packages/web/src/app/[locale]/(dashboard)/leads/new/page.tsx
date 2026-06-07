@@ -72,8 +72,10 @@ const CHANNEL_ICONS: Record<LeadChannel, LucideIcon> = {
 
 const SAUDI_PHONE = /^(\+9665|05)\d{8}$/;
 
-// Saudi administrative regions — same list as the new-client form so the value
-// round-trips cleanly into Client.region on convert (CRM-3 / BUG-P1-8).
+// Saudi administrative regions — same list as the new-client form. The Lead
+// model has no structured `region` column, so the value is folded into the
+// human-readable `projectLocation` and carried forward there (the structured
+// Client.region is set later when the client is edited). (CRM-3 / BUG-P1-8).
 const SAUDI_REGIONS = [
   'الرياض',
   'مكة المكرمة',
@@ -285,19 +287,22 @@ function toSubmitPayload(
 
   // Region + city + district for all channels.
   // The API persists `city`/`district` (they ride through to the Client on
-  // convert) but has no dedicated `region` column, so we fold region into the
-  // human-readable `projectLocation` ("الموقع") when the user didn't type one
-  // explicitly — guaranteeing the location is shown on the lead and carried
-  // forward. (CRM-3 / BUG-P1-8)
+  // convert), but the Lead model has NO dedicated `region` column — so the
+  // selected region is ALWAYS folded into the human-readable `projectLocation`
+  // ("الموقع") so it is never silently lost. If the user typed a free-text
+  // location we append the region to it rather than dropping it. (CRM-3 /
+  // BUG-P1-8)
   const region = optional('region');
   const city = optional('city');
   const district = optional('district');
   if (city) payload.city = city;
   if (district) payload.district = district;
 
-  if (!projectLocation) {
-    const composed = [region, city, district].filter(Boolean).join(' — ');
-    if (composed) payload.projectLocation = composed;
+  const composedLocation = [region, city, district].filter(Boolean).join(' — ');
+  if (projectLocation && composedLocation) {
+    payload.projectLocation = `${projectLocation} (${composedLocation})`;
+  } else if (composedLocation) {
+    payload.projectLocation = composedLocation;
   }
 
   switch (channel) {
