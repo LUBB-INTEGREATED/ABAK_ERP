@@ -742,6 +742,16 @@ export class QuotesService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // R2-3: clear any prior-round approval rows before opening the new round.
+      // After a reject the quote returns to DRAFT and can be resubmitted; the
+      // stale REJECTED (and any leftover lower-tier) rows from the previous round
+      // would otherwise be counted by CHAIN-4's `lowerPending` (status != APPROVED)
+      // and permanently block the new higher tier. Wiping the quote's approvals
+      // here scopes the sequence check to the current submission round. (The
+      // schema's ApprovalStatus enum has no terminal CANCELLED value, so a hard
+      // delete is the schema-fitting way to retire the prior round; the submit and
+      // each decision are still audited.)
+      await tx.quoteApproval.deleteMany({ where: { quoteId: id } });
       await tx.quoteApproval.createMany({
         data: tiers.map((tier) => ({
           quoteId: id,
@@ -2138,8 +2148,57 @@ export class QuotesService {
   }
 
   private async pickApprover(tier: number) {
-    // Tier 1 — Technical/Dept Manager; tier 2 — Executive Director (ADMIN);
-    // tier 3 — CEO (SUPER_ADMIN). Fall back gracefully when not present.
+    // R2-2 reconcile: the L1 approver picked here MUST actually hold the
+    // `quote:approve` permission that decideApproval's guard enforces, otherwise
+    // they can open the quote (CHAIN-2) but 403 on the approve action and every
+    // quote deadlocks at tier-1. The legacy `user.role` enum is NOT the source of
+    // truth for that permission — seed-abak-real-users stamps TECHNICAL_MANAGER on
+    // EVERY engineer, but only the "Technical Director" RBAC role grants
+    // quote:approve (seed-rbac), and pickApprover-by-enum would resolve to an
+    // Engineer who lacks it. So select by the RBAC permission first (same path as
+    // PermissionsService.resolveForUser → roleAssignment.role.permissions), with a
+    // preferred role-name order per tier. Fall back to the legacy enum order only
+    // when no RBAC holder exists (e.g. an env seeded without seed-rbac).
+    const roleNameOrder: Record<number, string[]> = {
+      1: ['Technical Director', 'Sales Manager', 'Executive'],
+      2: ['Executive', 'Super Admin'],
+      3: ['Super Admin', 'Executive'],
+    };
+    const preferredRoleNames = roleNameOrder[tier] ?? [
+      'Executive',
+      'Super Admin',
+    ];
+
+    // Users who actually hold quote:approve via any assigned RBAC role.
+    const eligible = await this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        roleAssignments: {
+          some: {
+            role: {
+              permissions: { some: { permission: { key: 'quote:approve' } } },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        roleAssignments: { include: { role: { select: { name: true } } } },
+      },
+    });
+    if (eligible.length) {
+      // Prefer a holder whose assigned roles match the tier's preferred order.
+      for (const roleName of preferredRoleNames) {
+        const match = eligible.find((u) =>
+          u.roleAssignments.some((ra) => ra.role.name === roleName),
+        );
+        if (match) return match;
+      }
+      // Any quote:approve holder is still a valid approver for this tier.
+      return eligible[0];
+    }
+
+    // Legacy fallback: resolve by the historical UserRole enum order.
     const order: Record<number, UserRole[]> = {
       1: [UserRole.TECHNICAL_MANAGER, UserRole.SALES_MANAGER, UserRole.ADMIN],
       2: [UserRole.ADMIN, UserRole.SUPER_ADMIN],

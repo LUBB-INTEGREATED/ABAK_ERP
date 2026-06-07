@@ -294,6 +294,12 @@ function resolveGrants(roleName: string): { key: string; scope: Scope }[] {
             'quote:view',
             'quote:build',
             'quote:submit_approval',
+            // R2-2: the dept/technical-manager tier IS the L1 approver that
+            // pickApprover() resolves (TECHNICAL_MANAGER enum → Technical
+            // Director role). Without quote:approve the picked L1 approver can
+            // OPEN the quote but 403s on the approve action, deadlocking every
+            // quote at tier-1. Grant it so the picked approver can actually act.
+            'quote:approve',
             'project:view',
             'project:convert',
             'project:manage_tasks',
