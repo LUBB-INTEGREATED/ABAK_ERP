@@ -391,17 +391,29 @@ export class GovTransactionsService {
   }
 
   // Stats used by the list/dashboard pages
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
+    // R2-8: scope the KPI cards exactly like the list (govScopeWhere) so a
+    // scoped actor's headline totals match their scoped tx list (no inflated
+    // company-wide globals leaking through the stats endpoint). The comment
+    // count is scoped through its parent transaction relation.
+    const scopeWhere = await this.govScopeWhere(scopeCtx);
+    const scoped = (
+      extra?: Prisma.GovTransactionWhereInput,
+    ): Prisma.GovTransactionWhereInput =>
+      scopeWhere
+        ? { AND: [scopeWhere, ...(extra ? [extra] : [])] }
+        : (extra ?? {});
     const [total, byStatus, unloggedWeekly, awaitingResponse] =
       await this.prisma.$transaction([
-        this.prisma.govTransaction.count(),
+        this.prisma.govTransaction.count({ where: scoped() }),
         this.prisma.govTransaction.groupBy({
           by: ['status'],
+          where: scoped(),
           _count: { _all: true },
           orderBy: { status: 'asc' },
         }),
         this.prisma.govTransaction.count({
-          where: {
+          where: scoped({
             status: {
               in: [
                 GovTxStatus.SUBMITTED,
@@ -417,10 +429,13 @@ export class GovTransactionsService {
                 },
               },
             ],
-          },
+          }),
         }),
         this.prisma.govComment.count({
-          where: { respondedAt: null },
+          where: {
+            respondedAt: null,
+            ...(scopeWhere ? { transaction: scopeWhere } : {}),
+          },
         }),
       ]);
 

@@ -45,8 +45,11 @@ export class PipelineController {
   @ApiOperation({
     summary: 'Pipeline totals (counts and estimated value per stage)',
   })
-  stats() {
-    return this.pipeline.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('pipeline:view') scope: PermissionScope | undefined,
+  ) {
+    return this.pipeline.stats({ user, scope });
   }
 
   @Post('pipeline/entries')

@@ -33,8 +33,11 @@ export class GovTransactionsController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Gov transactions stats' })
-  stats() {
-    return this.service.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('gov:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.stats({ user, scope });
   }
 
   @Get('pro/dashboard')

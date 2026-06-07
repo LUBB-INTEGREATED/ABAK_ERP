@@ -348,25 +348,32 @@ export class PipelineService {
     return this.prisma.pipelineEntry.delete({ where: { id } });
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
+    // R2-8: scope the KPI cards exactly like the list (listEntries) so a scoped
+    // actor's headline totals match their scoped pipeline (no inflated globals).
+    const scopeWhere: Prisma.PipelineEntryWhereInput = ownerScopeFilter(
+      scopeCtx,
+      'ownerId',
+    );
     const [byStage, openAgg, wonAgg, closedCount] = await Promise.all([
       this.prisma.pipelineEntry.groupBy({
         by: ['stage'],
+        where: scopeWhere,
         _count: { _all: true },
         _sum: { estimatedValue: true },
       }),
       this.prisma.pipelineEntry.aggregate({
-        where: { stage: { in: OPEN_STAGES } },
+        where: { ...scopeWhere, stage: { in: OPEN_STAGES } },
         _sum: { estimatedValue: true },
         _count: { _all: true },
       }),
       this.prisma.pipelineEntry.aggregate({
-        where: { stage: PipelineStage.WON },
+        where: { ...scopeWhere, stage: PipelineStage.WON },
         _sum: { estimatedValue: true },
         _count: { _all: true },
       }),
       this.prisma.pipelineEntry.count({
-        where: { stage: { in: CLOSED_STAGES } },
+        where: { ...scopeWhere, stage: { in: CLOSED_STAGES } },
       }),
     ]);
 

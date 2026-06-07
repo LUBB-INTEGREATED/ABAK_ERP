@@ -25,8 +25,11 @@ export class RfqsController {
 
   @Get('stats')
   @ApiOperation({ summary: 'RFQ stats' })
-  stats() {
-    return this.service.stats();
+  stats(
+    @CurrentUser() user: ScopeUser,
+    @CurrentScope('rfq:view') scope: PermissionScope | undefined,
+  ) {
+    return this.service.stats({ user, scope });
   }
 
   @Get()

@@ -453,19 +453,28 @@ export class RfqsService {
     }
   }
 
-  async stats() {
+  async stats(scopeCtx?: ScopeContext) {
+    // R2-8: scope the KPI cards exactly like the list (rfqScopeWhere) so a
+    // scoped actor's headline totals match their scoped RFQ list (no inflated
+    // company-wide globals leaking through the stats endpoint).
+    const scopeWhere = await this.rfqScopeWhere(scopeCtx);
+    const scoped = (extra?: Prisma.RfqWhereInput): Prisma.RfqWhereInput =>
+      scopeWhere
+        ? { AND: [scopeWhere, ...(extra ? [extra] : [])] }
+        : (extra ?? {});
     const [total, byStatus, slaBreachCount] = await this.prisma.$transaction([
-      this.prisma.rfq.count(),
+      this.prisma.rfq.count({ where: scoped() }),
       this.prisma.rfq.groupBy({
         by: ['status'],
+        where: scoped(),
         _count: { _all: true },
         orderBy: { status: 'asc' },
       }),
       this.prisma.rfq.count({
-        where: {
+        where: scoped({
           status: RfqStatus.SUBMITTED,
           createdAt: { lt: new Date(Date.now() - 4 * 60 * 60 * 1000) },
-        },
+        }),
       }),
     ]);
     return {
