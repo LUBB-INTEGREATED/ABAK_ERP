@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DocumentEntityType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   PermissionsService,
@@ -50,6 +51,21 @@ export type OwnerResource = (typeof KNOWN_OWNER_RESOURCES)[number];
  * to "authentication is sufficient" for a non-public asset.
  */
 const SCOPE_RESOLVABLE_OWNER_RESOURCES = ['client', 'quote', 'rfq'];
+
+/**
+ * R2-11 (CROSS-MODULE IDOR) — assets backing a Document are stamped with the
+ * UPPERCASE {@link DocumentEntityType} as their `ownerResource`
+ * (CLIENT/PROJECT/GOV_TX/QUOTE/LEAD/FINANCE). These are disjoint from the
+ * lowercase {@link KNOWN_OWNER_RESOURCES}, and DocumentsService — not this ACL —
+ * owns their per-entity access decision. Without this guard they fall through to
+ * the null/unknown-owner clause and are served to ANY caller holding ANY single
+ * ALL-scope grant, bypassing the documents per-entity ACL and the gov/finance
+ * ALL gate. We therefore REFUSE document-owned assets on the /files download
+ * path outright: they are served only by the ACL-gated documents download route.
+ */
+const DOCUMENT_OWNER_RESOURCES: ReadonlySet<string> = new Set(
+  Object.values(DocumentEntityType),
+);
 
 /**
  * A-2 / SR2-3: the `view` permission key whose data-scope gates each
@@ -254,6 +270,16 @@ export class FilesService {
     if (asset.isPublic) return;
 
     const ownerResource = asset.ownerResource;
+
+    // (R2-11) Document-owned asset (uppercase DocumentEntityType owner): the
+    // documents per-entity ACL — not this blanket files ACL — governs it. Refuse
+    // it here so it can never reach the hasAnyAllScope fall-through; the
+    // authenticated documents download route enforces the real per-entity scope.
+    if (ownerResource && DOCUMENT_OWNER_RESOURCES.has(ownerResource)) {
+      throw new ForbiddenException(
+        'This document must be downloaded via its entity',
+      );
+    }
     const map = await this.permissions.resolveForUser(user.id);
     const isManager = Boolean(user.managedDepartment?.id);
 

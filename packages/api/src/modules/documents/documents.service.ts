@@ -48,6 +48,22 @@ const ENTITY_VIEW_PERMISSION: Record<DocumentEntityType, string> = {
 };
 
 /**
+ * R2-10 — the WRITE/MANAGE permission whose presence gates DESTRUCTIVE document
+ * ops (delete) on each entity type. Read scope (`*:view`) is NOT enough to
+ * delete another user's document and its backing bytes: a caller must also hold
+ * the owning module's edit/manage grant (or be the uploader — see remove()).
+ * Mirrors the view-key map so the data-scope check still runs on the same key.
+ */
+const ENTITY_WRITE_PERMISSION: Record<DocumentEntityType, string> = {
+  PROJECT: 'project:manage_tasks',
+  GOV_TX: 'gov:manage',
+  QUOTE: 'quote:build',
+  CLIENT: 'clients:edit',
+  LEAD: 'leads:edit',
+  FINANCE: 'finance:manage_invoice',
+};
+
+/**
  * Entity types with a wired object-level resolver — the owning service's
  * `findOne(id, { user, scope })`. FINANCE has no per-record scoped resolver, so
  * (like files.service for payment/po/gov) it requires whole-class ALL scope.
@@ -216,11 +232,31 @@ export class DocumentsService {
     return { asset: doc.fileAsset, stream };
   }
 
-  /** Delete a document (and its backing bytes) — scope-checked. */
+  /**
+   * Delete a document (and its backing bytes).
+   *
+   * R2-10 — destructive op, so gated by WRITE access, not mere read scope:
+   *   1. the per-entity view-scope check still runs (closes IDOR — caller must
+   *      be able to see the owning entity), THEN
+   *   2. the caller must EITHER hold the owning entity's edit/manage permission
+   *      OR be the original uploader. A user who can only VIEW an entity can no
+   *      longer permanently delete documents others uploaded.
+   */
   async remove(id: string, user: ScopeUser) {
     const doc = await this.prisma.document.findUnique({ where: { id } });
     if (!doc) throw new NotFoundException();
     await this.assertEntityAccess(doc.entityType, doc.entityId, user);
+
+    const isUploader = doc.uploadedById != null && doc.uploadedById === user.id;
+    if (!isUploader) {
+      const writeKey = ENTITY_WRITE_PERMISSION[doc.entityType];
+      const map = await this.permissions.resolveForUser(user.id);
+      if (!map.has(writeKey)) {
+        throw new ForbiddenException(
+          'You do not have permission to delete this document',
+        );
+      }
+    }
     // Cascade on the FK removes the Document row when the FileAsset goes; delete
     // the asset row + its bytes so no orphan is left behind.
     await this.prisma.document.delete({ where: { id } });
