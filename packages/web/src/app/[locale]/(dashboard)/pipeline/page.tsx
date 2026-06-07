@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { toast } from 'sonner';
 import { ArrowRightLeft, CalendarPlus, RefreshCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
